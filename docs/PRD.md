@@ -1,393 +1,406 @@
 # Design & Concur by Harisumiran — Product Requirements Document
 
-**Status:** Draft v0.1 (awaiting answers to the Open Questions in §14)
-**Owner:** Prerak Patel
-**Last updated:** 2026-09-21
+**Status:** v1.0 — agreed after a five-round requirements interview on 2026-09-21
+**Owner:** Prerak Patel (Harisumiran)
+**Design source:** Sampark Design System (Figma `jiCKqA20PSMxOSZNJDROZ6`) · Harisumiran Creatives (Figma `9BO6rB9MqA2ugOIPer1YMX`, page Guidelines)
+**Repo:** `prerakpatel/HS-Design-Concur`
 
 ---
 
 ## 1. Summary
 
 Design & Concur is a small, controlled-access web app for Harisumiran (the temple) and its
-non-profit wing to request, write, design, review and approve event invite artifacts
-(flyers, banners, posters, social posts, Sambandh app assets, LED backwall, TV assets, etc.).
+non-profit wing. It replaces Slack threads as the place where event invite artifacts
+(Sambandh app assets, mobile, social, TV, website, print) are requested, briefed, designed,
+reviewed and approved.
 
-Today this happens over Slack: versions get lost, comments are scattered, and nobody can tell
-which file is the approved one. Design & Concur replaces that with one place per event where
-every asset has a clear owner, a clear state, a versioned history, threaded feedback and a
-single "approved" download that is automatically de-watermarked.
+Every event has one brief and a set of format slots. Every design upload becomes a numbered
+version, is optimised once, and carries a DRAFT watermark until an approver signs it off.
+Approval notifies everyone and releases a clean download. Storage is capped by design so the
+app runs on free tiers indefinitely.
 
-Guiding principle: **utmost minimalism**. Few screens, few buttons, no configuration for
-configuration's sake. Every screen answers "what needs my attention right now?"
-
----
+Guiding principle: **utmost minimalism**. One question per screen where possible, one obvious
+next action, nothing configurable that doesn't need to be.
 
 ## 2. Goals
 
-1. One event page shows every requested asset, who owns the next step, and its state.
-2. Every uploaded design is automatically watermarked **DRAFT** until approved.
-3. Approval flips the asset to a clean, downloadable file and notifies everyone involved.
-4. Feedback is threaded per asset version, never lost, and visibly "resolved" or not.
-5. Runs entirely on free tiers (Vercel + a free database/storage provider) with automatic
-   retention rules so storage never grows unbounded.
-6. Access is gated: Google sign-in, then explicit admin approval before seeing anything.
+1. One event page shows every format, its state, its owner and what's overdue.
+2. Every uploaded design is DRAFT-watermarked automatically until approved.
+3. Approval is explicit, auditable, reversible, and notifies everyone at once.
+4. Feedback is threaded per version with @mentions and an addressed/confirmed loop.
+5. Runs on Vercel + Supabase free tiers forever: hard event cap, aggressive optimisation,
+   automatic purge after each event.
+6. Access is gated: Google sign-in, then Core Admin approval.
 
 ## 3. Non-goals (v1)
 
-- Event *management* (scheduling, ticketing, registrations). Events exist here only as a
-  container for assets.
-- Designing inside the tool. Designers work in their own tools and upload exports.
-- Public sharing or public links. Everything is behind login.
-- Video watermarking (see Q7). v1 watermarks raster images and PDFs.
-- Slack integration (see Q13) — considered for v1.1 once the core flow is proven.
+- Event *management* (schedules, registrations). Events exist only as asset containers.
+- Designing inside the tool. Designers upload exports from their own tools.
+- Video or motion files. Static images and GIFs only.
+- Storing print-ready originals. Print production is an offline process.
+- Public links. Everything is behind login.
+- Slack integration (v1.1). Dark mode (tokens wired, not shipped).
 
 ---
 
-## 4. Users and roles
+## 4. People, roles and organisations
 
-Everyone signs in with Google. A new Google account lands on a **"Awaiting access"** screen
-until a Core Admin approves the request.
+### 4.1 Organisations
+Two seeded organisations: the temple and the non-profit wing (exact display names to be
+supplied at seed time). An event belongs to exactly one org. **Each org is a separate view**
+with a switcher in the sidebar for users who belong to both. There is no unified feed.
 
-| Role | Who | Distinct permissions |
-|---|---|---|
-| **Member** | Executives, publishers/writers, designers, approvers | Everything except the admin actions below. Can create events, request assets, write content, upload designs, comment, approve, download. |
-| **Sub-admin** | Trusted members chosen by a Core Admin | Member + **delete an event**. |
-| **Core Admin** | Founding admin (bootstrapped by config) and anyone a Core Admin promotes | Sub-admin + **approve/deny access requests**, **remove users**, **promote/demote Sub-admins and Core Admins**, **manage the asset-type catalog**. |
+### 4.2 Access
+- Sign in with any Google account.
+- A first-time account lands on **Awaiting access**. A Core Admin approves it and assigns
+  org membership (one or both). Until then the user sees nothing.
+- Admin setting **"Not accepting new members"**: when on, the sign-in page shows that message
+  and the request button is hidden. Requests already queued are unaffected.
 
-Design note: the user stated that all non-admin permissions are universal. The app therefore
-does **not** enforce "only executives can approve". Instead each member carries an
-informational **function tag** (Executive · Publisher · Designer · Approver, multi-select) used
-for routing notifications and defaulting assignees. See Q1 — this is the single most
-consequential open question.
+### 4.3 Roles (global, not per org)
 
-Safety rails that apply to everyone:
-- A user cannot approve a version they uploaded themselves.
-- Deleting an event is a soft delete with a 7-day restore window visible to admins.
+| Role | Grants |
+|---|---|
+| **Member** | Everything below not marked otherwise. |
+| **Core Admin** | Approve/deny access, remove users, assign org membership, grant/revoke Approver, promote/demote Core Admins, delete any event, edit org notification settings. Implicitly an Approver. |
+
+There is **no Sub-admin role**. Its only purpose was deleting accidental events, which is
+covered by: *the creator of an event may delete it themselves as long as no version on that
+event has been sent for review.* After that, only a Core Admin can delete.
+
+### 4.4 Capabilities and function tags
+- **Approver** (toggle, granted by a Core Admin): may approve, request changes on, and reopen
+  assets. Core Admins have it implicitly.
+- **Function tags** (multi-select, informational, set by a Core Admin):
+  **Central** (executives), **Publication** (writers), **Designer**.
+  Tags route notifications and default assignees. Two things are gated by tag:
+  - Designers and Core Admins may add or edit format catalog rows in-line.
+  - Designers and Core Admins receive the yearly device-preset reminder (§9.5).
+
+### 4.5 Rails
+- A user cannot approve a version they uploaded.
 - The last remaining Core Admin cannot be demoted or removed.
+- Every role, tag and membership change is written to the activity log.
 
 ---
 
-## 5. Core objects
+## 5. Domain model
 
 ```
-Organization (Temple | Non-profit wing)
-└── Event
-    ├── title, org, event date(s), venue, owner (creator)
-    ├── retention state (active | completed | archived-reference)
-    └── Asset Request  (one per medium requested, e.g. "Instagram square")
-        ├── asset type (from catalog) → target dimensions / format
-        ├── content brief (description, timings[], venue, notes)   ← Publisher fills
-        ├── assignee (designer), due date
-        ├── state machine (see §6)
-        └── Asset Version (v1, v2, …)                              ← Designer uploads
-            ├── original file (private), watermarked derivative, thumbnail
-            ├── comments (threaded, resolvable, optional x/y pin on the image)
-            └── decision (approved | changes requested) by whom, when
+Organisation
+└── Event  (draft | active | archived; soft-deleted with 7-day restore)
+    ├── title, org, event date, venue, created_by
+    ├── Brief  (description, timing lines[], venue, notes)   — locks at first upload
+    └── Format Slot   (one per catalog row; state: requested | n/a)
+        ├── notes for this format, assignee, due date
+        ├── workflow state (see §6)
+        └── Version 1..n
+            ├── sides: Front [, Back]   (print only)
+            ├── optimised file, watermarked preview, thumbnail, reference (post-purge)
+            ├── Comment (threaded, pinnable x/y, @mentions, addressed/confirmed)
+            └── Decision (approved | changes requested | reopened) by whom, when
 ```
 
-### 5.1 Asset type catalog (seeded, admin-editable)
-
-| Key | Name | Default size | Format |
-|---|---|---|---|
-| flyer_letter | Flyer (print, US Letter) | 2550 × 3300 px @300dpi | PDF/PNG |
-| poster_a3 | Poster A3 | 3508 × 4961 px | PDF/PNG |
-| banner_outdoor | Outdoor banner | custom (W × H in ft + resolution) | PDF |
-| ig_square | Instagram / WhatsApp square | 1080 × 1080 | PNG/JPG |
-| ig_story | Story / mobile vertical | 1080 × 1920 | PNG/JPG/MP4 |
-| fb_cover | Facebook cover | 1640 × 856 | PNG/JPG |
-| sambandh_card | Sambandh app card | **TBD (Q5)** | PNG |
-| sambandh_banner | Sambandh app banner | **TBD (Q5)** | PNG |
-| led_backwall | LED backwall backdrop | custom per venue (px) | PNG/MP4 |
-| tv_landscape | TV / lobby screen | 1920 × 1080 | PNG/MP4 |
-
-Adding a new medium = adding a catalog row (name, width, height, allowed formats, notes).
-No code change required.
+See `CONTEXT.md` for the glossary.
 
 ---
 
-## 6. Workflow and state machine
+## 6. Workflow
 
-```
- REQUESTED ──► CONTENT_READY ──► IN_DESIGN ──► IN_REVIEW ──► APPROVED
-   (exec)        (publisher)      (designer)    (approver)
-                                      ▲              │
-                                      └── CHANGES_REQUESTED ◄┘
-```
+### 6.1 Event creation wizard
+Anyone can start an event. The wizard is modelled on a stepped, one-question-per-screen flow
+with a left rail of step icons, "Step n of 5" in the header, **Back**, **Next**, and
+**Save and exit** at every step. A saved draft can be resumed by anyone in the org.
 
-| Step | Actor | What happens | Notification |
-|---|---|---|---|
-| 1. Request | Executive | Creates an event (or picks an existing one), ticks the mediums needed, optionally sets due dates and assignees. Can be done months ahead. | Publishers + assigned designers |
-| 2. Content | Publisher | Fills the content brief: rich-text description, one or more timing lines (date, start–end, label), venue, extra notes. Marks "Content ready". | Assigned designer(s) |
-| 3. Design | Designer | Uploads a file → becomes **Version n**. Server generates a DRAFT-watermarked derivative and a thumbnail. State → In review. | Approvers (function tag) + requester |
-| 4. Review | Approver | Views watermarked version, leaves threaded comments (optionally pinned to a point on the image), then either **Request changes** or **Approve**. | Designer + publisher on changes; **everyone on the event** on approve |
-| 5. Approved | System | Watermarked derivative hidden; original becomes downloadable via a short-lived signed URL. Version locked. | All event participants |
+| Step | Screen | Fields |
+|---|---|---|
+| 1 | Basics | Org (pre-filled from current view), title, **event date** (calendar picker, no free text), venue |
+| 2 | Brief | Description (rich text), timing lines (one by default, "+ add timing": label, date via calendar picker, start, end), notes |
+| 3 | Formats | Every catalog row listed; each toggled **Requested** or **N/A**. Per-row "notes for this format". |
+| 4 | Assign | Per requested slot: assignee (defaults to users tagged Designer), optional due date (calendar picker) |
+| 5 | Review | Summary; **Create event** |
 
 Rules:
-- Content and design may proceed in parallel (a designer can upload before content is
-  marked ready) but the asset cannot be **approved** until content is marked ready. (Q3)
-- One approval is sufficient (Q2). Approving any version supersedes earlier versions.
-- A new upload after approval re-opens the asset (state → In review) and clearly labels the
-  previously approved version as "Approved (superseded)".
-- Every state change is written to an immutable **activity log** shown on the asset page.
+- A draft event is not counted toward the cap (§8) and is swept 30 days after its last edit,
+  with a warning email to the creator 7 days before.
+- The brief must exist before any version can be uploaded. After the first upload the brief is
+  read-only; further content changes travel as comments.
+- **Edit event** on the Event page reopens the wizard at the chosen step (brief step locked
+  once uploads exist). Formats can be flipped between Requested and N/A at any time by
+  anyone; flipping to N/A on a slot with versions keeps the versions but hides the slot from
+  pending counts.
+
+### 6.2 Format slot state machine
+
+```
+REQUESTED ──upload──► IN_REVIEW ──approve──► APPROVED
+    ▲                    │  ▲                    │
+    │                    ▼  │ upload             │ reopen (approver)
+    └──── N/A ◄──── CHANGES_REQUESTED ◄──────────┘
+```
+
+| Transition | Who | Effect | Notified |
+|---|---|---|---|
+| Upload version | anyone | New version n; optimise, watermark, thumbnail. Slot → In review. | Approvers, Central, requester |
+| Request changes | Approver | Slot → Changes requested. Comments required (≥1). | Assignee, Publication |
+| Mark addressed | anyone | Per-comment flag on the new version. | Comment author |
+| Confirm / reopen comment | Approver | Closes or re-flags the comment. | Assignee |
+| **Approve and notify** | Approver | Confirmation dialog ("Approve *Sambandh Event v3*? This notifies everyone on the event."). Slot → Approved. | Everyone on the event, both orgs' channels per settings |
+| **Approve and download** | Approver | Same as above, then downloads the optimised file (or a ZIP of Front + Back). | Same |
+| Bulk approve | Approver | Multi-select slots on the Event page → one confirmation dialog listing them. No "Approve all" button exists. | Same |
+| Reopen | Approver | Explicit switch on an approved slot with a reason. Slot → Changes requested. Prior approval recorded as *superseded*. | Everyone on the event |
+
+"Everyone on the event" = creator, all assignees, everyone who has commented, all Approvers
+in the org, all Core Admins.
+
+### 6.3 Comments
+- Threaded per version. Optional pin at an x/y point on the preview.
+- **@mentions**: typing `@` opens a picker of members of the current org (edge-to-edge sheet
+  on mobile). A mention notifies that user.
+- Each comment has an **addressed** flag (set by anyone, typically the designer on the next
+  upload) and a **confirmed** flag (set by an Approver). Unconfirmed comments are listed as a
+  checklist on the newest version.
 
 ---
 
-## 7. Draft watermark
+## 7. Files, optimisation and watermark
 
-- Applied **server-side** at upload; the un-watermarked original is never served before
-  approval.
-- Pattern: diagonal, tiled "DRAFT" text at 45°, ~12% opacity, sized to ~1/6 of the shorter
-  edge, plus a small "DRAFT · v{n} · {date}" caption in the bottom-right corner.
-- Works on PNG, JPG, WebP, single- and multi-page PDF (each page rasterised for preview;
-  the PDF itself gets a text overlay layer).
-- Video (MP4): v1 stores the original and shows a **watermarked poster frame** only; no
-  in-browser playback of un-watermarked video before approval. (Q7)
+### 7.1 Upload
+- Limit **8 MB** per file. Direct browser-to-storage upload via a signed URL, then a server
+  job processes it.
+- Accepted: PNG, JPG, WebP, GIF. **PDF only for print formats**, max 2 pages.
+- Print formats accept **either** one PDF (pages 1–2 become Front/Back) **or** one or two
+  images labelled Front and Back.
 
----
+### 7.2 What is stored (per version)
+Nothing is kept at original size. Each side is optimised once and only the derived files exist:
 
-## 8. Storage, retention and the free-tier budget
-
-### 8.1 Hard limits (from the brief)
-1. **Rolling window:** keep at most **10 events** *or* events whose date is within **6 months**
-   of today, whichever bound is hit first.
-2. When the limit is reached and a new event is created, archive the **oldest completed
-   event** (by event date) to make room. If no event is completed, creation is still allowed
-   but the creator sees a warning that the window is over capacity. (Q9)
-3. **7 days after an event's actual event date**, purge that event's full-resolution
-   originals and every non-final version. Keep **one heavily compressed reference image per
-   approved asset** (long edge 800 px, WebP ≈ 60 quality, ~50–80 KB) so the event is still
-   browsable as a visual record. (Q10 — per asset vs. per event)
-4. Archived-reference events remain visible under an **Archive** tab, read-only.
-
-### 8.2 Budget model (Supabase free tier as the baseline, see §10)
-| Resource | Free limit | Planned usage |
+| File | Purpose | Spec |
 |---|---|---|
-| Object storage | 1 GB | 10 events × ~8 assets × ~3 versions × ~8 MB ≈ 1.9 GB **worst case** → mitigated by per-file cap of 25 MB, version pruning after approval (keep latest 2 + approved), and the 7-day purge. Typical steady state ≈ 400–600 MB. |
-| Database | 500 MB | Negligible (metadata only). |
-| Egress | 5 GB/mo | Watermarked previews are served at max 1600 px; originals only on approved download. |
-| Auth MAUs | 50 000 | ~20–40 users. |
-| Scheduled jobs | Vercel Cron (2 jobs on Hobby) | Nightly retention job + hourly notification digest. |
+| `optimised` | the asset itself; served on approved download | Visually lossless: WebP or MozJPEG q≈82–85; PNG only if transparency; GIF passed through untouched (size-checked only). Print PDFs rasterised at 150 dpi to the same rule. |
+| `preview` | shown before approval | `optimised` + baked DRAFT watermark, long edge ≤ 1600 px |
+| `thumb` | cards and lists | long edge 400 px WebP |
+| `reference` | created at purge, replaces all of the above | long edge 800 px WebP q60, ≈ 50–80 KB |
 
-Uploads go **directly from the browser to storage** via a signed upload URL (Vercel
-serverless bodies are capped at 4.5 MB); the server then processes the watermark asynchronously.
+All versions are kept until the event purge; with files this small no pruning is needed.
 
----
-
-## 9. Notifications
-
-- **In-app inbox** (bell icon, unread count) — always on.
-- **Email** for: access approved, asset assigned to you, changes requested on your version,
-  asset approved (to all event participants), event deleted. Daily digest option per user.
-- Channel: transactional email via a free-tier provider (Resend, 3 000/mo). (Q13 — Slack)
+### 7.3 Watermark
+- Tiled "DRAFT" at 45°, ~12 % opacity, dual light/dark outline so it reads on any background,
+  plus a corner caption `DRAFT · v{n} · {date}`.
+- **GIFs are not baked.** The viewer draws the same watermark as a CSS overlay over the
+  animated GIF. Protection is by access control, not by the file.
+- Approved = the `preview` is no longer served; the `optimised` file is.
 
 ---
 
-## 10. Technical architecture (proposed)
+## 8. Storage cap and retention
 
-| Layer | Choice | Why |
+| Rule | Behaviour |
+|---|---|
+| **Event cap** | At most **10 non-draft, non-archived events** across both orgs combined. Each org view shows the shared count ("7 of 10 event slots used across Harisumiran"). |
+| **Horizon** | An event date may not be more than **6 months** in the future. |
+| **Cap reached** | Creating (or publishing a draft as) the 11th event is **blocked** with a message naming the oldest event and its date. |
+| **Auto-archive** | Nightly: events whose date is more than 6 months in the past are archived regardless of count. |
+| **Post-event purge** | Nightly: for events whose date is **≥ 7 days** past: every approved slot's latest approved version is reduced to one `reference` image; all other versions and all unapproved slots' files are deleted. Text (brief, comments, decisions, activity) is kept. |
+| **Archive view** | Read-only list of archived events with reference image, brief, decision history and comments. |
+| **Delete event** | Soft delete; Core Admins can restore for 7 days; files purged after. Creator may delete their own event only if no version has ever been sent for review. |
+| **Draft sweep** | Drafts untouched for 30 days are deleted; warning email at day 23. |
+
+Budget sanity check: 10 events × ~10 slots × ~3 versions × ~0.4 MB ≈ 120 MB steady state,
+against Supabase's 1 GB free storage.
+
+---
+
+## 9. Format catalog and previews
+
+### 9.1 Seeded rows (from Harisumiran Creatives › Guidelines)
+
+| # | Key | Name | Request size (px) | Frame | Safe area (px) | Class |
+|---|---|---|---|---|---|---|
+| 1 | sambandh_event | Sambandh Event | 1125 × 1200 | phone, 375 × 400 viewport | top 249 | digital |
+| 2 | sambandh_glimpse | Sambandh Glimpse | 1074 × 645 | card, 358 × 215 | none | digital |
+| 3 | mobile | Mobile | 1179 × 2556 | phone frames (§9.4) | top 264 | digital |
+| 4 | ig_story | IG Reel / Story | 1080 × 1920 | phone | top 240, bottom 240 | digital |
+| 5 | ig_post | IG Post | 1080 × 1350 | flat | top 168, bottom 168 | digital |
+| 6 | tv | TV | 1920 × 1080 | TV bezel | none | digital |
+| 7 | web_hero | Website Hero | 1920 × 540 | flat | none | digital |
+| 8 | web_alt | Web (1500) | 1500 × 548 | flat | none | digital |
+| 9 | print_7x5 | Print 7 × 5 in | 7.5 × 5.5 in @ 300 dpi | print | bleed 0.25 in, safe 0.25 in | print |
+| 10 | print_9x6 | Print 9 × 6 in | 9.5 × 6.5 in @ 300 dpi | print | bleed 0.25 in, safe 0.25 in | print |
+| 11 | print_10x7 | Print 10 × 7 in | 10.5 × 7.5 in @ 300 dpi | print | bleed 0.25 in, safe 0.25 in | print |
+| 12 | led_backwall | LED backwall | custom W × H per request | LED (decorative seams) | none | digital |
+
+Print sizes follow the existing Figma templates: the file is trim + 0.25 in on each side, the
+red band is the bleed zone, and a lighter inner guide marks a 0.25 in safe margin from trim.
+
+### 9.2 Catalog editing
+Rows are editable **in-line** by users tagged Designer and by Core Admins, including adding
+a row. Fields: name, width, height, unit (px | in), dpi (print), class (print | digital),
+frame type, safe-area insets (top/right/bottom/left), bleed and safe margin (print), allowed
+formats, active flag. Deactivated rows stay on old events.
+
+### 9.3 Preview viewer (Asset page)
+- Frame chosen by the row's frame type. **Phones**: muted flat frame with a status-bar area,
+  no replica of any app chrome. **TV**: 16:9 bezel. **LED**: rectangle at requested ratio
+  with decorative panel seams (not a real panel count). **Print**: flat sheet with dotted red
+  bleed line and lighter dotted safe line, and a **lightbox** with Front/Back flip.
+- **Safe-area toggle** overlays the row's insets as translucent red. Semantics: artwork may
+  extend into the zone, but nothing important (text, murti, logos) should sit there.
+- One mobile upload is scaled to fit each phone frame; overflow shows as letterbox.
+- Zoom, version switcher, comment pins.
+
+### 9.4 Device presets (`config/devices.ts`)
+Labels and dimensions follow Figma's frame presets. Seeded: iPhone 16 Pro 402 × 874,
+iPhone 16 Pro Max 440 × 956, Android Compact 412 × 917, Android Medium 700 × 840. Values are
+config, not logic, and are expected to be corrected from Figma's frame panel.
+
+### 9.5 Yearly reminder
+Every **1 November**, an email goes to everyone tagged Designer and to Core Admins with a link
+to `config/devices.ts` and the one-line update command.
+
+---
+
+## 10. Notifications
+
+| Channel | Scope | Controls |
 |---|---|---|
-| Framework | **Next.js 15 (App Router), React 19, TypeScript** | Vercel-native, server actions for mutations, easy SSR for a small controlled app. |
-| UI | **shadcn/ui** on Tailwind CSS v4, **Google Sans** (via `next/font`), **Material Symbols Rounded** icons | Matches the brief; shadcn tokens map 1:1 to the Sampark colour roles below. |
-| Auth | **Supabase Auth — Google provider** | Free, handles the Google OAuth dance, gives us row-level security. |
-| Database | **Supabase Postgres** with RLS | Free tier, relational fit (events → requests → versions → comments). |
-| Storage | **Supabase Storage** (private buckets: `originals`, `derivatives`) | Signed URLs, direct browser upload, same project. |
-| Image processing | `sharp` in a Vercel serverless route (Node runtime), `pdf-lib` for PDF overlay | Watermark + thumbnails + compressed reference. |
-| Jobs | **Vercel Cron** → `/api/jobs/retention` (nightly), `/api/jobs/digest` (hourly) | No extra infra. |
-| Email | Resend | Free tier, React email templates. |
-| Hosting | **Vercel Hobby** | As requested. |
-| Repo | GitHub `prerakpatel/HS-Design-Concur`, branch-per-feature, Vercel Git integration for preview deployments. |
+| In-app inbox | always on | bell with unread count |
+| Email | per user | user can switch to a daily digest or off; **Core Admins can turn email off org-wide** in Settings |
+| Google Chat | per org | incoming-webhook URL in Settings › Notifications; **Core Admins can turn it off**; posts on: sent for review, changes requested, approved, reopened |
+| Slack | v1.1 | same event set |
 
-Alternative considered: Vercel Postgres + Vercel Blob. Rejected for v1 because Vercel Blob's
-free allowance is smaller and there is no bundled auth. Firebase is a viable second choice
-if you already use it for Sambandh (Q11).
+Events that notify: access approved; assigned to you; @mentioned; version uploaded (approvers);
+changes requested (assignee, Publication); approved / reopened (everyone on the event); due
+in 3 days / due today (assignee); draft sweep warning (creator); event deleted (everyone on
+the event); yearly device reminder (Designers, Core Admins).
 
 ---
 
-## 11. Design system
+## 11. Screens
 
-### 11.1 Colour — from Sampark Design System (Figma `jiCKqA20PSMxOSZNJDROZ6`, page 🧭 Foundations)
+1. **Sign in** — logo, one Google button, one line of copy (or the "not accepting" message).
+2. **Awaiting access** — status only.
+3. **Events** (home, per org) — *Upcoming* / *Drafts* / *Past* groups. Row: title, date,
+   progress ("5 of 8 approved"), overdue badge, "needs you" dot. Shared slot count in header.
+   Primary: **New event**.
+4. **New / edit event wizard** — §6.1.
+5. **Event page** — header (title, date, venue, creator, Edit event), brief (collapsible),
+   grid of format cards (thumb, name, state badge, vN, assignee, due; N/A cards dimmed),
+   multi-select → **Approve selected**, activity feed.
+6. **Asset page** — viewer (§9.3) left; tabs *Brief* · *Comments* · *Activity* right.
+   Actions by state: Upload version · Request changes · Approve and notify · Approve and
+   download · Reopen · Download. Mobile: sticky bar with **Request changes** and **Approve**
+   (opens a two-option sheet). Every approve/reopen passes an "Are you sure?" dialog.
+7. **Inbox**.
+8. **Archive** — read-only.
+9. **Settings** (Core Admin) — *Access requests* · *Users* (roles, tags, orgs, Approver) ·
+   *Formats* (in-line catalog) · *Notifications* (email on/off, Google Chat webhook + on/off,
+   "not accepting new members") · *Storage* (slot usage, next purge dates).
 
-Light mode values as exported from the Figma variables. Dark mode exists in the file but the
-values did not come through the variable export; they will be pulled when the Figma frames
-are built (Step 2).
+---
+
+## 12. Design system
+
+### 12.1 Colour (Sampark, light)
 
 | Role | Token | Hex |
 |---|---|---|
-| Brand | `--color-brand` | `#FF5A52` |
+| Brand / Primary | `--color-brand`, `--color-primary` | `#FF5A52` |
 | Brand hover | `--color-brand-hover` | `#E04840` |
 | Background | `--color-background` | `#F9FAFB` |
 | Foreground | `--color-foreground` | `#020817` |
 | Card / Popover | `--color-card`, `--color-popover` | `#FFFFFF` |
-| Primary | `--color-primary` | `#FF5A52` |
 | Primary foreground | `--color-primary-foreground` | `#020817` |
 | Secondary / Accent / Success | `--color-secondary`, `--color-accent`, `--color-success` | `#0567A3` |
-| Secondary/Accent/Success foreground | `…-foreground` | `#F8FAFC` |
+| Secondary/Accent/Success fg | `…-foreground` | `#F8FAFC` |
 | Destructive | `--color-destructive` | `#DC2828` |
-| Destructive foreground | `--color-destructive-foreground` | `#F8FAFC` |
 | Muted | `--color-muted` | `#F1F5F9` |
 | Muted foreground | `--color-muted-foreground` | `#64748B` |
 | Border / Input | `--color-border`, `--color-input` | `#E2E8F0` |
 | Ring | `--color-ring` | `#020817` |
-| Sidebar bg | `--color-sidebar` | `#FAFAFA` |
-| Sidebar fg | `--color-sidebar-foreground` | `#3F3F46` |
-| Sidebar primary | `--color-sidebar-primary` | `#18181B` |
-| Sidebar primary fg | `--color-sidebar-primary-foreground` | `#FAFAFA` |
-| Sidebar accent | `--color-sidebar-accent` | `#F4F4F5` |
-| Sidebar accent fg | `--color-sidebar-accent-foreground` | `#18181B` |
-| Sidebar border | `--color-sidebar-border` | `#E5E7EB` |
-| Sidebar ring | `--color-sidebar-ring` | `#3B82F6` |
+| Sidebar | `--color-sidebar` / fg / primary / primary-fg / accent / accent-fg / border / ring | `#FAFAFA` / `#3F3F46` / `#18181B` / `#FAFAFA` / `#F4F4F5` / `#18181B` / `#E5E7EB` / `#3B82F6` |
 
-Status colours for asset states (proposed, derived from the palette):
-Requested = muted · Content ready = secondary/blue · In design = secondary/blue ·
-In review = brand/coral · Changes requested = destructive · Approved = success/blue with check.
-(Note: Sampark maps *success* to the same blue as secondary; if a green is wanted for
-"Approved" that is a new token — Q15.)
+State badges: Requested = muted · In review = brand · Changes requested = destructive ·
+Approved = success + check · N/A = muted, dimmed card. Dark-mode values exist in Sampark and
+will be wired as tokens but not shipped.
 
-### 11.2 Typography (Sampark scale)
-Heading/xl 20/20 −2.5% · Heading/lg 18/18 −2.5% · Body/base 16/24 · Body/sm 14/20 ·
-Label/xs 12/16 · Control/sm 12.8/16 · Label/2xs 10.4/14 · Mono/xs 12/16.
-Family: **Google Sans** (Text for body, Display for headings). Fallback: system-ui.
+### 12.2 Type, radius, icons
+Google Sans (Display for headings, Text for body) via `next/font`. Sampark scale: Heading/xl
+20/20 −2.5 % · Heading/lg 18/18 · Body/base 16/24 · Body/sm 14/20 · Label/xs 12/16 ·
+Control/sm 12.8/16. Radius: sm 4 · md 6 · base 8 · lg 8 · xl 12. Material Symbols Rounded,
+weight 400, filled only for active nav and the Approved badge.
 
-### 11.3 Radius: sm 4 · md 6 · base 8 · lg 8 · xl 12.
-
-### 11.4 Iconography: Material Symbols Rounded, weight 400, optical size 20/24, filled
-variant only for the active nav item and the "Approved" badge.
-
-### 11.5 Layout
-- ≥1024 px: fixed 240 px sidebar (Events · Inbox · Archive · Admin) + content column max 1200 px.
-- 640–1023 px: collapsible sidebar (icon rail).
-- <640 px: bottom tab bar; asset review becomes a full-screen viewer with a slide-up
-  comment sheet. Approve / Request changes are sticky at the bottom.
+### 12.3 Layout
+- ≥ 1024 px: 240 px sidebar (org switcher, Events, Inbox, Archive, Settings) + content ≤ 1200 px.
+- 640–1023 px: icon rail.
+- < 640 px: bottom tab bar; Asset page is full-screen viewer with slide-up comment sheet and
+  sticky action bar. Touch targets ≥ 44 px.
+- All dates through one calendar-picker component; never free-text.
 
 ---
 
-## 12. Screens (v1)
+## 13. Technical architecture
 
-1. **Sign in** — single Google button, logo, one line of copy.
-2. **Awaiting access** — shown until approved; admins see the same person in Admin › Access.
-3. **Events** (home) — list grouped by *Upcoming* / *Past*, each row: title, org chip, date,
-   asset progress (e.g. "5 of 8 approved"), "needs you" indicator. Filter by org, by "assigned
-   to me", by state. Primary button: **New event**.
-4. **New event / Request assets** — one form: org, title, date(s), venue, then a checklist of
-   asset types with per-type due date and assignee. Submits in one go.
-5. **Event page** — header (title, org, date, venue, owner), grid of asset cards (thumbnail,
-   type, state badge, version, assignee), activity feed on the right (desktop) or below (mobile).
-6. **Asset page** — left: version viewer with watermark, version switcher, zoom;
-   right: tabs *Brief* (content) · *Comments* · *Activity*. Bottom/right actions vary by state:
-   *Mark content ready*, *Upload version*, *Request changes*, *Approve*, *Download approved*.
-7. **Inbox** — notifications, mark read, jump to asset.
-8. **Archive** — read-only past events with reference thumbnails.
-9. **Admin** — tabs: *Access requests* · *Users & roles* · *Asset types* · *Storage* (usage
-   meter, next purge dates).
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 15 App Router, React 19, TypeScript, server actions |
+| UI | shadcn/ui on Tailwind CSS v4; tokens from §12 as CSS variables |
+| Auth | Supabase Auth, Google provider; RLS on every table |
+| Database | Supabase Postgres (new project in org `pshkr`) |
+| Storage | Supabase Storage, private buckets `assets` (optimised/preview/thumb/reference); signed URLs ≤ 10 min |
+| Processing | `sharp` (MozJPEG/WebP/PNG), `pdf-lib` + `pdfjs` for PDF split/raster, in a Node runtime route triggered after upload |
+| Jobs | Vercel Cron: nightly `retention` (archive, purge, draft sweep), hourly `digest`, yearly `device-reminder` |
+| Email | Resend (free tier) with React Email templates |
+| Chat | Google Chat incoming webhook (POST JSON card) |
+| Hosting | Vercel Hobby, Git integration on `main`, preview deployments per PR |
+| Config | `config/devices.ts`, `config/orgs.ts`, env: `INITIAL_CORE_ADMIN_EMAILS` (three addresses), `APP_TIMEZONE=America/New_York` |
 
----
-
-## 13. Non-functional requirements
-
-- Responsive from 360 px to 1920 px; touch targets ≥ 44 px on mobile.
-- Lighthouse performance ≥ 90 on the Events and Asset pages (mobile).
-- Image previews served as WebP, max 1600 px, lazy-loaded.
-- All storage buckets private; every file read goes through a signed URL with ≤ 10 min TTL
-  (previews) or ≤ 60 s TTL (approved originals).
-- Row-level security so a user with a valid session but no approved access reads nothing.
-- Accessibility: WCAG 2.1 AA colour contrast (note: brand coral on white passes only for
-  large text; use it for fills with dark foreground, not for small text on white).
-- Time zone: all event dates stored as date + IANA zone; default **America/New_York** (Q8).
+Non-functional: responsive 360–1920 px; Lighthouse mobile ≥ 90 on Events and Asset pages;
+previews ≤ 1600 px WebP, lazy-loaded; WCAG 2.1 AA contrast (brand coral is used for fills
+with dark foreground, never small text on white); all times displayed in America/New_York.
 
 ---
 
-## 14. Open questions — please answer these (defaults shown are what v1 will do if unanswered)
+## 14. Data model (draft)
 
-**Roles and approval**
-1. **Q1 · Who can approve?** You said all non-admin permissions are universal. Literally that
-   means a designer could approve their own team's work. *Default:* anyone can approve except
-   the uploader of that version; "Approver" is a function tag used only for notifications.
-   Alternative: make Approver an enforced permission granted by admins.
-2. **Q2 · How many approvals?** *Default:* one approval from any eligible person approves the
-   asset. Alternative: all tagged approvers must approve, or a per-event named approver list.
-3. **Q3 · Can design start before content is marked ready?** *Default:* yes, but approval is
-   blocked until content is ready.
-4. **Q4 · Is content itself approved?** i.e. does an executive sign off on the write-up
-   before the designer sees it? *Default:* no separate content approval; comments on the
-   Brief tab cover it.
-
-**Asset types**
-5. **Q5 · Sambandh dimensions** — exact width × height (px) and format for each Sambandh
-   placement you want seeded.
-6. **Q6 · LED backwall and banners** — do these vary per venue? *Default:* the requester types
-   custom W × H when requesting; admins can save named presets ("Main hall LED 3840×1080").
-7. **Q7 · Video assets** — do TV/LED assets include MP4s? *Default:* uploads allowed up to
-   25 MB, watermarked poster frame only, no video watermarking in v1.
-
-**Events**
-8. **Q8 · Time zone and multi-day events.** *Default:* America/New_York; an event has a start
-   date and optional end date; retention uses the end date.
-9. **Q9 · When the 10-event / 6-month window is full and nothing is "completed"** —
-   block creation, or allow with a warning? *Default:* allow with warning; admins see a
-   Storage tab.
-10. **Q10 · Post-event compressed reference** — one image *per approved asset*, or one image
-    *per event* (the primary flyer)? *Default:* one per approved asset (~60 KB each).
-11. **Q11 · Do you already use Firebase/Supabase/Google Cloud for Sambandh?** If yes, reusing
-    that project may be cheaper than a new Supabase project. *Default:* new Supabase project.
-
-**Access and notifications**
-12. **Q12 · Google sign-in restriction** — any Google account may request access, or only a
-    specific Workspace domain? *Default:* any account; admin approval is the gate.
-13. **Q13 · Slack** — you currently live in Slack. Post "approved" and "changes requested"
-    events to a Slack channel via webhook in v1? *Default:* email + in-app only; Slack in v1.1.
-14. **Q14 · Who is the first Core Admin?** *Default:* the email set in the
-    `INITIAL_CORE_ADMIN_EMAIL` environment variable.
-
-**Design**
-15. **Q15 · "Approved" colour** — Sampark's success token is the same blue as secondary. Keep
-    blue for Approved, or add a green token? *Default:* keep blue + check icon.
-16. **Q16 · Dark mode in v1?** The Sampark file defines it. *Default:* ship light only,
-    tokens wired so dark is a flag flip.
-17. **Q17 · Two organisations** — does the non-profit wing need its own logo/brand accent in
-    the UI, or is an "org chip" on each event enough? *Default:* chip only.
-
-**Files**
-18. **Q18 · Download formats for approved assets** — final exports only (PNG/JPG/PDF/MP4), or
-    also source files (AI/PSD/Figma links)? *Default:* exports only; a "source link" text
-    field per version for Figma/Drive URLs.
-19. **Q19 · Per-file size cap.** *Default:* 25 MB (Supabase free tier allows 50 MB).
+```sql
+organisations(id, slug, name, chat_webhook_url, email_enabled bool, chat_enabled bool, accepting_signups bool)
+users(id ← auth.users, email, name, avatar_url, role enum('member','core_admin'),
+      is_approver bool, function_tags text[] /* central|publication|designer */,
+      status enum('pending','active','removed'), email_pref enum('instant','digest','off'))
+org_memberships(user_id, org_id)
+access_requests(id, user_id, requested_at, decided_by, decided_at, decision)
+formats(id, key, name, width, height, unit enum('px','in'), dpi, class enum('print','digital'),
+        frame enum('phone','card','flat','tv','led','print'), safe_top, safe_right, safe_bottom, safe_left,
+        bleed_in numeric, safe_margin_in numeric, allow_custom_size bool, allowed_mimes text[], active bool, sort)
+events(id, org_id, title, event_date date, venue, status enum('draft','active','archived'),
+       created_by, brief_locked_at, deleted_at, last_edited_at, created_at)
+brief(event_id pk, description, venue, notes)
+brief_timings(id, event_id, label, on_date, starts_at, ends_at, sort)
+slots(id, event_id, format_id, requested bool /* false = N/A */, custom_w, custom_h, notes,
+      assignee_id, due_on, state enum('requested','in_review','changes_requested','approved'))
+versions(id, slot_id, number, uploaded_by, created_at, decision enum('pending','approved','changes_requested','superseded'),
+         decided_by, decided_at, reopen_reason, purged_at)
+version_sides(id, version_id, side enum('front','back'), mime, width, height, bytes,
+              optimised_path, preview_path, thumb_path, reference_path)
+comments(id, version_id, author_id, parent_id, body, mentions uuid[], pin_x, pin_y,
+         addressed_at, addressed_by, confirmed_at, confirmed_by, created_at)
+activity(id, org_id, event_id, slot_id, version_id, actor_id, kind, payload jsonb, created_at)
+notifications(id, user_id, kind, payload jsonb, read_at, emailed_at, created_at)
+```
 
 ---
 
 ## 15. Delivery plan
 
-| Step | Deliverable | Notes |
-|---|---|---|
-| 1 | **This PRD**, answers to §14 | You are here. |
-| 2 | **Figma** — Sampark-based component set + the 9 screens in §12 at desktop and mobile widths, pushed into a new page of the Sampark file (or a new file) via Figma MCP | Uses `use_figma` with the Foundations variables. |
-| 3 | **Repo scaffold** — Next.js 15 + Tailwind v4 + shadcn/ui + Google Sans + Material Symbols; tokens from §11 as CSS variables; Supabase schema + RLS migrations; seed asset catalog | On `claude/gifted-carson-7ykp16`, then PR to `main`. |
-| 4 | **Auth + access gate + admin** | Google login, awaiting-access, roles. |
-| 5 | **Events + asset requests + content brief** | Steps 1–2 of the workflow. |
-| 6 | **Upload + watermark + versions + comments + approve/download** | Steps 3–5. |
-| 7 | **Notifications + retention cron + archive** | §8, §9. |
-| 8 | **Vercel deploy**, env vars, custom domain (optional), first Core Admin onboarding | |
-
----
-
-## Appendix A — Data model (draft)
-
-```sql
-organizations(id, name, slug)
-users(id ← auth.users, email, name, avatar_url, role enum('member','sub_admin','core_admin'),
-      function_tags text[], status enum('pending','active','removed'), created_at)
-access_requests(id, user_id, requested_at, decided_by, decided_at, decision)
-asset_types(id, key, name, width_px, height_px, allow_custom_size bool, formats text[], notes, active)
-events(id, org_id, title, starts_on date, ends_on date, tz, venue, created_by,
-       status enum('active','completed','archived'), deleted_at, created_at)
-asset_requests(id, event_id, asset_type_id, custom_w, custom_h, assignee_id, due_on,
-       state enum('requested','content_ready','in_design','in_review','changes_requested','approved'),
-       brief_description text, brief_venue text, brief_notes text, content_ready_at, created_by)
-brief_timings(id, asset_request_id, label, on_date, starts_at, ends_at, sort)
-asset_versions(id, asset_request_id, number, uploaded_by, original_path, derivative_path,
-       thumb_path, reference_path, mime, bytes, width, height, source_link, created_at,
-       decision enum('pending','approved','changes_requested'), decided_by, decided_at, purged_at)
-comments(id, version_id, author_id, parent_id, body, pin_x numeric, pin_y numeric,
-       resolved_at, resolved_by, created_at)
-activity(id, event_id, asset_request_id, version_id, actor_id, kind, payload jsonb, created_at)
-notifications(id, user_id, kind, payload jsonb, read_at, emailed_at, created_at)
-```
+| Step | Deliverable |
+|---|---|
+| 1 | PRD v1.0 (this document) → PR to `main` |
+| 2 | Figma: new file "Design & Concur" consuming Sampark as a library; components + the nine screens at desktop and mobile widths via Figma MCP |
+| 3 | Scaffold: Next.js + Tailwind v4 + shadcn/ui + Google Sans + Material Symbols; tokens; Supabase project, schema, RLS, seed (orgs, formats, bootstrap admins) |
+| 4 | Auth, awaiting-access, Settings › Access & Users |
+| 5 | Event wizard, Event page, format slots, N/A, calendar picker |
+| 6 | Upload pipeline (optimise, watermark, thumbs), Asset page viewer with frames, safe areas, lightbox |
+| 7 | Comments, @mentions, addressed/confirmed, approvals, reopen, bulk approve, confirmation dialogs |
+| 8 | Notifications: inbox, email, Google Chat; retention, draft sweep, device reminder crons |
+| 9 | Vercel project, env vars, first deploy, admin onboarding |
