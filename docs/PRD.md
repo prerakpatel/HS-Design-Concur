@@ -46,8 +46,8 @@ next action, nothing configurable that doesn't need to be.
 ## 4. People, roles and organisations
 
 ### 4.1 Organisations
-Two seeded organisations: the temple and the non-profit wing (exact display names to be
-supplied at seed time). An event belongs to exactly one org. **Each org is a separate view**
+Two seeded organisations: **Harisumiran** (the temple) and **Atmiya Care Charities**, shown as
+**ACC** where space is tight (the non-profit wing). An event belongs to exactly one org. **Each org is a separate view**
 with a switcher in the sidebar for users who belong to both. There is no unified feed.
 
 ### 4.2 Access
@@ -301,40 +301,42 @@ the event); yearly device reminder (Designers, Core Admins).
 
 ## 12. Design system
 
-### 12.1 Colour (Sampark, light)
+### 12.1 Colour (light; Sampark is WIP, so these are the app's own tokens with Sampark's names)
 
-| Role | Token | Hex |
-|---|---|---|
-| Brand / Primary | `--color-brand`, `--color-primary` | `#FF5A52` |
-| Brand hover | `--color-brand-hover` | `#E04840` |
-| Background | `--color-background` | `#F9FAFB` |
-| Foreground | `--color-foreground` | `#020817` |
-| Card / Popover | `--color-card`, `--color-popover` | `#FFFFFF` |
-| Primary foreground | `--color-primary-foreground` | `#020817` |
-| Secondary / Accent / Success | `--color-secondary`, `--color-accent`, `--color-success` | `#0567A3` |
-| Secondary/Accent/Success fg | `…-foreground` | `#F8FAFC` |
-| Destructive | `--color-destructive` | `#DC2828` |
-| Muted | `--color-muted` | `#F1F5F9` |
-| Muted foreground | `--color-muted-foreground` | `#64748B` |
-| Border / Input | `--color-border`, `--color-input` | `#E2E8F0` |
-| Ring | `--color-ring` | `#020817` |
-| Sidebar | `--color-sidebar` / fg / primary / primary-fg / accent / accent-fg / border / ring | `#FAFAFA` / `#3F3F46` / `#18181B` / `#FAFAFA` / `#F4F4F5` / `#18181B` / `#E5E7EB` / `#3B82F6` |
+| Role | Token | Hex | Notes |
+|---|---|---|---|
+| Brand accent | `--color-brand` / hover / foreground / soft | `#FF5A52` / `#E8463E` / `#1F0B09` / `#FFF1F0` | Coral is an accent (org mark, FAB, unread dots, "Needs you"). Text on coral is always the dark foreground (5.3:1). |
+| Primary action | `--color-primary` / foreground | `#18181B` / `#FAFAFA` | Near-black buttons, 15:1. |
+| Secondary action | `--color-secondary` / foreground | `#F4F4F5` / `#18181B` | Tinted neutral. |
+| Background / Card | `--color-background`, `--color-card` | `#FFFFFF` | Subtle surface `#FAFAFA`, viewer canvas `#F4F4F5`. |
+| Foreground | `--color-foreground` | `#09090B` | |
+| Muted / Muted fg | `--color-muted` / `--color-muted-foreground` | `#F4F4F5` / `#52525B` | Muted text is 7.5:1 on white (was 4.3:1). |
+| Border / Input / Ring | `--color-border`, `--color-input`, `--color-ring` | `#E4E4E7` / `#E4E4E7` / `#18181B` | Hairlines, no drop shadows on lists. |
+| Info | `--color-info` / soft / text | `#2563EB` / `#DBEAFE` / `#1E40AF` | In review. |
+| Success | `--color-success` / soft / text | `#15803D` / `#DCFCE7` / `#166534` | Approved, progress bars. |
+| Warning | `--color-warning` / soft / text | `#D97706` / `#FEF3C7` / `#92400E` | Draft. |
+| Destructive | `--color-destructive` / fg / soft / text | `#DC2626` / `#FFFFFF` / `#FEE2E2` / `#991B1B` | Changes requested, destructive buttons. |
+| Sidebar | bg / fg / accent / accent-fg / border | `#FAFAFA` / `#3F3F46` / `#EFEFF1` / `#18181B` / `#E4E4E7` | |
 
-State badges: Requested = muted · In review = brand · Changes requested = destructive ·
-Approved = success + check · N/A = muted, dimmed card. Dark-mode values exist in Sampark and
-will be wired as tokens but not shipped.
+State badges are **tinted pills**: soft background with the dark text of the same hue, all
+≥ 7:1. Requested = muted · In review = info · Changes requested = destructive · Approved =
+success + check · N/A = dashed outline · Draft = warning · Needs you = brand soft.
+Dark mode is not shipped; tokens are named so it can be added as a second mode.
 
 ### 12.2 Type, radius, icons
-Google Sans (Display for headings, Text for body) via `next/font`. Sampark scale: Heading/xl
+Google Sans Flex via `next/font` (the only Google Sans family available in the team's Figma; swap for Google Sans Text/Display if licensed). Sampark scale: Heading/xl
 20/20 −2.5 % · Heading/lg 18/18 · Body/base 16/24 · Body/sm 14/20 · Label/xs 12/16 ·
-Control/sm 12.8/16. Radius: sm 4 · md 6 · base 8 · lg 8 · xl 12. Material Symbols Rounded,
+Control/sm 12.8/16. Radius: sm 6 · md 8 · base 10 · lg 12 · xl 16 · 2xl 24 · full. Buttons use base, cards xl, sheets 2xl. Material Symbols Rounded,
 weight 400, filled only for active nav and the Approved badge.
 
 ### 12.3 Layout
 - ≥ 1024 px: 240 px sidebar (org switcher, Events, Inbox, Archive, Settings) + content ≤ 1200 px.
 - 640–1023 px: icon rail.
-- < 640 px: bottom tab bar; Asset page is full-screen viewer with slide-up comment sheet and
-  sticky action bar. Touch targets ≥ 44 px.
+- < 640 px: bottom tab bar; **media is edge-to-edge**: the Event page shows format slots as a
+  2-column full-bleed media grid with 2 px gutters and overlaid state badges, the Asset page
+  preview fills the viewport width, Archive reference strips run edge to edge, and lists use
+  hairline dividers instead of boxed cards. The Asset page has a slide-up comment sheet and a
+  sticky Request changes / Approve bar. Touch targets ≥ 44 px.
 - All dates through one calendar-picker component; never free-text.
 
 ---
