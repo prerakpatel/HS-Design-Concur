@@ -24,4 +24,6 @@ Use these terms exactly. Avoid the synonyms listed.
 | **Reopen** | Approver action that pulls an approved slot back to *Changes requested*. | un-approve, revoke |
 | **Addressed / Confirmed** | Comment flags: addressed by the designer, confirmed by an approver. | resolved, closed |
 | **Event cap** | 10 non-draft, non-archived events across both orgs. | quota |
-| **Purge** | Nightly job 7 days after an event date: keep references, delete everything else. | cleanup, GC |
+| **Purge** | Nightly job 7 days after an event date: keep references, delete everything else, archive the event. | cleanup, GC |
+| **Draft sweep** | Nightly deletion of drafts untouched for 30 days (warning at day 23). | expiry |
+| **Restore window** | The 7 days after a delete in which a Core Admin can undo it. | undelete |

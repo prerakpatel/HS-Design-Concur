@@ -200,11 +200,11 @@ All versions are kept until the event purge; with files this small no pruning is
 | **Event cap** | At most **10 non-draft, non-archived events** across both orgs combined. Each org view shows the shared count ("7 of 10 event slots used across Harisumiran"). |
 | **Horizon** | An event date may not be more than **6 months** in the future. |
 | **Cap reached** | Creating (or publishing a draft as) the 11th event is **blocked** with a message naming the oldest event and its date. |
-| **Auto-archive** | Nightly: events whose date is more than 6 months in the past are archived regardless of count. |
-| **Post-event purge** | Nightly: for events whose date is **≥ 7 days** past: every approved slot's latest approved version is reduced to one `reference` image; all other versions and all unapproved slots' files are deleted. Text (brief, comments, decisions, activity) is kept. |
+| **Auto-archive + purge** | Nightly: for events whose date is **≥ 7 days** past: every approved slot's latest approved version is reduced to one `reference` image per side; all other versions and all unapproved slots' files are deleted. Text (brief, comments, decisions, activity) is kept. The event becomes **archived** (read-only) in the same pass, which frees its event slot. *(v1.1: the separate 6-month archive rule was folded into this one; it was redundant once archiving happens at purge time.)* |
 | **Archive view** | Read-only list of archived events with reference image, brief, decision history and comments. |
 | **Delete event** | Soft delete; Core Admins can restore for 7 days; files purged after. Creator may delete their own event only if no version has ever been sent for review. |
-| **Draft sweep** | Drafts untouched for 30 days are deleted; warning email at day 23. |
+| **Draft sweep** | Drafts untouched for 30 days are deleted; the creator is notified (in-app + email) at day 23 and again when it goes. Editing the draft resets the clock. |
+| **Device reminder** | Every 1 November, Designers and Core Admins get a reminder to refresh the phone preview presets (§9.5). |
 
 Budget sanity check: 10 events × ~10 slots × ~3 versions × ~0.4 MB ≈ 120 MB steady state,
 against Supabase's 1 GB free storage.

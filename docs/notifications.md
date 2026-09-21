@@ -32,4 +32,8 @@ Everyone chooses on their **Inbox** page: *as things happen* (default), *once a 
 
 ## What runs on a schedule
 
+The daily job also creates these notifications (emailed to people on *as things happen*, included in the daily digest for others): due-date reminders, "your draft is deleted in 7 days", "your draft was deleted", and the 1 November phone-preset reminder for Designers and Core Admins.
+
+### Details
+
 A Vercel Cron job calls `/api/jobs/daily` at 13:00 UTC every day (`vercel.json`). It creates due-date reminders (3 days before and on the day), sends daily digests, and will run retention (archive / purge / draft sweep) once step 6 lands. It authenticates with `CRON_SECRET`, already set on Vercel. It needs `SUPABASE_SECRET_KEY` on Vercel to read across users.

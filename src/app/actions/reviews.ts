@@ -5,9 +5,10 @@ import { notify, eventParticipants } from "@/lib/notify";
 
 async function loadVersion(versionId: string) {
   const ctx = await requireActiveUser();
-  const { data: v } = await ctx.supabase.from("versions").select("*,slots(id,event_id,assignee_id,state,formats(name),events(id,org_id,title))").eq("id", versionId).maybeSingle();
-  const slot = v?.slots as unknown as { id: string; event_id: string; assignee_id: string | null; state: string; formats: { name: string }; events: { id: string; org_id: string; title: string } } | null;
+  const { data: v } = await ctx.supabase.from("versions").select("*,slots(id,event_id,assignee_id,state,formats(name),events(id,org_id,title,status))").eq("id", versionId).maybeSingle();
+  const slot = v?.slots as unknown as { id: string; event_id: string; assignee_id: string | null; state: string; formats: { name: string }; events: { id: string; org_id: string; title: string; status: string } } | null;
   if (!v || !slot || slot.events.org_id !== ctx.org.id) throw new Error("Version not found");
+  if (slot.events.status === "archived") throw new Error("This event is archived and read-only");
   return { ...ctx, version: v, slot, event: slot.events, formatName: slot.formats?.name ?? "format" };
 }
 

@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
 import type { FunctionTag } from "@/lib/types";
+import { EVENT_CAP, DELETE_RESTORE_DAYS } from "@/config/limits";
 
 async function requireCoreAdmin() {
   const ctx = await requireActiveUser();
@@ -79,4 +80,19 @@ export async function sendTestEmail() {
   if (!emailConfigured()) throw new Error("RESEND_API_KEY and EMAIL_FROM are not set on Vercel yet");
   const r = await sendEmail(user.email, "Design & Concur test email", { heading: "Email is working", body: `Sent to ${user.email} from the Settings page.`, cta: { label: "Open Design & Concur", href: appUrl("/events") } });
   if ("error" in r) throw new Error(r.error);
+}
+
+/** Undo a soft delete within the restore window (PRD §8). Core Admins only. */
+export async function restoreEvent(eventId: string) {
+  const { supabase, user, org } = await requireCoreAdmin();
+  const { data: event } = await supabase.from("events").select("id,org_id,title,status,deleted_at").eq("id", eventId).maybeSingle();
+  if (!event || event.org_id !== org.id || !event.deleted_at) throw new Error("Nothing to restore");
+  if (Date.now() - new Date(event.deleted_at).getTime() > DELETE_RESTORE_DAYS * 86400_000) throw new Error("The restore window has passed");
+  if (event.status === "active") {
+    const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "active").is("deleted_at", null);
+    if ((count ?? 0) >= EVENT_CAP) throw new Error(`All ${EVENT_CAP} event slots are in use; free one before restoring.`);
+  }
+  await supabase.from("events").update({ deleted_at: null }).eq("id", event.id);
+  await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, actor_id: user.id, kind: "event.restored", payload: { title: event.title } });
+  revalidatePath("/archive"); revalidatePath("/events");
 }
