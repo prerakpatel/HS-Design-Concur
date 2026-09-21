@@ -11,8 +11,9 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
   switch (kind) {
     case "access.approved": return `Your access was approved by ${by}`;
     case "slot.assigned": return `You were assigned ${f} for ${t}`;
+    case "slot.due": return `${f} for ${t} is ${p.when === "today" ? "due today" : "due in 3 days"}`;
     case "event.published": return `${t} was published and needs designs`;
-    case "version.uploaded": return `${f} v${p.number} for ${t} is ready for review`;
+    case "version.uploaded": return `${by !== "Someone" ? by + " uploaded " : ""}${f} v${p.number} for ${t}${by !== "Someone" ? "" : " is ready for review"}`;
     case "version.changes_requested": return `${by} requested changes on ${f} v${p.number}`;
     case "version.approved": return `${by} approved ${f} v${p.number}`;
     case "version.reopened": return `${by} reopened ${f} v${p.number} for changes`;

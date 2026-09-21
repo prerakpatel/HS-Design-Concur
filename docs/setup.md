@@ -10,7 +10,7 @@
 
 ## One-time steps only you can do
 
-Plain-language walkthrough with exact URLs: [google-signin.md](google-signin.md).
+Plain-language walkthroughs: [google-signin.md](google-signin.md) · [notifications.md](notifications.md) (email and Google Chat).
 
 1. **Google sign-in provider.** Supabase dashboard → Authentication → Providers → Google. Paste a
    Google OAuth client ID and secret (Google Cloud Console → APIs & Services → Credentials →

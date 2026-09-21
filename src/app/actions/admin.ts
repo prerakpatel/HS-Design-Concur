@@ -62,3 +62,21 @@ export async function updateOrgSettings(orgId: string, formData: FormData) {
   }).eq("id", orgId);
   revalidatePath("/settings");
 }
+
+export async function sendTestChat(orgId: string) {
+  const { supabase, user, org } = await requireCoreAdmin();
+  const { data: o } = await supabase.from("organisations").select("chat_webhook_url,name").eq("id", orgId).maybeSingle();
+  if (!o?.chat_webhook_url) throw new Error("Save a webhook URL first");
+  const { postChat, chat } = await import("@/lib/chat"); const { appUrl } = await import("@/lib/email");
+  const r = await postChat(o.chat_webhook_url, `${chat.bold(`Design & Concur is connected to ${o.name}.`)} Test sent by ${user.name ?? user.email}.\n${chat.link(appUrl("/events"), "Open Design & Concur")}`);
+  if ("error" in r) throw new Error(r.error);
+  void org;
+}
+
+export async function sendTestEmail() {
+  const { user } = await requireCoreAdmin();
+  const { sendEmail, appUrl, emailConfigured } = await import("@/lib/email");
+  if (!emailConfigured()) throw new Error("RESEND_API_KEY and EMAIL_FROM are not set on Vercel yet");
+  const r = await sendEmail(user.email, "Design & Concur test email", { heading: "Email is working", body: `Sent to ${user.email} from the Settings page.`, cta: { label: "Open Design & Concur", href: appUrl("/events") } });
+  if ("error" in r) throw new Error(r.error);
+}
