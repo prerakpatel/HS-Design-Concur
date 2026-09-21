@@ -25,14 +25,17 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   if (!fmt) notFound();
   const vlist = versions ?? [];
   const current = (v && vlist.find((x) => x.number === Number(v))) || vlist[0] || null;
-  const sides = (current?.version_sides ?? []) as { side: string; width: number; height: number; mime: string; optimised_path: string; preview_path: string | null; thumb_path: string | null }[];
+  const sides = (current?.version_sides ?? []) as { side: string; width: number; height: number; mime: string; optimised_path: string | null; preview_path: string | null; thumb_path: string | null; reference_path: string | null }[];
   const front = sides.find((s) => s.side === "front") ?? sides[0] ?? null;
   const back = sides.find((s) => s.side === "back") ?? null;
   const approved = current?.decision === "approved";
+  const purged = !!current?.purged_at;
+  const readOnly = event.status === "archived";
+  const pick = (s: (typeof sides)[number] | null) => !s ? null : approved ? (s.optimised_path ?? s.reference_path) : (s.preview_path ?? s.optimised_path ?? s.reference_path);
   const [previewUrl, backUrl, downloadUrl] = await Promise.all([
-    front ? signedUrl(supabase, approved ? front.optimised_path : (front.preview_path ?? front.optimised_path)) : null,
-    back ? signedUrl(supabase, approved ? back.optimised_path : (back.preview_path ?? back.optimised_path)) : null,
-    front && approved ? signedUrl(supabase, front.optimised_path, 120) : null,
+    signedUrl(supabase, pick(front)),
+    signedUrl(supabase, pick(back)),
+    front && approved && front.optimised_path ? signedUrl(supabase, front.optimised_path, 120) : null,
   ]);
   const { data: comments } = current ? await supabase.from("comments").select("*,author:author_id(name,email,role,is_approver,function_tags)").eq("version_id", current.id).order("created_at") : { data: [] as never[] };
   const roleOf = (u: { role: string; is_approver: boolean; function_tags: string[] }) => u.role === "core_admin" ? "Core Admin" : u.is_approver ? "Approver" : u.function_tags?.[0] ? u.function_tags[0][0].toUpperCase() + u.function_tags[0].slice(1) : "Member";
@@ -43,7 +46,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const nativeW = fmt.allow_custom_size ? (slot.custom_w ?? front?.width ?? 0) : fmt.unit === "px" ? Number(fmt.width) : (front?.width ?? 0);
   const nativeH = fmt.allow_custom_size ? (slot.custom_h ?? front?.height ?? 0) : fmt.unit === "px" ? Number(fmt.height) : (front?.height ?? 0);
   const state = !slot.requested ? "na" : slot.state;
-  const caption = current ? (approved ? `Approved · v${current.number}` : `DRAFT · v${current.number} · ${new Date(current.created_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}`) : "";
+  const caption = current ? (purged ? `Reference · v${current.number}${approved ? " · approved" : ""}` : approved ? `Approved · v${current.number}` : `DRAFT · v${current.number} · ${new Date(current.created_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}`) : "";
 
   return (
     <div className="space-y-8">
@@ -58,7 +61,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
           </div>
           <p className="mt-1.5 text-sm text-muted-foreground">{formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} · {fmt.class}{slot.notes ? ` · ${slot.notes}` : ""}</p>
         </div>
-        {current && slot.requested && <ReviewActions versionId={current.id} label={`${fmt.name} v${current.number}`} eventTitle={event.title} decision={current.decision} canApprove={canApprove} isOwnUpload={current.uploaded_by === user.id} downloadUrl={downloadUrl} />}
+        {current && slot.requested && !readOnly && <ReviewActions versionId={current.id} label={`${fmt.name} v${current.number}`} eventTitle={event.title} decision={current.decision} canApprove={canApprove} isOwnUpload={current.uploaded_by === user.id} downloadUrl={downloadUrl} />}
       </div>
 
       {vlist.length > 0 && (
@@ -66,20 +69,23 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
           <div className="inline-flex rounded-full bg-muted p-1 text-xs font-medium">
             {[...vlist].reverse().map((x) => <Link key={x.id} href={`/events/${id}/slots/${slotId}?v=${x.number}`} className={"rounded-full px-3 py-1 " + (current?.id === x.id ? "bg-card shadow-sm" : "text-muted-foreground")}>v{x.number}{x.decision === "approved" ? " ✓" : ""}</Link>)}
           </div>
-          {slot.requested && <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={fmt.class === "print"} nextNumber={(vlist[0]?.number ?? 0) + 1} compact />}
+          {slot.requested && !readOnly && <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={fmt.class === "print"} nextNumber={(vlist[0]?.number ?? 0) + 1} compact />}
         </div>
       )}
 
       {!slot.requested ? (
         <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">This format is marked N/A for this event. Change it from Edit event → Formats if it is needed.</p>
-      ) : vlist.length === 0 ? (
+      ) : vlist.length === 0 ? readOnly ? (
+        <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nothing was uploaded for this format before the event was archived.</p>
+      ) : (
         <>
           {!event.brief_locked_at && <p className="text-xs text-muted-foreground">Uploading the first design locks the brief.</p>}
           <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={fmt.class === "print"} nextNumber={1} />
         </>
       ) : (
         <>
-          <CommentsPanel versionId={current?.id ?? null} viewer={{ src: previewUrl, isGif: front?.mime === "image/gif", width: nativeW, height: nativeH, safe: { top: fmt.safe_top, right: fmt.safe_right, bottom: fmt.safe_bottom, left: fmt.safe_left }, caption, frame: fmt.frame }} comments={cviews} members={mlist} canApprove={canApprove} canComment />
+          {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{previewUrl ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept."}</p>}
+          <CommentsPanel versionId={current?.id ?? null} viewer={{ src: previewUrl, isGif: front?.mime === "image/gif", width: nativeW, height: nativeH, safe: { top: fmt.safe_top, right: fmt.safe_right, bottom: fmt.safe_bottom, left: fmt.safe_left }, caption, frame: fmt.frame }} comments={cviews} members={mlist} canApprove={canApprove && !readOnly} canComment={!readOnly} />
           {fmt.class === "print" && back && backUrl && <div className="rounded-2xl bg-canvas p-4"><p className="mb-2 text-xs font-medium text-muted-foreground">Back</p><img src={backUrl} alt="Back side" className="mx-auto max-h-[520px] rounded-xl shadow-md" /></div>}
         </>
       )}

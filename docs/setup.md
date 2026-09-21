@@ -47,6 +47,27 @@ guide for non-engineers, including pushing and deploying: [local-dev.md](local-d
 Add a new file under `supabase/migrations/` and apply it with the Supabase MCP `apply_migration`
 tool or the Supabase CLI. Never edit an applied migration.
 
+## Retention (step 6)
+
+The daily job at `/api/jobs/daily` (Vercel Cron, 13:00 UTC) runs `src/lib/retention.ts` after the
+due-date reminders:
+
+| When | What happens |
+|---|---|
+| 7 days after an event date | Each approved format keeps one small reference image (front, and back for print). Every other file is deleted. The event moves to **Archive**, read-only, and its event slot is freed. |
+| 7 days after a delete | The event and its files are gone for good. Until then Core Admins see it under Archive → *Recently deleted* with a Restore button. |
+| Draft untouched 23 days | Creator gets an in-app notification and email. Any edit resets the clock. |
+| Draft untouched 30 days | Draft is deleted; creator is told. |
+| 1 November | Designers and Core Admins are reminded to refresh `src/config/devices.ts`. |
+
+Run it by hand (needs `CRON_SECRET` from Vercel → Settings → Environment variables):
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://design-and-concur.vercel.app/api/jobs/daily
+```
+
+The JSON reply lists what it did (`retention.archived`, `filesRemoved`, `errors`, …).
+
 ## What works after step 4
 
 - Event wizard: Basics → Brief (timings) → Formats (Requested / N/A, notes, custom size) → Assign (assignee, due) → Review → Publish (cap and horizon enforced).

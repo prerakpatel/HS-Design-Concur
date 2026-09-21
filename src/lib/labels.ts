@@ -19,11 +19,15 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
     case "version.reopened": return `${by} reopened ${f} v${p.number} for changes`;
     case "comment.mention": return `${by} mentioned you on ${f}: “${p.excerpt ?? ""}”`;
     case "event.deleted": return `${t} was deleted`;
+    case "draft.expiring": return `Your draft “${t}” is deleted in ${p.days} days unless someone edits it`;
+    case "draft.swept": return `Your draft “${t}” sat untouched for 30 days and was deleted`;
+    case "devices.refresh": return `Yearly check: refresh the phone preview presets to Figma’s current frame sizes (${p.year})`;
     default: return kind;
   }
 }
 
 export function notificationHref(p: Record<string, unknown>): string {
+  if (typeof p.href === "string") return p.href;
   if (p.eventId && p.slotId) return `/events/${p.eventId}/slots/${p.slotId}`;
   if (p.eventId) return `/events/${p.eventId}`;
   return "/events";

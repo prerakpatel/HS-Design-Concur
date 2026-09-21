@@ -15,10 +15,11 @@ function horizonOk(eventDate: string | null) {
   return new Date(eventDate + "T00:00:00") <= max;
 }
 
-async function ownEvent(eventId: string) {
+async function ownEvent(eventId: string, opts?: { allowArchived?: boolean }) {
   const ctx = await requireActiveUser();
   const { data: event } = await ctx.supabase.from("events").select("*").eq("id", eventId).is("deleted_at", null).maybeSingle();
   if (!event || event.org_id !== ctx.org.id) throw new Error("Event not found in this organisation");
+  if (event.status === "archived" && !opts?.allowArchived) throw new Error("Archived events are read-only");
   return { ...ctx, event };
 }
 
@@ -132,7 +133,7 @@ export async function publishEvent(eventId: string) {
 
 /** Creator may delete while nothing has been sent for review; Core Admins always (soft delete, PRD §8). */
 export async function deleteEvent(eventId: string) {
-  const { supabase, user, event } = await ownEvent(eventId);
+  const { supabase, user, event } = await ownEvent(eventId, { allowArchived: true });
   const { error } = await supabase.from("events").update({ deleted_at: new Date().toISOString() }).eq("id", event.id);
   if (error) throw new Error(error.message);
   await supabase.from("activity").insert({ org_id: event.org_id, event_id: event.id, actor_id: user.id, kind: "event.deleted", payload: { title: event.title } });

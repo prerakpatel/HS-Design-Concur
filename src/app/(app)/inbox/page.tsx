@@ -9,7 +9,7 @@ import { SelectField } from "@/components/ui/select-field";
 import { notificationText, notificationHref, relativeTime } from "@/lib/labels";
 
 export const metadata = { title: "Inbox" };
-const ICONS: Record<string, string> = { "access.approved": "how_to_reg", "slot.assigned": "assignment_ind", "slot.due": "schedule", "event.published": "campaign", "version.uploaded": "upload", "version.changes_requested": "rule", "version.approved": "check_circle", "version.reopened": "replay", "comment.mention": "alternate_email", "event.deleted": "delete" };
+const ICONS: Record<string, string> = { "access.approved": "how_to_reg", "slot.assigned": "assignment_ind", "slot.due": "schedule", "event.published": "campaign", "version.uploaded": "upload", "version.changes_requested": "rule", "version.approved": "check_circle", "version.reopened": "replay", "comment.mention": "alternate_email", "event.deleted": "delete", "draft.expiring": "hourglass_top", "draft.swept": "auto_delete", "devices.refresh": "devices" };
 
 export default async function InboxPage() {
   const { supabase, user } = await requireActiveUser();

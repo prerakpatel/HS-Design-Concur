@@ -6,7 +6,8 @@ import { notificationText, notificationHref } from "@/lib/labels";
 
 export type NotificationKind =
   | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "version.uploaded"
-  | "version.changes_requested" | "version.approved" | "version.reopened" | "event.deleted" | "event.published";
+  | "version.changes_requested" | "version.approved" | "version.reopened" | "event.deleted" | "event.published"
+  | "draft.expiring" | "draft.swept" | "devices.refresh";
 
 /** Kinds that are also announced in the org's Google Chat space (PRD §10). */
 const CHAT_KINDS: NotificationKind[] = ["version.uploaded", "version.changes_requested", "version.approved", "version.reopened"];
@@ -22,7 +23,13 @@ const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> 
   "version.reopened": (p) => `Reopened: ${p.format} v${p.number} · ${p.title}`,
   "event.deleted": (p) => `Deleted: ${p.title}`,
   "event.published": (p) => `New event: ${p.title}`,
+  "draft.expiring": (p) => `Draft “${p.title}” is deleted in ${p.days} days`,
+  "draft.swept": (p) => `Draft “${p.title}” was deleted`,
+  "devices.refresh": (p) => `Yearly check: phone preview presets for ${p.year}`,
 };
+
+/** Email subject line for a notification kind. */
+export function subjectFor(kind: NotificationKind, payload: Record<string, unknown>) { return (SUBJECT[kind] ?? (() => "Design & Concur"))(payload); }
 
 /**
  * Create in-app notifications and deliver them: instant email to users who want it (org email switch
