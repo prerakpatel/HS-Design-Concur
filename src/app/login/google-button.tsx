@@ -14,7 +14,7 @@ export function GoogleButton({ next }: { next?: string }) {
     });
   }
   return (
-    <Button size="lg" className="h-11 w-full rounded-[10px]" onClick={signIn} disabled={busy}>
+    <Button size="lg" className="w-full" onClick={signIn} disabled={busy}>
       {busy ? "Redirecting…" : "Continue with Google"}
     </Button>
   );

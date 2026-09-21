@@ -32,7 +32,8 @@ npm install
 npm run dev                    # http://localhost:3000
 ```
 
-`npm run lint`, `npx tsc --noEmit` and `npm run build` are what CI and Vercel run.
+`npm run lint`, `npx tsc --noEmit` and `npm run build` are what CI and Vercel run. Step-by-step
+guide for non-engineers, including pushing and deploying: [local-dev.md](local-dev.md).
 
 ## How access works
 

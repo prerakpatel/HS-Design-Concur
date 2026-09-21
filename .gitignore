@@ -22,3 +22,6 @@ next-env.d.ts
 .vercel
 .scratch/
 coverage/
+
+# design preview screenshots (scripts/screenshots.mjs)
+screenshots/
