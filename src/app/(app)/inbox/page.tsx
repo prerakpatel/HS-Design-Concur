@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireActiveUser } from "@/lib/auth";
 import { markAllRead } from "@/app/actions/inbox";
+import { updateEmailPref } from "@/app/actions/prefs";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
@@ -16,6 +17,12 @@ export default async function InboxPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Inbox" subtitle={unread ? `${unread} unread` : "All caught up"} actions={unread ? <form action={markAllRead}><Button variant="ghost" type="submit">Mark all read</Button></form> : null} />
+      <form action={updateEmailPref} className="flex flex-wrap items-center gap-3 rounded-2xl bg-subtle px-4 py-3 text-sm">
+        <span className="font-medium">Email me</span>
+        <select name="email_pref" defaultValue={user.email_pref} className="h-8 rounded-lg border border-input bg-card px-2 text-sm"><option value="instant">as things happen</option><option value="digest">once a day</option><option value="off">never</option></select>
+        <Button type="submit" size="sm" variant="secondary">Save</Button>
+        <span className="text-xs text-muted-foreground">Approvals, mentions, assignments and due dates. In-app notifications always show here.</span>
+      </form>
       {items.length === 0 ? <p className="rounded-2xl border border-dashed border-border p-12 text-center text-sm text-muted-foreground">Nothing yet. Assignments, mentions, approvals and due-date reminders land here.</p> : (
         <ul className="divide-y divide-border">
           {items.map((n) => { const p = n.payload as Record<string, unknown>; return (

@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { requireActiveUser, initials } from "@/lib/auth";
-import { decideAccess, updateUser, removeUser, updateOrgSettings } from "@/app/actions/admin";
+import { decideAccess, updateUser, removeUser, updateOrgSettings, sendTestChat, sendTestEmail } from "@/app/actions/admin";
+import { TestButton } from "@/components/settings/test-button";
+import { emailConfigured } from "@/lib/email";
 import { PageHeader } from "@/components/page-header";
 import { StateBadge } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
@@ -86,9 +88,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="email_enabled" defaultChecked={o.email_enabled} className={check} />Email notifications</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="chat_enabled" defaultChecked={o.chat_enabled} className={check} />Google Chat notifications</label>
               <div className="space-y-1.5"><label className="text-xs font-medium" htmlFor={`hook-${o.id}`}>Google Chat webhook URL</label><Input id={`hook-${o.id}`} name="chat_webhook_url" defaultValue={o.chat_webhook_url ?? ""} placeholder="https://chat.googleapis.com/v1/spaces/…" /></div>
-              <Button type="submit" variant="secondary">Save</Button>
+              <div className="flex flex-wrap gap-2"><Button type="submit" variant="secondary">Save</Button><TestButton label="Send test message" action={async () => { "use server"; await sendTestChat(o.id); }} /></div>
             </form>
           ))}
+          <div className="space-y-3 rounded-2xl border border-border p-5 md:col-span-2">
+            <h2 className="text-[17px] font-semibold">Email</h2>
+            <p className="text-sm text-muted-foreground">{emailConfigured() ? `Sending from ${process.env.EMAIL_FROM}. Each person picks instant, daily digest or off from their Inbox.` : "Not configured yet. Add RESEND_API_KEY and EMAIL_FROM on Vercel (see docs/notifications.md), then redeploy."}</p>
+            <TestButton label="Send me a test email" action={async () => { "use server"; await sendTestEmail(); }} />
+          </div>
         </section>
       )}
     </div>

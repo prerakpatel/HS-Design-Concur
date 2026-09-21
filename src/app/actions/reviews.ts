@@ -23,7 +23,7 @@ export async function approveVersion(versionId: string) {
   await supabase.from("versions").update({ decision: "approved", decided_by: user.id, decided_at: now }).eq("id", versionId);
   await supabase.from("slots").update({ state: "approved", updated_at: now }).eq("id", slot.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.approved", payload: { format: formatName, number: version.number } });
-  await notify(supabase, await eventParticipants(supabase, event.id), "version.approved", { eventId: event.id, slotId: slot.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id);
+  await notify(supabase, await eventParticipants(supabase, event.id), "version.approved", { eventId: event.id, slotId: slot.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id });
   revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`);
   return { ok: true };
 }
@@ -38,7 +38,7 @@ export async function requestChanges(versionId: string, body: string) {
   await supabase.from("slots").update({ state: "changes_requested", updated_at: now }).eq("id", slot.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.changes_requested", payload: { format: formatName, number: version.number } });
   const { data: pubs } = await supabase.from("users").select("id,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id).contains("function_tags", ["publication"]);
-  await notify(supabase, [slot.assignee_id ?? "", version.uploaded_by, ...(pubs ?? []).map((p) => p.id)], "version.changes_requested", { eventId: event.id, slotId: slot.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id);
+  await notify(supabase, [slot.assignee_id ?? "", version.uploaded_by, ...(pubs ?? []).map((p) => p.id)], "version.changes_requested", { eventId: event.id, slotId: slot.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id });
   revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`);
   return { ok: true };
 }
@@ -53,7 +53,7 @@ export async function reopenVersion(versionId: string, reason: string) {
   await supabase.from("slots").update({ state: "changes_requested", updated_at: now }).eq("id", slot.id);
   if (reason.trim()) await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: `Reopened: ${reason.trim()}` });
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.reopened", payload: { format: formatName, number: version.number, reason } });
-  await notify(supabase, await eventParticipants(supabase, event.id), "version.reopened", { eventId: event.id, slotId: slot.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id);
+  await notify(supabase, await eventParticipants(supabase, event.id), "version.reopened", { eventId: event.id, slotId: slot.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id });
   revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`);
   return { ok: true };
 }
