@@ -1,8 +1,23 @@
 # Design & Concur by Harisumiran
 
-Asset request, review and approval platform for Harisumiran temple and its non-profit wing.
-Product requirements live in `docs/PRD.md`. Design tokens come from the Sampark Design System
-(Figma). Stack (proposed): Next.js · TypeScript · Tailwind v4 · shadcn/ui · Supabase · Vercel.
+Asset request, review and approval platform for Harisumiran (temple) and Atmiya Care Charities
+(ACC, the non-profit wing). Product requirements: `docs/PRD.md`. Glossary: `CONTEXT.md`.
+Design: `docs/design.md`. Environments and one-time setup: `docs/setup.md`.
+
+Stack: Next.js 16 App Router · TypeScript · Tailwind CSS v4 · shadcn/ui (radix) · Supabase (Auth,
+Postgres with RLS, Storage) · Vercel. Fonts: Google Sans Flex; icons: Material Symbols Rounded via
+the `Icon` component (`src/components/material-icon.tsx`).
+
+## Conventions
+
+- Tokens live in `src/app/globals.css` (PRD §12.1). Use the semantic Tailwind colours
+  (`bg-brand-soft`, `text-info-text`, `bg-subtle`) — never raw hex in components.
+- State badges go through `StateBadge` (`src/components/state-badge.tsx`).
+- Server-only data access uses `createClient()` from `src/lib/supabase/server.ts`; pages that need a
+  signed-in, active user call `requireActiveUser()` from `src/lib/auth.ts`.
+- `"use server"` modules export async functions only; constants live in `src/config/*`.
+- Schema changes are new files under `supabase/migrations/`; the applied history is in Supabase.
+- Before pushing: `npm run lint`, `npx tsc --noEmit`, `npm run build`.
 
 ## Agent skills
 
