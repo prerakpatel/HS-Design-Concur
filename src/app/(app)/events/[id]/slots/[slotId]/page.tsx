@@ -46,17 +46,17 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const caption = current ? (approved ? `Approved · v${current.number}` : `DRAFT · v${current.number} · ${new Date(current.created_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}`) : "";
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-8">
+      <div className="flex flex-wrap items-start justify-between gap-5">
         <div className="min-w-0">
           <Link href={`/events/${id}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Icon name="arrow_back" className="!text-[16px]" />{event.title}</Link>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold leading-7 tracking-[-0.005em]">{fmt.name}</h1>
+            <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em]">{fmt.name}</h1>
             {current && <span className="text-sm text-muted-foreground">v{current.number}</span>}
             <StateBadge state={state as "requested"} />
             {current && uploader && <span className="text-xs text-muted-foreground">· {uploader.name ?? uploader.email}</span>}
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} · {fmt.class}{slot.notes ? ` · ${slot.notes}` : ""}</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">{formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} · {fmt.class}{slot.notes ? ` · ${slot.notes}` : ""}</p>
         </div>
         {current && slot.requested && <ReviewActions versionId={current.id} label={`${fmt.name} v${current.number}`} eventTitle={event.title} decision={current.decision} canApprove={canApprove} isOwnUpload={current.uploaded_by === user.id} downloadUrl={downloadUrl} />}
       </div>
