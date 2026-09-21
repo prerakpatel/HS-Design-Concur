@@ -10,6 +10,8 @@
 
 ## One-time steps only you can do
 
+Plain-language walkthrough with exact URLs: [google-signin.md](google-signin.md).
+
 1. **Google sign-in provider.** Supabase dashboard → Authentication → Providers → Google. Paste a
    Google OAuth client ID and secret (Google Cloud Console → APIs & Services → Credentials →
    OAuth client, type Web). Authorised redirect URI:
