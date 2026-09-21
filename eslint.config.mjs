@@ -15,4 +15,9 @@ const eslintConfig = defineConfig([
   ]),
 ]);
 
+eslintConfig.push({
+  // Previews are short-lived signed Supabase URLs; they must not be proxied through next/image.
+  rules: { "@next/next/no-img-element": "off" },
+});
+
 export default eslintConfig;
