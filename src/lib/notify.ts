@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { after } from "next/server";
 import { sendEmail, appUrl } from "@/lib/email";
 import { postChat, chat } from "@/lib/chat";
-import { notificationText, notificationHref } from "@/lib/labels";
+import { notificationText, notificationHref, chatText } from "@/lib/labels";
 
 export type NotificationKind =
   | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "version.uploaded"
@@ -58,7 +58,7 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
   }
 
   if (org?.chat_enabled && org.chat_webhook_url && CHAT_KINDS.includes(kind)) {
-    const r = await postChat(org.chat_webhook_url, `${chat.bold(text)}\n${chat.link(href, "Open in Design & Concur")}`);
+    const r = await postChat(org.chat_webhook_url, `${chat.bold(chatText(kind, payload))}\n${chat.link(href, "Open in Design & Concur")}`);
     if ("error" in r) console.error("[chat]", r.error);
   }
 }

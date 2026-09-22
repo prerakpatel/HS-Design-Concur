@@ -76,12 +76,15 @@ export async function saveBrief(eventId: string, formData: FormData) {
 export async function saveFormats(eventId: string, formData: FormData) {
   const { supabase, event } = await ownEvent(eventId);
   const { data: slots } = await supabase.from("slots").select("id,format_id").eq("event_id", event.id);
+  const primary = String(formData.get("primary") ?? "");
   for (const s of slots ?? []) {
     const requested = formData.get(`req_${s.id}`) === "on";
+    const is_primary = requested && s.id === primary;
     const notes = String(formData.get(`notes_${s.id}`) ?? "").trim() || null;
     const cw = Number(formData.get(`w_${s.id}`) || 0) || null;
     const ch = Number(formData.get(`h_${s.id}`) || 0) || null;
-    await supabase.from("slots").update({ requested, notes, custom_w: cw, custom_h: ch, updated_at: new Date().toISOString() }).eq("id", s.id);
+    await supabase.from("slots").update({ requested, notes, custom_w: cw, custom_h: ch, is_primary: false, updated_at: new Date().toISOString() }).eq("id", s.id);
+    if (is_primary) await supabase.from("slots").update({ is_primary: true }).eq("id", s.id);
   }
   await supabase.from("events").update({ last_edited_at: new Date().toISOString() }).eq("id", event.id);
   revalidatePath(`/events/${event.id}`);

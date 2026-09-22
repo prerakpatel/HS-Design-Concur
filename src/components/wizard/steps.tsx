@@ -56,15 +56,19 @@ export function BriefForm({ eventId, values, action }: { eventId: string; values
   );
 }
 
-export interface FormatRow { slotId: string; name: string; size: string; kind: string; requested: boolean; notes: string; customSize: boolean; w: number | null; h: number | null }
+export interface FormatRow { slotId: string; name: string; size: string; kind: string; requested: boolean; isPrimary: boolean; notes: string; customSize: boolean; w: number | null; h: number | null }
 export function FormatsForm({ eventId, rows, action }: { eventId: string; rows: FormatRow[]; action: Action }) {
   return (
     <form action={action}>
+      <p className="mb-4 rounded-xl bg-subtle px-4 py-3 text-sm text-muted-foreground">Mark one format as <span className="font-medium text-foreground">Primary</span>: the design the others are derived from. It shows first everywhere and is the one kept after the event.</p>
       <ul className="divide-y divide-border">
         {rows.map((r) => (
           <li key={r.slotId} className="py-5">
             <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1 pt-1"><p className="text-sm font-medium">{r.name}</p><p className="mt-0.5 text-sm text-muted-foreground">{r.size} · {r.kind}</p></div>
+              <div className="min-w-0 flex-1 pt-1">
+                <p className="text-sm font-medium">{r.name}</p><p className="mt-0.5 text-sm text-muted-foreground">{r.size} · {r.kind}</p>
+                <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-sm"><input type="radio" name="primary" value={r.slotId} defaultChecked={r.isPrimary} className="size-4 accent-[var(--brand)]" />Primary</label>
+              </div>
               <ChoiceChips name={`req_${r.slotId}`} size="sm" className="shrink-0 flex-nowrap" defaultValue={r.requested ? "on" : "off"} options={[{ value: "on", label: "Requested" }, { value: "off", label: "N/A" }]} />
             </div>
             <div className="mt-3 flex flex-wrap gap-2">

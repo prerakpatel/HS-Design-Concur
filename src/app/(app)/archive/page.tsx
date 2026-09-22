@@ -25,14 +25,14 @@ export default async function ArchivePage() {
   ]);
   const cards = await Promise.all((archived ?? []).map(async (e) => {
     const approved = e.slots.filter((s) => s.requested && s.state === "approved");
-    const front = approved.flatMap((s) => s.versions.filter((v) => v.decision === "approved")).flatMap((v) => v.version_sides).find((s) => s.side === "front");
+    const front = e.slots.flatMap((s) => s.versions).flatMap((v) => v.version_sides).find((s) => s.side === "front" && s.reference_path) ?? approved.flatMap((s) => s.versions.filter((v) => v.decision === "approved")).flatMap((v) => v.version_sides).find((s) => s.side === "front");
     return { id: e.id, title: e.title, date: e.event_date, approved: approved.length, requested: e.slots.filter((s) => s.requested).length, cover: await signedUrl(supabase, front?.reference_path ?? front?.thumb_path ?? null) };
   }));
   const restorable = (deleted ?? []).map((d) => ({ ...d, left: daysLeft(d.deleted_at) })).filter((d) => d.left > 0);
 
   return (
     <>
-      <PageHeader title="Archive" subtitle={`Read-only. Events arrive ${PURGE_AFTER_DAYS} days after their date with one compressed reference per approved format. Briefs, decisions and comments are kept.`} />
+      <PageHeader title="Archive" subtitle={`Read-only. Events arrive ${PURGE_AFTER_DAYS} days after their date with one compressed reference of the primary design. Briefs, decisions and comments are kept.`} />
       {cards.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">Nothing archived yet. Events move here a week after their date.</p>
       ) : (

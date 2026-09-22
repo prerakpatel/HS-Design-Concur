@@ -53,15 +53,3 @@ export async function saveFormat(formData: FormData) {
   revalidatePath("/settings"); revalidatePath("/events");
 }
 
-/** Move a format up or down in the catalog order. */
-export async function moveFormat(id: string, direction: "up" | "down") {
-  const { supabase } = await requireCatalogEditor();
-  const { data: all } = await supabase.from("formats").select("id,sort").order("sort");
-  const list = all ?? []; const i = list.findIndex((f) => f.id === id); const j = direction === "up" ? i - 1 : i + 1;
-  if (i < 0 || j < 0 || j >= list.length) return;
-  await Promise.all([
-    supabase.from("formats").update({ sort: list[j].sort }).eq("id", list[i].id),
-    supabase.from("formats").update({ sort: list[i].sort }).eq("id", list[j].id),
-  ]);
-  revalidatePath("/settings");
-}

@@ -61,7 +61,7 @@ due-date reminders:
 
 | When | What happens |
 |---|---|
-| 7 days after an event date | Each approved format keeps one small reference image (front, and back for print). Every other file is deleted. The event moves to **Archive**, read-only, and its event slot is freed. |
+| 7 days after an event date | The primary format keeps one small reference image (front, and back for print). Every other file is deleted. The event moves to **Archive**, read-only, and its event slot is freed. |
 | 7 days after a delete | The event and its files are gone for good. Until then Core Admins see it under Archive → *Recently deleted* with a Restore button. |
 | Draft untouched 23 days | Creator gets an in-app notification and email. Any edit resets the clock. |
 | Draft untouched 30 days | Draft is deleted; creator is told. |
