@@ -40,7 +40,7 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, compact }: { 
       <Button onClick={() => input.current?.click()} disabled={!!busy} size={compact ? "default" : "lg"} className={compact ? "" : "h-11 rounded-[10px] px-5"}>
         <Icon name="upload" />{busy ?? (isPrint && side === "back" ? "Upload back" : `Upload version ${nextNumber}`)}
       </Button>
-      {!compact && <p className="mt-3 text-xs text-muted-foreground">{accept.map((m) => m.split("/")[1].toUpperCase()).join(", ")} up to 8 MB. It is optimised once and shown with a DRAFT watermark until approved.</p>}
+      {!compact && <p className="mt-3 text-xs text-muted-foreground">{accept.map((m) => m.split("/")[1].toUpperCase().replace("JPEG", "JPG")).join(", ")} up to 8 MB. It is optimised once and shown with a DRAFT watermark until approved.{isPrint && accept.includes("application/pdf") ? " A PDF with two pages fills Front and Back in one go." : ""}</p>}
     </div>
   );
 }
