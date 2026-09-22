@@ -15,10 +15,11 @@ import { ConfirmButton } from "@/components/confirm-button";
 type Action = (formData: FormData) => Promise<void>;
 export const field = "space-y-2";
 
-export function BasicsForm({ eventId, orgName, values, action }: { eventId: string; orgName: string; values: { title: string; event_date: string; venue: string }; action: Action }) {
+export function BasicsForm({ eventId, orgName, values, action, notice }: { eventId: string | null; orgName: string; notice?: React.ReactNode; values: { title: string; event_date: string; venue: string }; action: Action }) {
   return (
     <form action={action} className="mx-auto max-w-[520px] space-y-6">
       <p className="text-center text-sm text-muted-foreground">Creating for <span className="font-medium text-foreground">{orgName}</span></p>
+      {notice}
       <div className={field}><Label htmlFor="title">Event title</Label><Input id="title" name="title" required defaultValue={values.title} placeholder="Sharad Purnima" /></div>
       <div className={field}><Label htmlFor="event_date">Event date</Label><Input id="event_date" name="event_date" type="date" defaultValue={values.event_date} /><p className="text-sm text-muted-foreground">Multi-day festivals use the last day. Timings for each session go in the brief.</p></div>
       <div className={field}><Label htmlFor="venue">Venue</Label><Input id="venue" name="venue" defaultValue={values.venue} placeholder="Main Hall" /></div>

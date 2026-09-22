@@ -22,7 +22,7 @@ import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
 
 export const dynamic = "force-dynamic";
-const SCREENS = ["events", "event", "slot", "settings", "requests", "formats", "inbox", "wizard-basics", "wizard-brief", "wizard-formats", "wizard-assign", "wizard-review"] as const;
+const SCREENS = ["events", "event", "slot", "settings", "requests", "formats", "inbox", "wizard-new", "wizard-basics", "wizard-brief", "wizard-formats", "wizard-assign", "wizard-review"] as const;
 
 /** Design preview harness. Renders real components with fixture data so screens can be reviewed without a database. */
 export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
@@ -85,6 +85,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     <ul className="divide-y divide-border">{F.INBOX.map(([icon, text, at, read], i) => <li key={i}><Link href="#" className="-mx-3 flex items-center gap-4 rounded-xl px-3 py-3.5 hover:bg-subtle"><span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted"><Icon name={icon} size={20} /></span><span className="min-w-0 flex-1"><span className={"block text-sm leading-6 " + (read ? "" : "font-medium")}>{text}</span><span className="block text-sm text-muted-foreground">Diwali Annakut Darshan · {relativeTime(at)}</span></span>{!read && <span className="size-2.5 shrink-0 rounded-full bg-brand" />}</Link></li>)}</ul>
   </>);
 
+  if (screen === "wizard-new") return <WizardShell eventId={null} step="basics" title="Tell us the basics" subtitle="Anyone in Harisumiran can pick this up later if you save and exit."><BasicsForm eventId={null} orgName={org.name} values={{ title: "", event_date: "", venue: "" }} action={noopForm} /></WizardShell>;
   if (screen === "wizard-basics") return <WizardShell eventId="e-4" step="basics" title="Tell us the basics" subtitle="Anyone in the org can pick this up later if you save and exit."><BasicsForm eventId="e-4" orgName={org.name} values={{ title: "New Year Mahotsav", event_date: "2027-01-01", venue: "" }} action={noopForm} /></WizardShell>;
   if (screen === "wizard-brief") return <WizardShell eventId="e-4" step="brief" title="What should the designs say?" subtitle="Written once by Publication or a Core Admin. It locks at the first upload; changes then go through comments."><BriefForm eventId="e-4" values={{ description: F.BRIEF, venue: "Harisumiran Mandir, Edison", notes: "" }} timings={[{ label: "Annakut darshan", on_date: "2026-11-08", starts_at: "10:00", ends_at: "13:00" }]} action={noopForm} /></WizardShell>;
   if (screen === "wizard-formats") return <WizardShell eventId="e-4" step="formats" title="Which formats does this event need?" subtitle="Mark the rest N/A. You can change this any time from the event page." wide><FormatsForm eventId="e-4" rows={F.FORMAT_ROWS} action={noopForm} /></WizardShell>;
