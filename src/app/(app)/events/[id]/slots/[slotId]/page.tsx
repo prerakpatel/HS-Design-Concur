@@ -4,12 +4,8 @@ import { requireActiveUser, initials } from "@/lib/auth";
 import { signedUrl } from "@/lib/storage";
 import { formatSize } from "@/lib/labels";
 import { orderSlots } from "@/lib/slot-order";
-import { BackLink } from "@/components/page-header";
-import { StateBadge } from "@/components/state-badge";
-import { Icon } from "@/components/material-icon";
-import { Button } from "@/components/ui/button";
 import { UploadPanel } from "@/components/asset/upload-panel";
-import { ReviewActions } from "@/components/asset/review-actions";
+import { AssetHeader } from "@/components/asset/asset-header";
 import { AssetWorkspace, type CommentView, type Member, type SideView } from "@/components/asset/asset-workspace";
 import type { AppUser, EventRow, Format, Slot } from "@/lib/types";
 
@@ -67,28 +63,9 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const guideHint = print ? `Dashed line: trim. Everything outside it (${print.bleedIn} in) is cut off. Dotted line: keep text inside.` : "Artwork may run into the tinted bands, but keep text, murti and logos out of them.";
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <BackLink href={`/events/${id}`} label={event.title} />
-        <div className="flex items-center gap-2">
-          {prev ? <Button asChild variant="outline" size="sm"><Link href={`/events/${id}/slots/${prev.id}`}><Icon name="arrow_back" className="!text-[16px]" /><span className="max-w-[140px] truncate">{prev.name}</span></Link></Button> : <Button variant="outline" size="sm" disabled><Icon name="arrow_back" className="!text-[16px]" />First</Button>}
-          <span className="text-xs text-muted-foreground">{at + 1} of {ordered.length}</span>
-          {next ? <Button asChild variant="outline" size="sm"><Link href={`/events/${id}/slots/${next.id}`}><span className="max-w-[140px] truncate">{next.name}</span><Icon name="arrow_forward" className="!text-[16px]" /></Link></Button> : <Button variant="outline" size="sm" disabled>Last<Icon name="arrow_forward" className="!text-[16px]" /></Button>}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-[24px] font-semibold leading-8 tracking-[-0.02em] md:text-[26px]">{fmt.name}</h1>
-            {current && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">v{current.number}</span>}
-            <StateBadge state={state as "requested"} />
-            {slot.is_primary && <StateBadge state="needs_you" label="Primary" />}
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">{formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} · {fmt.class}{current && uploader ? ` · v${current.number} by ${uploader.name ?? uploader.email}` : ""}{slot.notes ? ` · ${slot.notes}` : ""}</p>
-        </div>
-        {current && slot.requested && !readOnly && <ReviewActions versionId={current.id} label={`${fmt.name} v${current.number}`} eventTitle={event.title} decision={current.decision} canApprove={canApprove} isOwnUpload={current.uploaded_by === user.id} hasBack={hasBack && approved} />}
-      </div>
+    <div className="space-y-5 md:space-y-6">
+      <AssetHeader eventId={id} eventTitle={event.title} formatName={fmt.name} version={current?.number ?? null} state={state as "requested"} isPrimary={slot.is_primary} meta={`${formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} · ${fmt.class}`} uploader={uploader ? (uploader.name ?? uploader.email) : null} notes={slot.notes} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null}
+        actions={current && slot.requested && !readOnly ? { versionId: current.id, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved } : null} />
 
       {vlist.length > 0 && slot.requested && (
         <div className="flex flex-wrap items-center gap-3">

@@ -20,7 +20,7 @@ export function Viewer({ src, isGif, width, height, safe, print, showGuides, gui
   if (!src) return <div className={cn("flex aspect-[4/5] max-h-[60dvh] w-full items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground", className)}>No design uploaded yet</div>;
   return (
     <div className={cn("relative inline-block max-w-full align-top", className)}>
-      <img src={src} alt="" className={cn("block max-h-[60dvh] max-w-full rounded-lg object-contain shadow-md md:max-h-[max(360px,calc(100dvh-330px))]", onPick ? "cursor-crosshair" : onOpen ? "cursor-zoom-in" : "")} style={{ aspectRatio: width && height ? `${width} / ${height}` : undefined }}
+      <img src={src} alt="" className={cn("block max-h-[62dvh] max-w-full object-contain md:max-h-[max(360px,calc(100dvh-330px))] md:rounded-lg md:shadow-md", onPick ? "cursor-crosshair" : onOpen ? "cursor-zoom-in" : "")} style={{ aspectRatio: width && height ? `${width} / ${height}` : undefined }}
         onClick={(e) => { if (onPick) { const r = e.currentTarget.getBoundingClientRect(); onPick({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }); } else onOpen?.(); }} />
       {isGif && <div className="pointer-events-none absolute inset-0 rounded-lg" style={{ backgroundImage: "url(/watermark-tile.png)", backgroundSize: "40%" }} />}
       {showGuides && hasSafe && (
