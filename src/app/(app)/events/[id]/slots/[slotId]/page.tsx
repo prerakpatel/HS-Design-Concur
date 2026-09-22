@@ -3,12 +3,17 @@ import { notFound } from "next/navigation";
 import { requireActiveUser, initials } from "@/lib/auth";
 import { signedUrl } from "@/lib/storage";
 import { formatSize } from "@/lib/labels";
+import { orderSlots } from "@/lib/slot-order";
+import { BackLink } from "@/components/page-header";
 import { StateBadge } from "@/components/state-badge";
 import { Icon } from "@/components/material-icon";
+import { Button } from "@/components/ui/button";
 import { UploadPanel } from "@/components/asset/upload-panel";
 import { ReviewActions } from "@/components/asset/review-actions";
-import { CommentsPanel, type CommentView, type Member } from "@/components/asset/comments";
+import { AssetWorkspace, type CommentView, type Member, type SideView } from "@/components/asset/asset-workspace";
 import type { AppUser, EventRow, Format, Slot } from "@/lib/types";
+
+const FALLBACK_GUIDE = "#00E5FF";
 
 export default async function SlotPage({ params, searchParams }: { params: Promise<{ id: string; slotId: string }>; searchParams: Promise<{ v?: string }> }) {
   const { id, slotId } = await params; const { v } = await searchParams;
@@ -17,59 +22,80 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   if (!event || event.org_id !== org.id) notFound();
   const { data: slot } = await supabase.from("slots").select("*").eq("id", slotId).eq("event_id", id).maybeSingle<Slot>();
   if (!slot) notFound();
-  const [{ data: fmt }, { data: versions }, { data: members }] = await Promise.all([
+  const [{ data: fmt }, { data: versions }, { data: members }, { data: siblings }] = await Promise.all([
     supabase.from("formats").select("*").eq("id", slot.format_id).single<Format>(),
     supabase.from("versions").select("*,version_sides(*),uploader:uploaded_by(name,email)").eq("slot_id", slotId).order("number", { ascending: false }),
     supabase.from("users").select("id,name,email,role,is_approver,function_tags,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id),
+    supabase.from("slots").select("id,is_primary,formats(name,sort),versions(created_at)").eq("event_id", id).eq("requested", true),
   ]);
   if (!fmt) notFound();
+
+  // Previous / next format, in the same order as the event page.
+  const ordered = orderSlots((siblings ?? []).map((s) => { const f = s.formats as unknown as { name: string; sort: number } | null; const vs = (s.versions as { created_at: string }[]) ?? []; return { id: s.id, name: f?.name ?? "", is_primary: s.is_primary, sort: f?.sort ?? 0, firstUploadAt: vs.length ? vs.map((x) => x.created_at).sort()[0] : null }; }));
+  const at = ordered.findIndex((s) => s.id === slotId);
+  const prev = at > 0 ? ordered[at - 1] : null; const next = at >= 0 && at < ordered.length - 1 ? ordered[at + 1] : null;
+
   const vlist = versions ?? [];
   const current = (v && vlist.find((x) => x.number === Number(v))) || vlist[0] || null;
-  const sides = (current?.version_sides ?? []) as { side: string; width: number; height: number; mime: string; optimised_path: string | null; preview_path: string | null; thumb_path: string | null; reference_path: string | null }[];
-  const front = sides.find((s) => s.side === "front") ?? sides[0] ?? null;
-  const back = sides.find((s) => s.side === "back") ?? null;
+  const rawSides = (current?.version_sides ?? []) as { side: "front" | "back"; width: number; height: number; mime: string; optimised_path: string | null; preview_path: string | null; thumb_path: string | null; reference_path: string | null; guide_color: string | null }[];
   const approved = current?.decision === "approved";
   const purged = !!current?.purged_at;
   const readOnly = event.status === "archived";
-  const pick = (s: (typeof sides)[number] | null) => !s ? null : approved ? (s.optimised_path ?? s.reference_path) : (s.preview_path ?? s.optimised_path ?? s.reference_path);
-  const [previewUrl, backUrl, downloadUrl] = await Promise.all([
-    signedUrl(supabase, pick(front)),
-    signedUrl(supabase, pick(back)),
-    front && approved && front.optimised_path ? signedUrl(supabase, front.optimised_path, 120) : null,
-  ]);
+  const pick = (s: (typeof rawSides)[number]) => approved ? (s.optimised_path ?? s.reference_path) : (s.preview_path ?? s.optimised_path ?? s.reference_path);
+  const sides: SideView[] = (await Promise.all(["front", "back"].map(async (k) => {
+    const s = rawSides.find((x) => x.side === k); if (!s) return null;
+    return { side: k as "front" | "back", src: await signedUrl(supabase, pick(s)), isGif: s.mime === "image/gif", width: s.width, height: s.height, guideColor: s.guide_color ?? FALLBACK_GUIDE };
+  }))).filter((s): s is SideView => !!s);
+  const hasBack = sides.some((s) => s.side === "back");
+
   const { data: comments } = current ? await supabase.from("comments").select("*,author:author_id(name,email,role,is_approver,function_tags)").eq("version_id", current.id).order("created_at") : { data: [] as never[] };
   const roleOf = (u: { role: string; is_approver: boolean; function_tags: string[] }) => u.role === "core_admin" ? "Core Admin" : u.is_approver ? "Approver" : u.function_tags?.[0] ? u.function_tags[0][0].toUpperCase() + u.function_tags[0].slice(1) : "Member";
-  const cviews: CommentView[] = (comments ?? []).map((c) => { const a = c.author as unknown as { name: string | null; email: string; role: string; is_approver: boolean; function_tags: string[] }; return { id: c.id, body: c.body, created_at: c.created_at, pin_x: c.pin_x, pin_y: c.pin_y, addressed_at: c.addressed_at, confirmed_at: c.confirmed_at, author: { name: a?.name ?? a?.email ?? "Someone", initials: initials(a?.name ?? null, a?.email ?? "?"), role: a ? roleOf(a) : "" } }; });
+  const cviews: CommentView[] = (comments ?? []).map((c) => { const a = c.author as unknown as { name: string | null; email: string; role: string; is_approver: boolean; function_tags: string[] }; return { id: c.id, body: c.body, created_at: c.created_at, pin_x: c.pin_x, pin_y: c.pin_y, pin_side: (c.pin_side ?? "front") as "front" | "back", addressed_at: c.addressed_at, confirmed_at: c.confirmed_at, author: { name: a?.name ?? a?.email ?? "Someone", initials: initials(a?.name ?? null, a?.email ?? "?"), role: a ? roleOf(a) : "" } }; });
   const mlist: Member[] = ((members ?? []) as unknown as Pick<AppUser, "id" | "name" | "email">[]).map((m) => ({ id: m.id, name: m.name ?? m.email.split("@")[0], handle: m.email.split("@")[0].toLowerCase() }));
   const canApprove = user.is_approver || user.role === "core_admin";
   const uploader = current?.uploader as unknown as { name: string | null; email: string } | null;
+  const isPrint = fmt.class === "print";
+  const print = isPrint && fmt.unit === "in" && fmt.width && fmt.height ? { bleedIn: Number(fmt.bleed_in ?? 0), safeIn: Number(fmt.safe_margin_in ?? 0), widthIn: Number(fmt.width), heightIn: Number(fmt.height) } : null;
+  const safe = { top: fmt.safe_top, right: fmt.safe_right, bottom: fmt.safe_bottom, left: fmt.safe_left };
+  // Safe bands are in pixels of the requested size; map them onto the uploaded pixels.
+  const front = rawSides.find((s) => s.side === "front");
   const nativeW = fmt.allow_custom_size ? (slot.custom_w ?? front?.width ?? 0) : fmt.unit === "px" ? Number(fmt.width) : (front?.width ?? 0);
   const nativeH = fmt.allow_custom_size ? (slot.custom_h ?? front?.height ?? 0) : fmt.unit === "px" ? Number(fmt.height) : (front?.height ?? 0);
+  const scaledSides = sides.map((s) => ({ ...s, width: nativeW || s.width, height: nativeH || s.height }));
   const state = !slot.requested ? "na" : slot.state;
   const caption = current ? (purged ? `Reference · v${current.number}${approved ? " · approved" : ""}` : approved ? `Approved · v${current.number}` : `DRAFT · v${current.number} · ${new Date(current.created_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}`) : "";
+  const guideHint = print ? `Dashed line: trim. Everything outside it (${print.bleedIn} in) is cut off. Dotted line: keep text inside.` : "Artwork may run into the tinted bands, but keep text, murti and logos out of them.";
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-5">
-        <div className="min-w-0">
-          <Link href={`/events/${id}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Icon name="arrow_back" className="!text-[16px]" />{event.title}</Link>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="text-[26px] font-semibold leading-8 tracking-[-0.02em]">{fmt.name}</h1>
-            {current && <span className="text-sm text-muted-foreground">v{current.number}</span>}
-            <StateBadge state={state as "requested"} />
-            {current && uploader && <span className="text-xs text-muted-foreground">· {uploader.name ?? uploader.email}</span>}
-          </div>
-          <p className="mt-1.5 text-sm text-muted-foreground">{formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} · {fmt.class}{slot.notes ? ` · ${slot.notes}` : ""}</p>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <BackLink href={`/events/${id}`} label={event.title} />
+        <div className="flex items-center gap-2">
+          {prev ? <Button asChild variant="outline" size="sm"><Link href={`/events/${id}/slots/${prev.id}`}><Icon name="arrow_back" className="!text-[16px]" /><span className="max-w-[140px] truncate">{prev.name}</span></Link></Button> : <Button variant="outline" size="sm" disabled><Icon name="arrow_back" className="!text-[16px]" />First</Button>}
+          <span className="text-xs text-muted-foreground">{at + 1} of {ordered.length}</span>
+          {next ? <Button asChild variant="outline" size="sm"><Link href={`/events/${id}/slots/${next.id}`}><span className="max-w-[140px] truncate">{next.name}</span><Icon name="arrow_forward" className="!text-[16px]" /></Link></Button> : <Button variant="outline" size="sm" disabled>Last<Icon name="arrow_forward" className="!text-[16px]" /></Button>}
         </div>
-        {current && slot.requested && !readOnly && <ReviewActions versionId={current.id} label={`${fmt.name} v${current.number}`} eventTitle={event.title} decision={current.decision} canApprove={canApprove} isOwnUpload={current.uploaded_by === user.id} downloadUrl={downloadUrl} />}
       </div>
 
-      {vlist.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-full bg-muted p-1 text-xs font-medium">
-            {[...vlist].reverse().map((x) => <Link key={x.id} href={`/events/${id}/slots/${slotId}?v=${x.number}`} className={"rounded-full px-3 py-1 " + (current?.id === x.id ? "bg-card shadow-sm" : "text-muted-foreground")}>v{x.number}{x.decision === "approved" ? " ✓" : ""}</Link>)}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-[24px] font-semibold leading-8 tracking-[-0.02em] md:text-[26px]">{fmt.name}</h1>
+            {current && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">v{current.number}</span>}
+            <StateBadge state={state as "requested"} />
+            {slot.is_primary && <StateBadge state="needs_you" label="Primary" />}
           </div>
-          {slot.requested && !readOnly && <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={fmt.class === "print"} nextNumber={(vlist[0]?.number ?? 0) + 1} compact />}
+          <p className="mt-1 text-sm text-muted-foreground">{formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} · {fmt.class}{current && uploader ? ` · v${current.number} by ${uploader.name ?? uploader.email}` : ""}{slot.notes ? ` · ${slot.notes}` : ""}</p>
+        </div>
+        {current && slot.requested && !readOnly && <ReviewActions versionId={current.id} label={`${fmt.name} v${current.number}`} eventTitle={event.title} decision={current.decision} canApprove={canApprove} isOwnUpload={current.uploaded_by === user.id} hasBack={hasBack && approved} />}
+      </div>
+
+      {vlist.length > 0 && slot.requested && (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex rounded-full bg-muted p-1 text-sm font-medium">
+            {[...vlist].reverse().map((x) => <Link key={x.id} href={`/events/${id}/slots/${slotId}?v=${x.number}`} className={"rounded-full px-3.5 py-1.5 " + (current?.id === x.id ? "bg-card shadow-sm" : "text-muted-foreground")}>v{x.number}{x.decision === "approved" ? " ✓" : ""}</Link>)}
+          </div>
+          {!readOnly && <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={isPrint} nextNumber={(vlist[0]?.number ?? 0) + 1} needsBack={isPrint && current === vlist[0] && !hasBack && !purged} compact />}
         </div>
       )}
 
@@ -80,13 +106,12 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
       ) : (
         <>
           {!event.brief_locked_at && <p className="text-xs text-muted-foreground">Uploading the first design locks the brief.</p>}
-          <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={fmt.class === "print"} nextNumber={1} />
+          <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={isPrint} nextNumber={1} />
         </>
       ) : (
         <>
-          {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{previewUrl ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept."}</p>}
-          <CommentsPanel versionId={current?.id ?? null} viewer={{ src: previewUrl, isGif: front?.mime === "image/gif", width: nativeW, height: nativeH, safe: { top: fmt.safe_top, right: fmt.safe_right, bottom: fmt.safe_bottom, left: fmt.safe_left }, caption, frame: fmt.frame }} comments={cviews} members={mlist} canApprove={canApprove && !readOnly} canComment={!readOnly} />
-          {fmt.class === "print" && back && backUrl && <div className="rounded-2xl bg-canvas p-4"><p className="mb-2 text-xs font-medium text-muted-foreground">Back</p><img src={backUrl} alt="Back side" className="mx-auto max-h-[520px] rounded-xl shadow-md" /></div>}
+          {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{sides[0]?.src ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept."}</p>}
+          <AssetWorkspace versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} caption={caption} comments={cviews} members={mlist} canApprove={canApprove && !readOnly} canComment={!readOnly} guideHint={guideHint} />
         </>
       )}
     </div>

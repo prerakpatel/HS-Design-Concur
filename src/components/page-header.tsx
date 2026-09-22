@@ -1,3 +1,11 @@
+import Link from "next/link";
+import { Icon } from "@/components/material-icon";
+
+/** A back link that reads as a control, not a breadcrumb. */
+export function BackLink({ href, label }: { href: string; label: string }) {
+  return <Link href={href} className="inline-flex h-9 max-w-full items-center gap-1.5 rounded-full border border-border bg-card pl-2 pr-3.5 text-sm font-medium shadow-xs transition-colors hover:bg-muted"><Icon name="arrow_back" className="!text-[18px]" /><span className="truncate">{label}</span></Link>;
+}
+
 export function PageHeader({ title, subtitle, actions, back }: { title: string; subtitle?: string; actions?: React.ReactNode; back?: React.ReactNode }) {
   return (
     <div className="mb-6 space-y-2.5">

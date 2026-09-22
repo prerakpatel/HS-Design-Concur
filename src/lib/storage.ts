@@ -2,9 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const BUCKET = "assets";
 
-export async function signedUrl(supabase: SupabaseClient, path: string | null | undefined, seconds = 600) {
+export async function signedUrl(supabase: SupabaseClient, path: string | null | undefined, seconds = 600, download?: string) {
   if (!path) return null;
-  const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, seconds);
+  const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, seconds, download ? { download } : undefined);
   return data?.signedUrl ?? null;
 }
 
