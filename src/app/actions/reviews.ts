@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
 import { notify, eventParticipants } from "@/lib/notify";
-import { signedUrl } from "@/lib/storage";
+import { signedUrl, BUCKET } from "@/lib/storage";
 import { assetFilename } from "@/lib/labels";
 
 async function loadVersion(versionId: string) {
@@ -114,4 +114,47 @@ export async function downloadLink(versionId: string, side: "front" | "back" = "
   const url = await signedUrl(supabase, s.optimised_path, 120, assetFilename({ eventDate: ev?.event_date ?? null, eventTitle: event.title, formatName, side, number: version.number, path: s.optimised_path }));
   if (!url) throw new Error("Could not create the download link");
   return url;
+}
+
+/** Remove a version and its files. Uploader or Core Admin. The slot's state follows whatever version remains. */
+export async function deleteVersion(versionId: string) {
+  const { supabase, user, version, slot, event, formatName, org } = await loadVersion(versionId);
+  if (version.uploaded_by !== user.id && user.role !== "core_admin") throw new Error("Only the uploader or a Core Admin can delete a version");
+  if (version.decision === "approved" && user.role !== "core_admin") throw new Error("An approved version can only be deleted by a Core Admin");
+  const { data: sides } = await supabase.from("version_sides").select("optimised_path,preview_path,thumb_path,reference_path").eq("version_id", versionId);
+  const paths = (sides ?? []).flatMap((s) => [s.optimised_path, s.preview_path, s.thumb_path, s.reference_path]).filter((p): p is string => !!p);
+  if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
+  const { error } = await supabase.from("versions").delete().eq("id", versionId);
+  if (error) throw new Error(error.message);
+  const { data: rest } = await supabase.from("versions").select("id,decision").eq("slot_id", slot.id).order("number", { ascending: false }).limit(1);
+  const latest = rest?.[0];
+  const state = !latest ? "requested" : latest.decision === "approved" ? "approved" : latest.decision === "changes_requested" ? "changes_requested" : "in_review";
+  if (latest && latest.decision === "superseded") await supabase.from("versions").update({ decision: "pending" }).eq("id", latest.id);
+  await supabase.from("slots").update({ state, updated_at: new Date().toISOString() }).eq("id", slot.id);
+  await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, actor_id: user.id, kind: "version.deleted", payload: { format: formatName, number: version.number } });
+  revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`);
+  return { ok: true };
+}
+
+export async function editComment(commentId: string, body: string) {
+  const { supabase, user } = await requireActiveUser();
+  const text = body.trim(); if (!text) throw new Error("Empty comment");
+  const { data: c } = await supabase.from("comments").select("author_id,versions(slots(id,event_id))").eq("id", commentId).maybeSingle();
+  if (!c) throw new Error("Comment not found");
+  if (c.author_id !== user.id && user.role !== "core_admin") throw new Error("You can only edit your own comments");
+  const { error } = await supabase.from("comments").update({ body: text, edited_at: new Date().toISOString() }).eq("id", commentId);
+  if (error) throw new Error(error.message);
+  const s = (c.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;
+  if (s) revalidatePath(`/events/${s.event_id}/slots/${s.id}`);
+}
+
+export async function deleteComment(commentId: string) {
+  const { supabase, user } = await requireActiveUser();
+  const { data: c } = await supabase.from("comments").select("author_id,versions(slots(id,event_id))").eq("id", commentId).maybeSingle();
+  if (!c) throw new Error("Comment not found");
+  if (c.author_id !== user.id && user.role !== "core_admin") throw new Error("You can only delete your own comments");
+  const { error } = await supabase.from("comments").delete().eq("id", commentId);
+  if (error) throw new Error(error.message);
+  const s = (c.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;
+  if (s) revalidatePath(`/events/${s.event_id}/slots/${s.id}`);
 }

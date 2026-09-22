@@ -8,26 +8,27 @@ import { Switch } from "@/components/ui/switch";
 import { UserAvatar } from "@/components/user-avatar";
 import { StateBadge } from "@/components/state-badge";
 import { Icon } from "@/components/material-icon";
-import { Viewer, type SafeArea, type Pin, type PrintGuides } from "@/components/asset/viewer";
+import { Viewer, secondColor, type SafeArea, type Pin, type PrintGuides } from "@/components/asset/viewer";
 import { Lightbox } from "@/components/asset/lightbox";
 import { PinComposer } from "@/components/asset/pin-composer";
-import { addComment, setCommentFlag } from "@/app/actions/reviews";
+import { addComment, setCommentFlag, editComment, deleteComment } from "@/app/actions/reviews";
 import { relativeTime } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 export type Side = "front" | "back";
 export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number; guideColor: string }
-export interface CommentView { id: string; body: string; created_at: string; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; author: { name: string; initials: string; role: string } }
+export interface CommentView { id: string; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; author: { name: string; initials: string; role: string } }
 export interface Member { id: string; name: string; handle: string }
 
 /**
  * Canvas (one side at a time, fits the viewport, click to enlarge) beside a panel: `aside` (status, actions,
  * versions) on top, comments below. Pins are numbered per side; "Mark as addressed" can be undone.
  */
-export function AssetWorkspace({ versionId, sides, safe, print, caption, comments, members, canApprove, canComment, guideHint, aside }: {
+export function AssetWorkspace({ versionId, sides, safe, print, caption, comments, members, canApprove, canComment, canModerate = false, aside }: {
   versionId: string | null; sides: SideView[]; safe: SafeArea; print: PrintGuides | null; caption: string;
-  comments: CommentView[]; members: Member[]; canApprove: boolean; canComment: boolean; guideHint: string | null; aside?: React.ReactNode;
+  comments: CommentView[]; members: Member[]; canApprove: boolean; canComment: boolean; canModerate?: boolean; aside?: React.ReactNode;
 }) {
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [sideKey, setSideKey] = useState<Side>("front");
   const side = sides.find((s) => s.side === sideKey) ?? sides[0];
   const [showGuides, setShowGuides] = useState(true);
@@ -70,20 +71,29 @@ export function AssetWorkspace({ versionId, sides, safe, print, caption, comment
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
       <div className="flex min-w-0 flex-col items-center gap-2">
-        <div className="relative -mx-5 flex w-[calc(100%+2.5rem)] justify-center bg-canvas p-0 md:mx-0 md:w-full md:rounded-2xl md:p-5">
+        <div className="-mx-5 flex w-[calc(100%+2.5rem)] justify-center bg-canvas p-0 md:mx-0 md:w-full md:rounded-2xl md:p-5">
           {side && <Viewer src={side.src} isGif={side.isGif} width={side.width} height={side.height} safe={safe} print={print} showGuides={showGuides} guideColor={side.guideColor} caption={caption} pins={pins} onOpen={() => setOpen(true)} />}
-          <div className="absolute left-3 top-3 flex items-center gap-2 md:left-4 md:top-4">
+        </div>
+        <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 px-1">
+          <div className="flex items-center gap-3">
             {sides.length > 1 && (
-              <div className="inline-flex rounded-full bg-black/60 p-0.5 text-xs font-medium text-white backdrop-blur">
-                {sides.map((s) => <button key={s.side} type="button" onClick={() => setSideKey(s.side)} className={cn("rounded-full px-3 py-1 capitalize", side?.side === s.side ? "bg-white text-black" : "")}>{s.side}</button>)}
+              <div className="inline-flex rounded-full bg-muted p-1 text-sm font-medium">
+                {sides.map((s) => <button key={s.side} type="button" onClick={() => setSideKey(s.side)} className={cn("rounded-full px-3.5 py-1 capitalize", side?.side === s.side ? "bg-card shadow-sm" : "text-muted-foreground")}>{s.side}</button>)}
               </div>
             )}
+            {side?.src && <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Icon name="zoom_in" className="!text-[16px]" />Enlarge</button>}
           </div>
           {hasGuides && side?.src && (
-            <label title={guideHint ?? undefined} className="absolute right-3 top-3 flex h-8 items-center gap-2 rounded-full bg-black/60 pl-2.5 pr-3 text-xs font-medium text-white backdrop-blur md:right-4 md:top-4"><Switch checked={showGuides} onCheckedChange={setShowGuides} className="scale-90" />Guides</label>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {showGuides && (print ? (
+                <><span className="flex items-center gap-1.5"><i className="inline-block h-2.5 w-5 rounded-sm" style={{ background: `repeating-linear-gradient(45deg, ${side.guideColor}B3 0 3px, ${side.guideColor}2E 3px 7px)` }} />Bleed, trimmed off</span><span className="flex items-center gap-1.5"><i className="inline-block h-0 w-5 border-t-2 border-dotted" style={{ borderColor: secondColor(side.guideColor) }} />Safe, keep text inside</span></>
+              ) : (
+                <span className="flex items-center gap-1.5"><i className="inline-block h-2.5 w-5 rounded-sm" style={{ background: `repeating-linear-gradient(45deg, ${side.guideColor}B3 0 3px, ${side.guideColor}2E 3px 7px)` }} />Keep text, murti and logos out of the hatched bands</span>
+              ))}
+              <label className="flex items-center gap-2 font-medium text-foreground"><Switch checked={showGuides} onCheckedChange={setShowGuides} className="scale-90" />Guides</label>
+            </div>
           )}
         </div>
-        {showGuides && hasGuides && guideHint && <p className="text-center text-xs text-muted-foreground">{guideHint}</p>}
         {side && <Lightbox open={open} onClose={() => setOpen(false)} src={side.src} caption={caption} isGif={side.isGif} />}
         {side && <PinComposer open={composing} onClose={() => setComposing(false)} onSubmit={(pin, body) => post(body, pin)} src={side.src} isGif={side.isGif} width={side.width} height={side.height} safe={safe} print={print} guideColor={side.guideColor} existing={pins} nextNumber={numbered.size + 1} pending={pending} />}
       </div>
@@ -102,13 +112,22 @@ export function AssetWorkspace({ versionId, sides, safe, print, caption, comment
                 {numbered.has(c.id) ? <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-info text-xs font-semibold text-white ring-2 ring-white shadow-sm">{numbered.get(c.id)}</span> : <UserAvatar initials={c.author.initials} size={28} />}
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <p className="flex flex-wrap items-center gap-1.5 text-sm"><span className="font-medium">{c.author.name}</span><span className="text-xs text-muted-foreground">{c.author.role} · {relativeTime(c.created_at)}{numbered.has(c.id) && sides.length > 1 ? ` · ${c.pin_side}` : ""}</span></p>
-                  <p className="whitespace-pre-wrap text-sm">{c.body}</p>
+                  {editing?.id === c.id ? (
+                    <div className="space-y-2">
+                      <Textarea rows={3} value={editing.text} onChange={(e) => setEditing({ id: c.id, text: e.target.value })} className="rounded-xl" autoFocus />
+                      <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending || !editing.text.trim()} onClick={() => start(async () => { try { await editComment(c.id, editing.text); setEditing(null); toast.success("Comment updated"); router.refresh(); } catch (e) { toast.error((e as Error).message); } })}>Save</Button></div>
+                    </div>
+                  ) : <p className="whitespace-pre-wrap text-sm">{c.body}{c.edited_at && <span className="ml-1.5 text-xs text-muted-foreground">(edited)</span>}</p>}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                     {c.confirmed_at ? <StateBadge state="approved" label="Confirmed" /> : c.addressed_at ? <StateBadge state="in_review" label="Addressed" /> : null}
                     {!c.addressed_at && !c.confirmed_at && canComment && <button className="font-medium text-info hover:underline" onClick={() => flag(c.id, "addressed")} disabled={pending}>Mark as addressed</button>}
                     {c.addressed_at && !c.confirmed_at && canComment && <button className="font-medium text-muted-foreground hover:text-foreground hover:underline" onClick={() => flag(c.id, "unaddress")} disabled={pending}>Undo</button>}
                     {c.addressed_at && !c.confirmed_at && canApprove && <button className="font-medium text-info hover:underline" onClick={() => flag(c.id, "confirmed")} disabled={pending}>Confirm fixed</button>}
                     {c.confirmed_at && canApprove && <button className="font-medium text-muted-foreground hover:text-foreground hover:underline" onClick={() => flag(c.id, "reopen")} disabled={pending}>Reopen</button>}
+                    {(c.mine || canModerate) && canComment && editing?.id !== c.id && <>
+                      <button className="font-medium text-muted-foreground hover:text-foreground hover:underline" onClick={() => setEditing({ id: c.id, text: c.body })} disabled={pending}>Edit</button>
+                      <button className="font-medium text-muted-foreground hover:text-destructive-text hover:underline" disabled={pending} onClick={() => start(async () => { if (!confirm("Delete this comment?")) return; try { await deleteComment(c.id); toast.success("Comment deleted"); router.refresh(); } catch (e) { toast.error((e as Error).message); } })}>Delete</button>
+                    </>}
                   </div>
                 </div>
               </li>

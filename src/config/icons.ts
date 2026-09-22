@@ -31,12 +31,15 @@ export const ICON_NAMES = [
   "logout",
   "mail",
   "more_horiz",
+  "more_vert",
   "notifications",
   "priority_high",
   "replay",
   "rule",
   "schedule",
   "settings",
+  "sync",
   "unfold_more",
-  "upload"
+  "upload",
+  "zoom_in"
 ] as const;

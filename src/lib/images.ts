@@ -30,7 +30,8 @@ export async function processUpload(input: Buffer, mime: string): Promise<Proces
   const previewBase = await base.clone().resize({ width: PREVIEW_MAX, height: PREVIEW_MAX, fit: "inside", withoutEnlargement: true }).toBuffer();
   const pm = await sharp(previewBase).metadata();
   const short = Math.min(pm.width ?? PREVIEW_MAX, pm.height ?? PREVIEW_MAX);
-  const tileSize = Math.max(120, Math.min(short - 1, Math.round(short / 2.4)));
+  // One big tile (the tile carries a few sparse marks) so a preview shows a handful of DRAFTs, not a wall.
+  const tileSize = Math.max(240, short); // the tile spans the short side, so a preview carries a handful of large marks
   const tile = await sharp(Buffer.from(WATERMARK_TILE_BASE64, "base64")).resize(tileSize, tileSize).png().toBuffer();
   const preview = await sharp(previewBase).composite([{ input: tile, tile: true, blend: "over" }]).webp({ quality: 80 }).toBuffer();
   const thumb = await sharp(previewBase).resize({ width: THUMB_MAX, height: THUMB_MAX, fit: "inside", withoutEnlargement: true }).webp({ quality: 75 }).toBuffer();

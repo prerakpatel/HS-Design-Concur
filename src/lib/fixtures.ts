@@ -58,7 +58,7 @@ export const PENDING: PendingUser[] = [
 ];
 
 export const COMMENTS: CommentView[] = [
-  { id: "c-1", body: "Logo is too close to the bottom edge, move it inside the safe area.", created_at: ago(26), pin_x: 0.5, pin_y: 0.93, pin_side: "front", addressed_at: null, confirmed_at: null, author: { name: "Prerak Patel", initials: "PP", role: "Core Admin" } },
+  { id: "c-1", mine: true, body: "Logo is too close to the bottom edge, move it inside the safe area.", created_at: ago(26), pin_x: 0.5, pin_y: 0.93, pin_side: "front", addressed_at: null, confirmed_at: null, author: { name: "Prerak Patel", initials: "PP", role: "Core Admin" } },
   { id: "c-2", body: "@mihir can we try the Gujarati headline in the brand red?", created_at: ago(20), pin_x: null, pin_y: null, pin_side: "front", addressed_at: ago(4), confirmed_at: null, author: { name: "Rina Desai", initials: "RD", role: "Approver" } },
 ];
 const fmt = (o: Partial<Format> & Pick<Format, "key" | "name">): Format => ({ id: "f-" + o.key, width: null, height: null, unit: "px", dpi: null, class: "digital", frame: "flat", safe_top: 0, safe_right: 0, safe_bottom: 0, safe_left: 0, bleed_in: null, safe_margin_in: null, allow_custom_size: false, allowed_mimes: ["image/png", "image/jpeg", "image/webp", "image/gif"], notes: null, active: true, sort: 0, ...o });

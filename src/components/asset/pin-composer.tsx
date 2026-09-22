@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Icon } from "@/components/material-icon";
-import { PinBubble, Guides, guideGeometry, type Pin, type SafeArea, type PrintGuides } from "@/components/asset/viewer";
+import { PinBubble, Guides, guideGeometry, secondColor, type Pin, type SafeArea, type PrintGuides } from "@/components/asset/viewer";
 import { cn } from "@/lib/utils";
 
 /**
@@ -33,7 +33,7 @@ export function PinComposer({ open, onClose, onSubmit, src, isGif, width, height
             {src && <img src={src} alt="" className="block max-h-[calc(100dvh-190px)] max-w-full cursor-crosshair rounded-xl object-contain" style={{ aspectRatio: width && height ? `${width} / ${height}` : undefined }}
               onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setPin({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }); }} />}
             {isGif && <div className="pointer-events-none absolute inset-0 rounded-xl" style={{ backgroundImage: "url(/watermark-tile.png)", backgroundSize: "40%" }} />}
-            {showGuides && <Guides bands={g.bands} rects={g.rects} color={guideColor} />}
+            {showGuides && <Guides bands={g.bands} rects={g.rects} color={guideColor} rectColor={secondColor(guideColor)} />}
             {existing.map((p) => <PinBubble key={p.n} n={p.n} x={p.x} y={p.y} className="opacity-45" />)}
             {pin ? <PinBubble n={nextNumber} x={pin.x} y={pin.y} size="lg" /> : <p className="pointer-events-none absolute inset-x-0 top-3 mx-auto w-max rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium">Tap the artwork where the change is needed</p>}
           </div>
