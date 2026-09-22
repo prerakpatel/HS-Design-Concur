@@ -1,18 +1,29 @@
+import { createClient } from "@/lib/supabase/server";
+import { OrgMark } from "@/components/org-mark";
 import { GoogleButton } from "./google-button";
 
 export const metadata = { title: "Sign in" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
   const { next, error } = await searchParams;
+  const supabase = await createClient();
+  const { data: orgs } = await supabase.from("org_branding").select("id,name,short_name,logo_path").order("name");
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-subtle p-6">
-      <div className="w-full max-w-[440px] rounded-3xl border border-border bg-card px-8 py-10 text-center md:px-10">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-brand text-sm font-medium text-brand-foreground">D&amp;C</div>
-        <h1 className="mt-6 text-[26px] font-semibold leading-8 tracking-[-0.02em]">Design &amp; Concur</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Event assets for Harisumiran and Atmiya Care Charities</p>
+    <main className="min-h-dvh bg-card">
+      <div className="h-48 w-full bg-[#F6F0DC] md:h-[300px]">
+        <img src="/brand/design-concur-hero.webp" alt="" className="size-full object-cover object-center" />
+      </div>
+      <div className="mx-auto w-full max-w-[440px] px-6 py-10 md:py-14">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Design &amp; Concur</p>
+        <h1 className="mt-2 text-[26px] font-semibold leading-8 tracking-[-0.02em]">Event assets, briefed, designed and approved in one place.</h1>
+        {(orgs ?? []).length > 0 && (
+          <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-3">
+            {(orgs ?? []).map((o) => <li key={o.id} className="flex items-center gap-2.5"><OrgMark org={o} size={32} /><span className="text-sm font-medium">{o.name}</span></li>)}
+          </ul>
+        )}
         <div className="mt-8"><GoogleButton next={next} /></div>
-        {error && <p className="mt-3 text-xs text-destructive-text">Sign-in did not complete. Try again.</p>}
-        <p className="mt-8 text-sm leading-5 text-muted-foreground">Access is by invitation. After you sign in, a Core Admin approves your request.</p>
+        {error && <p className="mt-3 text-sm text-destructive-text">Sign-in did not complete. Try again.</p>}
+        <p className="mt-6 text-sm leading-6 text-muted-foreground">Access is by invitation. After you sign in with Google, a Core Admin approves your request and picks your organisation.</p>
       </div>
     </main>
   );

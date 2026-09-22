@@ -47,6 +47,13 @@ guide for non-engineers, including pushing and deploying: [local-dev.md](local-d
 Add a new file under `supabase/migrations/` and apply it with the Supabase MCP `apply_migration`
 tool or the Supabase CLI. Never edit an applied migration.
 
+## Branding
+
+Settings → Organisations lets a Core Admin upload each organisation's logo (PNG or SVG, square works best,
+under 1 MB). It replaces the coloured initial in the sidebar, the phone top bar, the org switcher and the
+sign-in page. Logos live in the public `branding` bucket; the sign-in page reads names and logos through the
+`org_branding` view, which exposes only those columns. The sign-in illustration is `public/brand/design-concur-hero.webp`.
+
 ## Retention (step 6)
 
 The daily job at `/api/jobs/daily` (Vercel Cron, 13:00 UTC) runs `src/lib/retention.ts` after the
