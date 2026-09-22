@@ -6,7 +6,6 @@ export const ICON_NAMES = [
   "add_photo_alternate",
   "alternate_email",
   "arrow_back",
-  "arrow_forward",
   "assignment_ind",
   "auto_delete",
   "block",
@@ -22,6 +21,7 @@ export const ICON_NAMES = [
   "event",
   "expand_more",
   "flip",
+  "grid_on",
   "history",
   "hourglass_top",
   "how_to_reg",
@@ -38,6 +38,5 @@ export const ICON_NAMES = [
   "schedule",
   "settings",
   "unfold_more",
-  "upload",
-  "zoom_in"
+  "upload"
 ] as const;
