@@ -16,7 +16,7 @@ export function WizardShell({ eventId, step, title, subtitle, children, wide, st
   const idx = STEPS.findIndex((s) => s.key === step);
   return (
     <div className="flex min-h-dvh flex-col bg-card md:flex-row">
-      <aside className="hidden w-[220px] shrink-0 border-r border-border bg-subtle p-5 md:block">
+      <aside className="hidden w-[220px] shrink-0 border-r border-border bg-subtle p-5 md:sticky md:top-0 md:block md:h-dvh md:self-start">
         <p className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">New event</p>
         <ol className="mt-3 space-y-1">
           {STEPS.map((s, i) => {
@@ -38,12 +38,14 @@ export function WizardShell({ eventId, step, title, subtitle, children, wide, st
         </ol>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center justify-between px-4 py-4 md:px-8">
+        <div className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
+        <div className="flex items-center justify-between px-4 py-3 md:px-8">
           <Button asChild variant="outline" size="icon-sm"><Link href={eventId ? `/events/${eventId}` : "/events"} aria-label={eventId ? "Back to event" : "Back to events"}><Icon name="arrow_back" /></Link></Button>
           <p className="text-sm"><span className="font-medium">{STEPS[idx].label}</span> <span className="text-muted-foreground">· Step {idx + 1} of {STEPS.length}</span></p>
           {eventId ? <Button asChild variant="outline"><Link href={`/events/${eventId}`}>Save and exit</Link></Button> : <Button asChild variant="ghost"><Link href="/events">Cancel</Link></Button>}
         </div>
-        <div className="flex gap-1 px-4 md:hidden">{STEPS.map((s, i) => <span key={s.key} className={"h-[3px] flex-1 rounded-full " + (i === idx ? "bg-primary" : statuses[s.key] === "done" ? "bg-success" : statuses[s.key] === "incomplete" && (i < idx || step === "review") ? "bg-warning" : i < idx ? "bg-primary" : "bg-muted-strong")} />)}</div>
+        <div className="flex gap-1 px-4 pb-3 md:hidden">{STEPS.map((s, i) => <span key={s.key} className={"h-[3px] flex-1 rounded-full " + (i === idx ? "bg-primary" : statuses[s.key] === "done" ? "bg-success" : statuses[s.key] === "incomplete" && (i < idx || step === "review") ? "bg-warning" : i < idx ? "bg-primary" : "bg-muted-strong")} />)}</div>
+        </div>
         <div className={"mx-auto w-full flex-1 px-5 pb-32 pt-6 md:px-8 md:pt-10 " + (wide ? "max-w-[820px]" : "max-w-[640px]")}>
           <div className="text-center"><h1 className="text-[24px] font-semibold leading-8 tracking-[-0.02em] md:text-[28px] md:leading-9">{title}</h1>{subtitle && <p className="mx-auto mt-2 max-w-[520px] text-sm leading-6 text-muted-foreground">{subtitle}</p>}</div>
           <div className="mt-8">{children}</div>
