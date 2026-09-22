@@ -29,7 +29,7 @@ export function BasicsForm({ eventId, orgName, values, action, notice }: { event
   );
 }
 
-export interface BriefValues { event_date: string; time_text: string; timing_note: string; description: string; venue_name: string; venue_address: string; notes: string }
+export interface BriefValues { event_date: string; time_text: string; description: string; venue_name: string; venue_address: string; notes: string }
 /** The brief is exactly what goes on the designs: when, the invite text, where. */
 export function BriefForm({ eventId, values, action }: { eventId: string; values: BriefValues; action: Action }) {
   const group = "space-y-5 rounded-2xl border border-border p-5";
@@ -39,8 +39,7 @@ export function BriefForm({ eventId, values, action }: { eventId: string; values
       <section className={group}>
         <p className={legend}>When</p>
         <div className={field}><Label htmlFor="event_date">Date</Label><DateField id="event_date" name="event_date" defaultValue={values.event_date} /></div>
-        <div className={field}><Label htmlFor="time_text">Time</Label><Input id="time_text" name="time_text" defaultValue={values.time_text} placeholder="10:30 AM EST onwards" /><p className="text-sm text-muted-foreground">Written exactly as it should appear on the design.</p></div>
-        <div className={field}><Label htmlFor="timing_note">Timing note</Label><Input id="timing_note" name="timing_note" defaultValue={values.timing_note} placeholder="Followed by Aarti and Mahaprasad" /></div>
+        <div className={field}><Label htmlFor="time_text">Timings</Label><Textarea id="time_text" name="time_text" rows={3} defaultValue={values.time_text} placeholder={"10:30 AM EST onwards\nFollowed by Aarti and Mahaprasad"} /><p className="text-sm text-muted-foreground">All the times and timing notes, written as they should appear on the design. One line each.</p></div>
       </section>
       <section className={group}>
         <p className={legend}>Invite text</p>
