@@ -10,6 +10,7 @@ import { EventList } from "@/components/events/event-list";
 import { BriefCard, FormatGrid, ActivityFeed } from "@/components/events/event-detail";
 import { UsersList } from "@/components/settings/user-editor";
 import { AccessRequests } from "@/components/settings/access-requests";
+import { FormatsList } from "@/components/settings/format-editor";
 import { WizardShell } from "@/components/wizard/wizard-shell";
 import { BasicsForm, BriefForm, FormatsForm, AssignForm, ReviewPanel } from "@/components/wizard/steps";
 import { CommentsPanel } from "@/components/asset/comments";
@@ -20,7 +21,7 @@ import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
 
 export const dynamic = "force-dynamic";
-const SCREENS = ["events", "event", "slot", "settings", "requests", "inbox", "wizard-basics", "wizard-brief", "wizard-formats", "wizard-assign", "wizard-review"] as const;
+const SCREENS = ["events", "event", "slot", "settings", "requests", "formats", "inbox", "wizard-basics", "wizard-brief", "wizard-formats", "wizard-assign", "wizard-review"] as const;
 
 /** Design preview harness. Renders real components with fixture data so screens can be reviewed without a database. */
 export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
@@ -30,13 +31,13 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
   const org = F.ORGS[0];
   const shell = (children: React.ReactNode, wide?: boolean) => <AppShell org={org} orgs={F.ORGS} user={F.ME} slots={F.SLOTS} wide={wide}>{children}</AppShell>;
   const tabs = (items: [string, string, number?][], active: string) => (
-    <nav className="mb-6 flex gap-6 border-b border-border text-[15px] font-medium">
+    <nav className="mb-6 flex gap-6 border-b border-border text-sm font-medium">
       {items.map(([k, l, n]) => <span key={k} className={"-mb-px flex items-center gap-2 border-b-2 pb-3 " + (active === k ? "border-foreground text-foreground" : "border-transparent text-muted-foreground")}>{l}{n != null && <span className="text-sm font-normal text-muted-foreground">{n}</span>}</span>)}
     </nav>
   );
 
   if (screen === "events") return shell(<>
-    <PageHeader title="Events" subtitle={`${org.name} · 4 of 10 event slots in use`} actions={<Button asChild size="lg"><Link href="#">New event</Link></Button>} />
+    <PageHeader title="Events" subtitle={`${org.name} · 4 of 10 event slots in use`} actions={<Button asChild><Link href="#">New event</Link></Button>} />
     {tabs([["upcoming", "Upcoming", 3], ["drafts", "Drafts", 1], ["past", "Past", 0]], "upcoming")}
     <EventList items={F.EVENTS.filter((e) => e.status === "active")} />
   </>);
@@ -56,8 +57,8 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     <div className="flex flex-wrap items-start justify-between gap-5">
       <div className="min-w-0">
         <Link href="#" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><Icon name="arrow_back" className="!text-[18px]" />Diwali Annakut Darshan</Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="text-[28px] font-semibold leading-9 tracking-[-0.02em] md:text-[32px] md:leading-10">WhatsApp flyer</h1><StateBadge state="changes_requested" /></div>
-        <p className="mt-1.5 text-[15px] text-muted-foreground">1080 × 1350 px · digital · v1 by Kinjal Patel · Gujarati headline</p>
+        <div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="text-[24px] font-semibold leading-8 tracking-[-0.02em] md:text-[26px] md:leading-9">WhatsApp flyer</h1><StateBadge state="changes_requested" /></div>
+        <p className="mt-1.5 text-sm text-muted-foreground">1080 × 1350 px · digital · v1 by Kinjal Patel · Gujarati headline</p>
       </div>
       <ReviewActions versionId="v-1" label="WhatsApp flyer v1" eventTitle="Diwali Annakut Darshan" decision="changes_requested" canApprove isOwnUpload={false} downloadUrl={null} />
     </div>
@@ -68,19 +69,19 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     <CommentsPanel versionId="v-1" viewer={{ src: "/preview/flyer.webp", isGif: false, width: 1080, height: 1350, safe: { top: 0.08, right: 0.06, bottom: 0.1, left: 0.06 }, caption: "DRAFT · v1 · 20 Sep 2026", frame: "flat" }} comments={F.COMMENTS} members={F.MEMBERS} canApprove canComment />
   </div>);
 
-  if (screen === "settings" || screen === "requests") return shell(<>
-    <PageHeader title="Settings" subtitle="Core Admins only" />
-    {tabs([["users", "Users"], ["requests", "Requests · 2"], ["formats", "Formats"], ["notifications", "Notifications"]], screen === "settings" ? "users" : "requests")}
-    {screen === "settings" ? <UsersList currentUserId="u-1" orgs={F.ORGS.map((o) => ({ id: o.id, label: o.short_name }))} users={F.USERS} /> : <AccessRequests action={noopUser} orgs={F.ORGS.map((o) => ({ id: o.id, label: o.short_name }))} defaultOrgId={org.id} pending={F.PENDING} />}
+  if (screen === "settings" || screen === "requests" || screen === "formats") return shell(<>
+    <PageHeader title="Settings" subtitle="People, access, the format catalog and notifications" />
+    {tabs([["users", "Users"], ["requests", "Requests · 2"], ["formats", "Formats"], ["notifications", "Notifications"]], screen === "settings" ? "users" : screen)}
+    {screen === "formats" ? <FormatsList formats={F.FORMATS} /> : screen === "settings" ? <UsersList currentUserId="u-1" orgs={F.ORGS.map((o) => ({ id: o.id, label: o.short_name }))} users={F.USERS.map((u) => ({ ...u, email_pref: F.USERS_PREFS[u.id] }))} /> : <AccessRequests action={noopUser} orgs={F.ORGS.map((o) => ({ id: o.id, label: o.short_name }))} defaultOrgId={org.id} pending={F.PENDING} />}
   </>);
 
   if (screen === "inbox") return shell(<>
     <PageHeader title="Inbox" subtitle="2 unread" actions={<Button variant="secondary">Mark all read</Button>} />
     <form className="mb-8 flex flex-col gap-3 rounded-2xl bg-subtle p-5 md:flex-row md:items-center md:gap-4">
-      <div className="min-w-0 flex-1"><p className="text-[15px] font-medium">Email me</p><p className="text-sm text-muted-foreground">Approvals, mentions, assignments and due dates. Everything always shows here too.</p></div>
+      <div className="min-w-0 flex-1"><p className="text-sm font-medium">Email me</p><p className="text-sm text-muted-foreground">Approvals, mentions, assignments and due dates. Everything always shows here too.</p></div>
       <div className="flex gap-2"><SelectField name="email_pref" defaultValue="instant" className="w-52"><option value="instant">as things happen</option><option value="digest">once a day</option><option value="off">never</option></SelectField><Button type="button" variant="secondary" size="lg">Save</Button></div>
     </form>
-    <ul className="divide-y divide-border">{F.INBOX.map(([icon, text, at, read], i) => <li key={i}><Link href="#" className="-mx-3 flex items-center gap-4 rounded-2xl px-3 py-4 hover:bg-subtle"><span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-muted"><Icon name={icon} size={24} /></span><span className="min-w-0 flex-1"><span className={"block text-[15px] leading-6 " + (read ? "" : "font-medium")}>{text}</span><span className="block text-sm text-muted-foreground">Diwali Annakut Darshan · {relativeTime(at)}</span></span>{!read && <span className="size-2.5 shrink-0 rounded-full bg-brand" />}</Link></li>)}</ul>
+    <ul className="divide-y divide-border">{F.INBOX.map(([icon, text, at, read], i) => <li key={i}><Link href="#" className="-mx-3 flex items-center gap-4 rounded-xl px-3 py-3.5 hover:bg-subtle"><span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted"><Icon name={icon} size={20} /></span><span className="min-w-0 flex-1"><span className={"block text-sm leading-6 " + (read ? "" : "font-medium")}>{text}</span><span className="block text-sm text-muted-foreground">Diwali Annakut Darshan · {relativeTime(at)}</span></span>{!read && <span className="size-2.5 shrink-0 rounded-full bg-brand" />}</Link></li>)}</ul>
   </>);
 
   if (screen === "wizard-basics") return <WizardShell eventId="e-4" step="basics" title="Tell us the basics" subtitle="Anyone in the org can pick this up later if you save and exit."><BasicsForm eventId="e-4" orgName={org.name} values={{ title: "New Year Mahotsav", event_date: "2027-01-01", venue: "" }} action={noopForm} /></WizardShell>;

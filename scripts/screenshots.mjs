@@ -8,7 +8,7 @@ import { execSync } from "node:child_process";
 const base = process.env.PREVIEW_URL ?? "http://localhost:3000";
 const out = process.argv[2] ?? "screenshots";
 const only = process.argv.slice(3);
-const screens = ["login", "events", "event", "slot", "settings", "requests", "inbox", "wizard-basics", "wizard-brief", "wizard-formats", "wizard-assign", "wizard-review"].filter((s) => !only.length || only.includes(s));
+const screens = ["login", "events", "event", "slot", "settings", "requests", "formats", "inbox", "wizard-basics", "wizard-brief", "wizard-formats", "wizard-assign", "wizard-review"].filter((s) => !only.length || only.includes(s));
 const viewports = { desktop: { width: 1440, height: 900 }, mobile: { width: 393, height: 852, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } };
 mkdirSync(out, { recursive: true });
 

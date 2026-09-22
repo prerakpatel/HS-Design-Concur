@@ -35,12 +35,12 @@ export function MobileTopBar({ org, orgs, initials }: { org: Organisation; orgs:
   return (
     <header className="flex items-center justify-between px-5 py-3 md:hidden">
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-[15px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <DropdownMenuTrigger className="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <span className="flex size-8 items-center justify-center rounded-lg bg-brand text-sm font-medium text-brand-foreground">{org.short_name[0]}</span>
           {org.name}<Icon name="unfold_more" className="text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64 rounded-xl p-1.5">
-          {orgs.map((o) => <DropdownMenuItem key={o.id} className="h-11 rounded-lg px-3 text-[15px]" onSelect={() => setCurrentOrg(o.slug)}>{o.name}{o.id === org.id && <Icon name="check" className="ml-auto text-muted-foreground" />}</DropdownMenuItem>)}
+          {orgs.map((o) => <DropdownMenuItem key={o.id} className="h-10 rounded-lg px-3 text-sm" onSelect={() => setCurrentOrg(o.slug)}>{o.name}{o.id === org.id && <Icon name="check" className="ml-auto text-muted-foreground" />}</DropdownMenuItem>)}
         </DropdownMenuContent>
       </DropdownMenu>
       <UserAvatar initials={initials} size={32} />
