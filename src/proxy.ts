@@ -19,7 +19,9 @@ export async function proxy(request: NextRequest) {
       },
     },
   );
-  const { data: { user } } = await supabase.auth.getUser();
+  // Verifies the session token locally against Supabase's public signing keys (cached), no Auth round trip per request.
+  const { data: claims } = await supabase.auth.getClaims();
+  const user = claims?.claims ?? null;
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC.some((p) => path.startsWith(p));
   if (!user && !isPublic) {

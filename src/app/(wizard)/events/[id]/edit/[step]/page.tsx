@@ -6,7 +6,7 @@ import { WizardShell, STEPS } from "@/components/wizard/wizard-shell";
 import { BasicsForm, BriefForm, FormatsForm, AssignForm, ReviewPanel } from "@/components/wizard/steps";
 import { formatSize } from "@/lib/labels";
 import { EVENT_CAP } from "@/config/limits";
-import type { AppUser, EventRow, Format, Slot } from "@/lib/types";
+import type { AppUser, Brief, EventRow, Format, Slot } from "@/lib/types";
 
 export default async function EditEventPage({ params }: { params: Promise<{ id: string; step: string }> }) {
   const { id, step } = await params;
@@ -24,13 +24,10 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
   );
 
   if (s === "brief") {
-    const [{ data: brief }, { data: timings }] = await Promise.all([
-      supabase.from("briefs").select("*").eq("event_id", id).maybeSingle<{ description: string | null; venue: string | null; notes: string | null }>(),
-      supabase.from("brief_timings").select("*").eq("event_id", id).order("sort"),
-    ]);
+    const { data: brief } = await supabase.from("briefs").select("*").eq("event_id", id).maybeSingle<Brief>();
     return (
-      <WizardShell eventId={id} step={s} title="What should the designs say?" subtitle="Written once by Publication or a Core Admin. It locks at the first upload; changes then go through comments.">
-        <BriefForm eventId={id} values={{ description: brief?.description ?? "", venue: brief?.venue ?? event.venue ?? "", notes: brief?.notes ?? "" }} timings={(timings ?? []).map((t) => ({ label: t.label ?? "", on_date: t.on_date ?? "", starts_at: (t.starts_at ?? "").slice(0, 5), ends_at: (t.ends_at ?? "").slice(0, 5) }))} action={saveBrief.bind(null, id)} />
+      <WizardShell eventId={id} step={s} title="What goes on the designs?" subtitle="Exactly the words the designers will place: when, the invite text and where. It locks at the first upload; changes then go through comments.">
+        <BriefForm eventId={id} values={{ event_date: event.event_date ?? "", time_text: brief?.time_text ?? "", timing_note: brief?.timing_note ?? "", description: brief?.description ?? "", venue_name: brief?.venue_name ?? event.venue ?? "", venue_address: brief?.venue_address ?? "", notes: brief?.notes ?? "" }} action={saveBrief.bind(null, id)} />
       </WizardShell>
     );
   }
@@ -64,19 +61,19 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
   }
 
   const [{ data: brief }, { data: slots }, { count }] = await Promise.all([
-    supabase.from("briefs").select("description").eq("event_id", id).maybeSingle<{ description: string | null }>(),
+    supabase.from("briefs").select("description,time_text,venue_name").eq("event_id", id).maybeSingle<Pick<Brief, "description" | "time_text" | "venue_name">>(),
     supabase.from("slots").select("*,formats(name),users:assignee_id(name,email)").eq("event_id", id).eq("requested", true),
     supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "active").is("deleted_at", null),
   ]);
   const problems: string[] = [];
   if (!event.event_date) problems.push("Event date is missing (Basics).");
-  if (!brief?.description) problems.push("The brief has no description (Brief).");
+  if (!brief?.description) problems.push("The invite text is missing (Brief).");
   if ((slots ?? []).length === 0) problems.push("No formats are requested (Formats).");
   if (event.status === "draft" && (count ?? 0) >= EVENT_CAP) problems.push(`All ${EVENT_CAP} event slots are in use; publishing is blocked until one frees up.`);
   return (
     <WizardShell eventId={id} step={s} title={event.status === "draft" ? "Ready to publish?" : "Review"} subtitle={event.status === "draft" ? "Publishing takes one of the shared event slots and notifies the assigned designers." : "This event is live. Changes in the earlier steps are saved as you go."}>
       <ReviewPanel eventId={id} isDraft={event.status === "draft"} canDelete={user.role === "core_admin" || event.created_by === user.id} problems={problems}
-        summary={{ title: event.title, when: event.event_date ? format(new Date(event.event_date + "T00:00:00"), "EEE d MMM yyyy") : "—", venue: event.venue ?? "—", brief: brief?.description ?? null }}
+        summary={{ title: event.title, when: [event.event_date ? format(new Date(event.event_date + "T00:00:00"), "EEE d MMM yyyy") : "—", brief?.time_text].filter(Boolean).join(" · "), venue: brief?.venue_name ?? event.venue ?? "—", brief: brief?.description ?? null }}
         slots={(slots ?? []).map((sl) => { const who = sl.users as unknown as { name: string | null; email: string } | null; return { name: (sl.formats as unknown as { name: string })?.name ?? "", assignee: who ? { name: who.name ?? who.email, initials: initials(who.name, who.email) } : null, due: sl.due_on }; })}
         publish={async () => { "use server"; await publishEvent(id); }} remove={async () => { "use server"; await deleteEvent(id); }} />
     </WizardShell>
