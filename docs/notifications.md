@@ -16,13 +16,13 @@ Repeat for the ACC space if it has its own. What gets posted: sent for review, c
 
 Email is sent through Resend (free tier: 3,000 emails a month, plenty for a team this size).
 
-1. Create an account at https://resend.com (use a hariss.org account).
-2. **Domains → Add domain** → enter `hariss.org` (or a sub-domain like `notify.hariss.org` if you don't want to touch the main domain). Resend shows 3 DNS records (SPF, DKIM, MX). Whoever manages hariss.org DNS adds them; Resend shows **Verified** when they propagate, usually within an hour.
+1. Create an account at https://resend.com with a shared organisation login, not a personal one.
+2. **Domains → Add domain** → enter the domain the emails should come from. Pick one you are happy to see in people's inboxes; a sub-domain such as `notify.<domain>` keeps the main domain's mail untouched. Resend shows 3 DNS records (SPF, DKIM, MX). Whoever manages that domain's DNS adds them; Resend shows **Verified** when they propagate, usually within an hour.
    - Skipping this step means Resend will only deliver to the account owner's own address, which is fine for a first test.
 3. **API keys → Create API key** → name `vercel`, permission **Sending access** → copy the key (starts with `re_`).
 4. Open https://vercel.com/hello-6042s-projects-0888460f/design-and-concur/settings/environment-variables and add two variables, all environments ticked:
    - `RESEND_API_KEY` = the key
-   - `EMAIL_FROM` = `Design & Concur <notify@hariss.org>` (must be on the verified domain; before verification use `onboarding@resend.dev`)
+   - `EMAIL_FROM` = `Design & Concur <notify@<your verified domain>>` (before verification you can test with `onboarding@resend.dev`)
 5. Vercel → **Deployments** → latest → **⋯ → Redeploy**.
 6. In the app: **Settings → Notifications → Send me a test email**.
 
