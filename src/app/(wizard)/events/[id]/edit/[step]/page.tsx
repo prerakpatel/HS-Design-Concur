@@ -33,7 +33,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
     const { data: brief } = await supabase.from("briefs").select("*").eq("event_id", id).maybeSingle<Brief>();
     return (
       <WizardShell eventId={id} step={s} statuses={statuses} title="What goes on the designs?" subtitle="Exactly the words the designers will place: when, the invite text and where. It locks at the first upload; changes then go through comments.">
-        <BriefForm eventId={id} values={{ event_date: event.event_date ?? "", time_text: brief?.time_text ?? "", timing_note: brief?.timing_note ?? "", description: brief?.description ?? "", venue_name: brief?.venue_name ?? event.venue ?? "", venue_address: brief?.venue_address ?? "", notes: brief?.notes ?? "" }} action={saveBrief.bind(null, id)} />
+        <BriefForm eventId={id} values={{ event_date: event.event_date ?? "", time_text: brief?.time_text ?? "", description: brief?.description ?? "", venue_name: brief?.venue_name ?? event.venue ?? "", venue_address: brief?.venue_address ?? "", notes: brief?.notes ?? "" }} action={saveBrief.bind(null, id)} />
       </WizardShell>
     );
   }
@@ -75,7 +75,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
   return (
     <WizardShell eventId={id} step={s} statuses={statuses} title={event.status === "draft" ? "Ready to publish?" : "Review"} subtitle={event.status === "draft" ? "Publishing takes one of the shared event slots and notifies the assigned designers." : "This event is live. Changes in the earlier steps are saved as you go."}>
       <ReviewPanel eventId={id} isDraft={event.status === "draft"} canDelete={user.role === "core_admin" || event.created_by === user.id} issues={allIssues}
-        summary={{ title: event.title, when: [event.event_date ? format(new Date(event.event_date + "T00:00:00"), "EEE d MMM yyyy") : "—", brief?.time_text].filter(Boolean).join(" · "), venue: brief?.venue_name ?? event.venue ?? "—", brief: brief?.description ?? null }}
+        summary={{ title: event.title, when: [event.event_date ? format(new Date(event.event_date + "T00:00:00"), "EEE d MMM yyyy") : "—", brief?.time_text?.split("\n")[0]].filter(Boolean).join(" · "), venue: brief?.venue_name ?? event.venue ?? "—", brief: brief?.description ?? null }}
         slots={(slots ?? []).map((sl) => { const who = sl.users as unknown as { name: string | null; email: string } | null; return { name: (sl.formats as unknown as { name: string })?.name ?? "", assignee: who ? { name: who.name ?? who.email, initials: initials(who.name, who.email) } : null, due: sl.due_on }; })}
         publish={async () => { "use server"; await publishEvent(id); }} remove={async () => { "use server"; await deleteEvent(id); }} />
     </WizardShell>

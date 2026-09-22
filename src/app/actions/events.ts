@@ -66,7 +66,7 @@ export async function saveBrief(eventId: string, formData: FormData) {
   const eventDate = str("event_date");
   if (!horizonOk(eventDate)) throw new Error(`Events can be at most ${MONTHS_AHEAD} months out`);
   const venue_name = str("venue_name");
-  const { error } = await supabase.from("briefs").upsert({ event_id: event.id, description: str("description"), time_text: str("time_text"), timing_note: str("timing_note"), venue_name, venue_address: str("venue_address"), notes: str("notes") });
+  const { error } = await supabase.from("briefs").upsert({ event_id: event.id, description: str("description"), time_text: str("time_text"), venue_name, venue_address: str("venue_address"), notes: str("notes") });
   if (error) throw new Error(error.message);
   await supabase.from("events").update({ event_date: eventDate, venue: venue_name, last_edited_at: new Date().toISOString() }).eq("id", event.id);
   revalidatePath(`/events/${event.id}`);

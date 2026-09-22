@@ -8,7 +8,7 @@ import { relativeTime } from "@/lib/labels";
 export type { FormatCardData } from "@/components/events/format-grid";
 export interface ActivityItem { id: string | number; who: string; initials: string; what: string; when: string }
 
-export interface BriefView { date: string | null; timeText: string | null; timingNote: string | null; inviteText: string | null; venueName: string | null; venueAddress: string | null; notes: string | null }
+export interface BriefView { date: string | null; timeText: string | null; inviteText: string | null; venueName: string | null; venueAddress: string | null; notes: string | null }
 /** What goes on the designs: when, where, the invite text. */
 export function BriefCard({ brief, locked, editHref }: { brief: BriefView; locked: boolean; editHref: string }) {
   const dt = "text-xs font-medium uppercase tracking-wide text-muted-foreground";
@@ -19,8 +19,7 @@ export function BriefCard({ brief, locked, editHref }: { brief: BriefView; locke
         <div>
           <dt className={dt}>When</dt>
           <dd className="mt-1 text-sm font-medium">{brief.date ? format(new Date(brief.date + "T00:00:00"), "EEEE, d MMMM yyyy") : <span className="font-normal text-muted-foreground">Date not set</span>}</dd>
-          {brief.timeText && <dd className="text-sm">{brief.timeText}</dd>}
-          {brief.timingNote && <dd className="text-sm text-muted-foreground">{brief.timingNote}</dd>}
+          {brief.timeText && <dd className="whitespace-pre-line text-sm">{brief.timeText}</dd>}
         </div>
         <div>
           <dt className={dt}>Where</dt>

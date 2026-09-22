@@ -16,7 +16,7 @@ export function wizardStatus(input: {
   if (!input.eventDate) issues.push({ text: "The event date is missing.", step: "basics", blocking: true });
   if (!input.brief?.description) issues.push({ text: "The invite text is missing.", step: "brief", blocking: true });
   if (!input.brief?.venue_name) issues.push({ text: "The venue name is missing.", step: "brief", blocking: true });
-  if (!input.brief?.time_text) issues.push({ text: "No time is written for the design.", step: "brief", blocking: false });
+  if (!input.brief?.time_text) issues.push({ text: "No timings are written for the design.", step: "brief", blocking: false });
   if (input.requestedSlots.length === 0) issues.push({ text: "No formats are requested.", step: "formats", blocking: true });
   const unassigned = input.requestedSlots.filter((s) => !s.assignee_id).length;
   if (unassigned > 0 && input.requestedSlots.length > 0) issues.push({ text: unassigned === input.requestedSlots.length ? "No format has a designer yet." : `${unassigned} of ${input.requestedSlots.length} formats have no designer yet.`, step: "assign", blocking: false });
