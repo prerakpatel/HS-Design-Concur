@@ -9,7 +9,8 @@ import { ChoiceChips } from "@/components/ui/choice-chips";
 import { StateBadge } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
 import { DateField } from "@/components/ui/date-field";
-import { WizardFooter } from "@/components/wizard/wizard-shell";
+import { WizardFooter, STEPS } from "@/components/wizard/wizard-shell";
+import type { WizardIssue } from "@/lib/wizard-status";
 import { ConfirmButton } from "@/components/confirm-button";
 
 type Action = (formData: FormData) => Promise<void>;
@@ -101,26 +102,40 @@ export function AssignForm({ eventId, rows, people, action }: { eventId: string;
   );
 }
 
-export function ReviewPanel({ eventId, summary, slots, problems, isDraft, canDelete, publish, remove }: {
-  eventId: string; summary: { title: string; when: string; venue: string; brief: string | null }; slots: { name: string; assignee: { name: string; initials: string } | null; due: string | null }[]; problems: string[]; isDraft: boolean; canDelete: boolean;
+export function ReviewPanel({ eventId, summary, slots, issues, isDraft, canDelete, publish, remove }: {
+  eventId: string; summary: { title: string; when: string; venue: string; brief: string | null }; slots: { name: string; assignee: { name: string; initials: string } | null; due: string | null }[]; issues: WizardIssue[]; isDraft: boolean; canDelete: boolean;
   publish: () => Promise<void>; remove: () => Promise<void>;
 }) {
+  const blocking = issues.filter((i) => i.blocking); const hints = issues.filter((i) => !i.blocking);
+  const edit = (step: string, label = "Edit") => <Link href={`/events/${eventId}/edit/${step}`} className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{label}</Link>;
   return (
     <div className="space-y-8">
+      {blocking.length > 0 && (
+        <ul className="space-y-2 rounded-2xl bg-warning-soft p-5 text-sm text-warning-text">
+          <li className="font-medium">Before this can be published</li>
+          {blocking.map((p) => <li key={p.text} className="flex items-center justify-between gap-3"><span>{p.text}</span><Link href={`/events/${eventId}/edit/${p.step}`} className="shrink-0 font-medium underline-offset-4 hover:underline">Fix in {STEPS.find((x) => x.key === p.step)?.label}</Link></li>)}
+        </ul>
+      )}
+      {hints.length > 0 && (
+        <ul className="space-y-2 rounded-2xl bg-subtle p-5 text-sm text-muted-foreground">
+          <li className="font-medium text-foreground">Worth a look, not blocking</li>
+          {hints.map((p) => <li key={p.text} className="flex items-center justify-between gap-3"><span>{p.text}</span><Link href={`/events/${eventId}/edit/${p.step}`} className="shrink-0 font-medium text-foreground underline-offset-4 hover:underline">Fix in {STEPS.find((x) => x.key === p.step)?.label}</Link></li>)}
+        </ul>
+      )}
       <dl className="grid grid-cols-1 gap-5 rounded-2xl bg-subtle p-6 text-sm md:grid-cols-2">
-        <div><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Event</dt><dd className="mt-1 font-medium">{summary.title}</dd></div>
-        <div><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Date · venue</dt><dd className="mt-1">{summary.when} · {summary.venue}</dd></div>
-        <div className="md:col-span-2"><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Brief</dt><dd className="mt-1 whitespace-pre-wrap leading-6">{summary.brief ?? <span className="text-muted-foreground">Missing</span>}</dd></div>
+        <div><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Event {edit("basics")}</dt><dd className="mt-1 font-medium">{summary.title}</dd></div>
+        <div><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">When · where {edit("brief")}</dt><dd className="mt-1">{summary.when} · {summary.venue}</dd></div>
+        <div className="md:col-span-2"><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Invite text {edit("brief")}</dt><dd className="mt-1 whitespace-pre-wrap leading-6">{summary.brief ?? <Link href={`/events/${eventId}/edit/brief`} className="text-warning-text underline-offset-4 hover:underline">Missing · add it in Brief</Link>}</dd></div>
       </dl>
+      <div className="flex items-center justify-between px-1"><p className="text-sm font-medium">Formats and designers</p><span className="flex gap-3">{edit("formats", "Edit formats")}{edit("assign", "Edit designers")}</span></div>
       <ul className="divide-y divide-border rounded-2xl border border-border">
         {slots.map((s, i) => <li key={i} className="flex items-center gap-4 px-5 py-4 text-sm"><span className="min-w-0 flex-1 truncate font-medium">{s.name}</span>{s.assignee ? <span className="flex items-center gap-2 text-muted-foreground"><UserAvatar initials={s.assignee.initials} size={24} /><span className="hidden sm:inline">{s.assignee.name}</span></span> : <span className="text-muted-foreground">Unassigned</span>}<span className="w-20 text-right text-sm text-muted-foreground">{s.due ? format(new Date(s.due + "T00:00:00"), "d MMM") : ""}</span></li>)}
       </ul>
-      {problems.length > 0 && <ul className="space-y-1.5 rounded-2xl bg-warning-soft p-5 text-sm text-warning-text">{problems.map((p) => <li key={p}>{p}</li>)}</ul>}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
         {canDelete ? <ConfirmButton variant="ghost" action={remove} label={isDraft ? "Delete draft" : "Delete event"} title={`Delete “${summary.title}”?`} description="Core Admins can restore it for 7 days. Its files are removed after that." confirmLabel="Delete" /> : <span />}
         <div className="flex gap-2">
           <Button asChild variant="secondary" size="lg"><Link href={`/events/${eventId}`}>Save and exit</Link></Button>
-          {isDraft ? <form action={publish}><Button type="submit" size="lg" disabled={problems.length > 0}>Publish event</Button></form> : <StateBadge state="approved" label="Live" className="h-9 px-3 text-sm" />}
+          {isDraft ? <form action={publish}><Button type="submit" size="lg" disabled={blocking.length > 0}>Publish event</Button></form> : <StateBadge state="approved" label="Live" className="h-9 px-3 text-sm" />}
         </div>
       </div>
     </div>

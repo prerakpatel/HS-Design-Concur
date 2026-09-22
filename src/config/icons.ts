@@ -29,6 +29,7 @@ export const ICON_NAMES = [
   "mail",
   "more_horiz",
   "notifications",
+  "priority_high",
   "replay",
   "rule",
   "schedule",
