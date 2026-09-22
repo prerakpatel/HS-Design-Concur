@@ -15,7 +15,8 @@ Use these terms exactly. Avoid the synonyms listed.
 | **Version** | One upload to a slot, numbered v1, v2… Print versions have a Front and optional Back side. | revision, draft, file |
 | **Optimised file** | The only stored rendition of an upload. Served on approved download. | original |
 | **Preview** | The watermarked rendition shown before approval. | proof |
-| **Reference** | The tiny post-purge image kept per approved slot. | archive copy |
+| **Reference** | The tiny post-purge image kept for the primary format only. | archive copy |
+| **Primary format** | The one format per event the other designs derive from; shown first, and the only one kept after purge. | master, hero |
 | **Approver** | A user with the Approve capability. Core Admins are Approvers implicitly. | reviewer, executive |
 | **Core Admin** | The only admin role. | admin, sub-admin, owner |
 | **Function tag** | Central, Publication, Designer. Informational; routes notifications. | role, department |

@@ -26,6 +26,18 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
   }
 }
 
+/** One line for Google Chat: event · format vN · what happened, by whom. */
+export function chatText(kind: string, p: Record<string, unknown>): string {
+  const t = String(p.title ?? "an event"); const f = String(p.format ?? "a format"); const n = p.number ? ` v${p.number}` : ""; const by = String(p.by ?? "Someone");
+  switch (kind) {
+    case "version.uploaded": return `📤 ${t} · ${f}${n} uploaded by ${by} · ready for review`;
+    case "version.approved": return `✅ ${t} · ${f}${n} approved by ${by}`;
+    case "version.changes_requested": return `✏️ ${t} · ${f}${n} · changes requested by ${by}`;
+    case "version.reopened": return `↩️ ${t} · ${f}${n} reopened by ${by}`;
+    default: return `${t} · ${notificationText(kind, p)}`;
+  }
+}
+
 export function notificationHref(p: Record<string, unknown>): string {
   if (typeof p.href === "string") return p.href;
   if (p.eventId && p.slotId) return `/events/${p.eventId}/slots/${p.slotId}`;

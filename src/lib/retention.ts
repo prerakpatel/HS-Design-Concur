@@ -7,15 +7,15 @@ import { DEVICE_REFRESH_DAY } from "@/config/devices";
 export interface RetentionReport { archived: number; deletedForGood: number; draftsWarned: number; draftsSwept: number; deviceReminders: number; filesRemoved: number; errors: string[] }
 
 interface SideRow { id: string; side: string; optimised_path: string | null; preview_path: string | null; thumb_path: string | null; reference_path: string | null }
-interface VersionRow { id: string; number: number; decision: string; purged_at: string | null; version_sides: SideRow[] }
-interface SlotRow { id: string; state: string; versions: VersionRow[] }
+interface VersionRow { id: string; number: number; decision: string; purged_at: string | null; created_at: string; version_sides: SideRow[] }
+interface SlotRow { id: string; state: string; is_primary: boolean; versions: VersionRow[] }
 
 const daysAgoIso = (days: number) => new Date(Date.now() - days * 86400_000).toISOString();
 const daysAgoDate = (days: number, tz: string) => new Date(Date.now() - days * 86400_000).toLocaleDateString("en-CA", { timeZone: tz });
 
 /**
  * Nightly retention (PRD §8), run with the service client:
- * 1. Events dated ≥ 7 days ago: keep one reference image per approved format, delete every other file, archive.
+ * 1. Events dated ≥ 7 days ago: keep one reference image for the primary format only, delete every other file, archive.
  * 2. Events deleted ≥ 7 days ago: delete all files and the rows (text goes too; the restore window is over).
  * 3. Drafts untouched for 23 days: warn the creator. Untouched for 30 days: delete.
  * 4. Every 1 November: remind Designers and Core Admins to refresh the phone presets.
@@ -84,19 +84,22 @@ export async function runRetention(db: SupabaseClient, opts: { tz: string; today
 }
 
 /**
- * Delete every stored file for an event. With `keepReferences`, the latest approved version of each
- * approved slot is first reduced to a small reference image per side (front, and back for print).
+ * Delete every stored file for an event. With `keepReferences`, the primary format (or, if none was marked,
+ * the first approved format) keeps one small reference image per side (front, and back for print) from its
+ * approved version, or its latest version if it was never approved. Nothing else survives.
  * Rows are kept and marked `purged_at`; path columns are cleared so the UI knows the files are gone.
  * Returns the number of objects removed.
  */
 export async function purgeEventFiles(db: SupabaseClient, eventId: string, orgId: string, keepReferences: boolean): Promise<number> {
-  const { data: slots, error } = await db.from("slots").select("id,state,versions(id,number,decision,purged_at,version_sides(id,side,optimised_path,preview_path,thumb_path,reference_path))").eq("event_id", eventId).returns<SlotRow[]>();
+  const { data: slots, error } = await db.from("slots").select("id,state,is_primary,versions(id,number,decision,purged_at,created_at,version_sides(id,side,optimised_path,preview_path,thumb_path,reference_path))").eq("event_id", eventId).returns<SlotRow[]>();
   if (error) throw new Error(error.message);
+  const firstUpload = (s: SlotRow) => s.versions.map((v) => v.created_at).sort()[0] ?? "";
+  const keepSlot = (slots ?? []).find((s) => s.is_primary && s.versions.length) ?? [...(slots ?? [])].filter((s) => s.state === "approved").sort((a, b) => firstUpload(a).localeCompare(firstUpload(b)))[0] ?? null;
   const remove: string[] = [];
   const now = new Date().toISOString();
   for (const slot of slots ?? []) {
     const versions = [...(slot.versions ?? [])].sort((a, b) => b.number - a.number);
-    const keep = keepReferences && slot.state === "approved" ? versions.find((v) => v.decision === "approved") : undefined;
+    const keep = keepReferences && keepSlot?.id === slot.id ? (versions.find((v) => v.decision === "approved") ?? versions[0]) : undefined;
     for (const v of versions) {
       for (const s of v.version_sides ?? []) {
         let reference = keepReferences ? s.reference_path : null;

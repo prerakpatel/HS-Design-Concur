@@ -12,7 +12,7 @@ import { ChoiceChips } from "@/components/ui/choice-chips";
 import { StateBadge } from "@/components/state-badge";
 import { Icon } from "@/components/material-icon";
 import { formatSize } from "@/lib/labels";
-import { saveFormat, moveFormat } from "@/app/actions/formats";
+import { saveFormat } from "@/app/actions/formats";
 import type { Format } from "@/lib/types";
 
 const FRAMES: { value: Format["frame"]; label: string; hint: string }[] = [
@@ -28,9 +28,6 @@ const MIMES = [{ value: "image/png", label: "PNG" }, { value: "image/jpeg", labe
 /** Catalog list + side-sheet editor. Designers and Core Admins (PRD §9). */
 export function FormatsList({ formats }: { formats: Format[] }) {
   const [open, setOpen] = useState<Format | "new" | null>(null);
-  const [pending, start] = useTransition();
-  const router = useRouter();
-  const move = (id: string, dir: "up" | "down") => start(async () => { await moveFormat(id, dir); router.refresh(); });
   return (
     <>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -38,12 +35,8 @@ export function FormatsList({ formats }: { formats: Format[] }) {
         <Button onClick={() => setOpen("new")} className="self-start sm:shrink-0"><Icon name="add" className="!text-[18px]" />Add format</Button>
       </div>
       <ul className="divide-y divide-border">
-        {formats.map((f, i) => (
+        {formats.map((f) => (
           <li key={f.id} className={"flex items-center gap-3 py-3 " + (f.active ? "" : "opacity-60")}>
-            <div className="flex flex-col">
-              <button type="button" aria-label="Move up" disabled={i === 0 || pending} onClick={() => move(f.id, "up")} className="text-muted-foreground hover:text-foreground disabled:opacity-30"><Icon name="keyboard_arrow_up" className="!text-[20px]" /></button>
-              <button type="button" aria-label="Move down" disabled={i === formats.length - 1 || pending} onClick={() => move(f.id, "down")} className="text-muted-foreground hover:text-foreground disabled:opacity-30"><Icon name="keyboard_arrow_down" className="!text-[20px]" /></button>
-            </div>
             <button type="button" onClick={() => setOpen(f)} className="-my-1 flex min-w-0 flex-1 items-center gap-4 rounded-xl px-2 py-2 text-left hover:bg-subtle">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium leading-5">{f.name}</p>
