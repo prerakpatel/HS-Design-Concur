@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { PageHeader, SectionHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { StateBadge } from "@/components/state-badge";
 import { SelectField } from "@/components/ui/select-field";
 import { EventList } from "@/components/events/event-list";
-import { BriefCard, FormatGrid, ActivityFeed } from "@/components/events/event-detail";
+import { BriefCard, ActivityFeed } from "@/components/events/event-detail";
+import { FormatGrid } from "@/components/events/format-grid";
 import { UsersList } from "@/components/settings/user-editor";
 import { AccessRequests } from "@/components/settings/access-requests";
 import { FormatsList } from "@/components/settings/format-editor";
@@ -47,7 +48,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     <div className="grid gap-10 lg:grid-cols-[1fr_280px]">
       <div className="space-y-10">
         <BriefCard description={F.BRIEF} timings={F.TIMINGS} venue="Harisumiran Mandir, 1 Temple Way, Edison NJ" notes="Keep the sponsor line small. Avoid purple." locked editHref="#" />
-        <section><SectionHeader title="Formats" meta={`${ok} approved · ${req.length - ok} in progress · ${F.CARDS.length - req.length} N/A`} /><FormatGrid eventId="e-1" cards={F.CARDS} /></section>
+        <FormatGrid eventId="e-1" cards={F.CARDS} canApprove meta={`${ok} approved · ${req.length - ok} in progress · ${F.CARDS.length - req.length} N/A`} />
       </div>
       <ActivityFeed items={F.ACTIVITY} />
     </div>

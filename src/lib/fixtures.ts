@@ -1,6 +1,7 @@
 import type { Organisation } from "@/lib/types";
 import type { EventListItem } from "@/components/events/event-list";
-import type { FormatCardData, ActivityItem } from "@/components/events/event-detail";
+import type { ActivityItem } from "@/components/events/event-detail";
+import type { FormatCardData } from "@/components/events/format-grid";
 import type { EditableUser } from "@/components/settings/user-editor";
 import type { PendingUser } from "@/components/settings/access-requests";
 import type { CommentView, Member } from "@/components/asset/comments";
@@ -24,14 +25,14 @@ export const EVENTS: EventListItem[] = [
 ];
 
 export const CARDS: FormatCardData[] = [
-  { slotId: "s-1", name: "Instagram post", size: "1080 × 1080 px", state: "approved", requested: true, version: 3, thumb: "/preview/flyer.webp", due: "2026-10-20", assignee: { name: "Mihir Shah", initials: "MS" } },
-  { slotId: "s-2", name: "Instagram story", size: "1080 × 1920 px", state: "in_review", requested: true, version: 2, thumb: "/preview/flyer.webp", due: "2026-10-20", assignee: { name: "Mihir Shah", initials: "MS" } },
-  { slotId: "s-3", name: "WhatsApp flyer", size: "1080 × 1350 px", state: "changes_requested", requested: true, version: 1, thumb: "/preview/flyer.webp", due: "2026-10-22", assignee: { name: "Kinjal Patel", initials: "KP" } },
-  { slotId: "s-4", name: "Lobby TV", size: "1920 × 1080 px", state: "requested", requested: true, version: null, thumb: null, due: "2026-10-25", assignee: { name: "Kinjal Patel", initials: "KP" } },
-  { slotId: "s-5", name: "LED wall", size: "3840 × 1152 px", state: "requested", requested: true, version: null, thumb: null, due: null, assignee: null },
-  { slotId: "s-6", name: "Print flyer", size: "8.5 × 11 in · 300 dpi", state: "approved", requested: true, version: 1, thumb: "/preview/flyer.webp", due: "2026-10-18", assignee: { name: "Mihir Shah", initials: "MS" } },
-  { slotId: "s-7", name: "Banner 6 × 3 ft", size: "72 × 36 in", state: "requested", requested: false, version: null, thumb: null, due: null, assignee: null },
-  { slotId: "s-8", name: "Email header", size: "1200 × 400 px", state: "requested", requested: false, version: null, thumb: null, due: null, assignee: null },
+  { slotId: "s-1", name: "Instagram post", size: "1080 × 1080 px", state: "approved", requested: true, version: 3, versionId: "v-3", thumb: "/preview/flyer.webp", due: "2026-10-20", assignee: { name: "Mihir Shah", initials: "MS" } },
+  { slotId: "s-2", name: "Instagram story", size: "1080 × 1920 px", state: "in_review", requested: true, version: 2, versionId: "v-2", thumb: "/preview/flyer.webp", due: "2026-10-20", assignee: { name: "Mihir Shah", initials: "MS" } },
+  { slotId: "s-3", name: "WhatsApp flyer", size: "1080 × 1350 px", state: "changes_requested", requested: true, version: 1, versionId: "v-1", thumb: "/preview/flyer.webp", due: "2026-10-22", assignee: { name: "Kinjal Patel", initials: "KP" } },
+  { slotId: "s-4", name: "Lobby TV", size: "1920 × 1080 px", state: "in_review", requested: true, version: 1, versionId: "v-41", thumb: "/preview/flyer.webp", due: "2026-10-25", assignee: { name: "Kinjal Patel", initials: "KP" } },
+  { slotId: "s-5", name: "LED wall", size: "3840 × 1152 px", state: "requested", requested: true, version: null, versionId: null, thumb: null, due: null, assignee: null },
+  { slotId: "s-6", name: "Print flyer", size: "8.5 × 11 in · 300 dpi", state: "approved", requested: true, version: 1, versionId: "v-1", thumb: "/preview/flyer.webp", due: "2026-10-18", assignee: { name: "Mihir Shah", initials: "MS" } },
+  { slotId: "s-7", name: "Banner 6 × 3 ft", size: "72 × 36 in", state: "requested", requested: false, version: null, versionId: null, thumb: null, due: null, assignee: null },
+  { slotId: "s-8", name: "Email header", size: "1200 × 400 px", state: "requested", requested: false, version: null, versionId: null, thumb: null, due: null, assignee: null },
 ];
 
 export const ACTIVITY: ActivityItem[] = [

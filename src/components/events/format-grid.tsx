@@ -1,0 +1,86 @@
+"use client";
+import { useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import { StateBadge, type BadgeState } from "@/components/state-badge";
+import { UserAvatar } from "@/components/user-avatar";
+import { Icon } from "@/components/material-icon";
+import { Button } from "@/components/ui/button";
+import { SectionHeader } from "@/components/page-header";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { approveMany } from "@/app/actions/reviews";
+import { cn } from "@/lib/utils";
+
+export interface FormatCardData { slotId: string; name: string; size: string; state: BadgeState; requested: boolean; version: number | null; versionId: string | null; uploadedByMe?: boolean; thumb: string | null; due: string | null; assignee: { name: string; initials: string } | null }
+
+/**
+ * Format cards: media-first, badge and version overlaid, 2 columns on phones, 3 on desktop.
+ * Approvers get a Select mode to approve several in-review formats at once (PRD §6.2, no Approve All).
+ */
+export function FormatGrid({ eventId, cards, canApprove = false, meta }: { eventId: string; cards: FormatCardData[]; canApprove?: boolean; meta?: string }) {
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [confirm, setConfirm] = useState(false);
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const eligible = cards.filter((c) => c.requested && c.state === "in_review" && c.versionId && !c.uploadedByMe);
+  const canBulk = canApprove && eligible.length > 1;
+  const chosen = eligible.filter((c) => picked.includes(c.slotId));
+  const stop = () => { setSelecting(false); setPicked([]); setConfirm(false); };
+  const approve = () => start(async () => {
+    const r = await approveMany(chosen.map((c) => c.versionId!));
+    if (r.approved) toast.success(`Approved ${r.approved} format${r.approved === 1 ? "" : "s"}`);
+    for (const f of r.failed) toast.error(f);
+    stop(); router.refresh();
+  });
+
+  return (
+    <section>
+      <SectionHeader title="Formats" meta={meta} action={canBulk ? (selecting ? <Button variant="ghost" size="sm" onClick={stop}>Cancel</Button> : <Button variant="secondary" size="sm" onClick={() => setSelecting(true)}><Icon name="checklist" className="!text-[18px]" />Select</Button>) : undefined} />
+      {selecting && <p className="mb-3 text-sm text-muted-foreground">Pick the in-review formats to approve together. Ones you uploaded yourself are left out.</p>}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">
+        {cards.map((c) => {
+          const selectable = selecting && eligible.some((e) => e.slotId === c.slotId);
+          const on = picked.includes(c.slotId);
+          const body = (
+            <>
+              <div className={"relative aspect-[5/4] " + (c.thumb ? "bg-canvas" : "bg-muted")}>
+                {c.thumb && <img src={c.thumb} alt="" className="absolute inset-0 size-full object-cover" />}
+                {!c.thumb && c.requested && <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><Icon name="add_photo_alternate" size={24} /></div>}
+                <div className="absolute bottom-3 left-3"><StateBadge state={c.requested ? c.state : "na"} /></div>
+                {c.version != null && <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium shadow-sm">v{c.version}</span>}
+                {selectable && <span className={cn("absolute left-3 top-3 flex size-7 items-center justify-center rounded-full border-2 shadow-sm transition-colors", on ? "border-primary bg-primary text-primary-foreground" : "border-white bg-white/80")}>{on && <Icon name="check" className="!text-[18px]" />}</span>}
+              </div>
+              <div className="space-y-1.5 p-3.5">
+                <p className="truncate text-sm font-medium leading-5">{c.name}</p>
+                <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm text-muted-foreground"><span>{c.size}</span>{c.due && <span className="ml-auto text-xs">Due {format(new Date(c.due + "T00:00:00"), "d MMM")}</span>}</p>
+                {c.assignee && <p className="flex items-center gap-2 pt-1 text-sm text-muted-foreground"><UserAvatar initials={c.assignee.initials} size={24} /><span className="truncate">{c.assignee.name}</span></p>}
+              </div>
+            </>
+          );
+          const cls = cn("group block w-full overflow-hidden rounded-2xl border bg-card text-left transition", on ? "border-primary ring-2 ring-primary/20" : "border-border", !selecting && "hover:border-foreground/25 hover:shadow-sm", (!c.requested || (selecting && !selectable)) && "opacity-55");
+          return selecting
+            ? <button key={c.slotId} type="button" disabled={!selectable} onClick={() => setPicked((p) => on ? p.filter((x) => x !== c.slotId) : [...p, c.slotId])} className={cls} aria-pressed={on}>{body}</button>
+            : <Link key={c.slotId} href={`/events/${eventId}/slots/${c.slotId}`} className={cls}>{body}</Link>;
+        })}
+      </div>
+
+      {selecting && (
+        <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+76px)] z-30 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl border border-border bg-card/95 p-2 pl-4 shadow-lg backdrop-blur md:bottom-6">
+          <span className="text-sm font-medium">{chosen.length} of {eligible.length} selected</span>
+          <div className="flex gap-2"><Button variant="ghost" onClick={stop}>Cancel</Button><Button disabled={chosen.length === 0 || pending} onClick={() => setConfirm(true)}>Approve {chosen.length || ""}</Button></div>
+        </div>
+      )}
+
+      <Dialog open={confirm} onOpenChange={(o) => !o && setConfirm(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Approve {chosen.length} format{chosen.length === 1 ? "" : "s"}?</DialogTitle><DialogDescription>Each becomes the approved version, the watermark comes off, and the designers and publishers are notified.</DialogDescription></DialogHeader>
+          <ul className="max-h-56 space-y-1.5 overflow-y-auto text-sm">{chosen.map((c) => <li key={c.slotId} className="flex items-center gap-2"><Icon name="check" className="!text-[18px] text-success" />{c.name} <span className="text-muted-foreground">v{c.version}</span></li>)}</ul>
+          <DialogFooter><Button variant="ghost" onClick={() => setConfirm(false)}>Cancel</Button><Button onClick={approve} disabled={pending}>{pending ? "Approving…" : "Approve"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}

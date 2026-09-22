@@ -88,3 +88,12 @@ export async function setCommentFlag(commentId: string, flag: "addressed" | "con
   const s = (data?.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;
   if (s) revalidatePath(`/events/${s.event_id}/slots/${s.id}`);
 }
+
+/** Bulk approve (PRD §6.2): approves each version in turn; a failure on one does not stop the others. */
+export async function approveMany(versionIds: string[]) {
+  const failed: string[] = []; let approved = 0;
+  for (const id of [...new Set(versionIds)]) {
+    try { await approveVersion(id); approved++; } catch (e) { failed.push((e as Error).message); }
+  }
+  return { approved, failed };
+}

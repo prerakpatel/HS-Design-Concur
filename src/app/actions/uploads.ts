@@ -2,17 +2,19 @@
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
 import { processUpload } from "@/lib/images";
+import { rasterisePdf } from "@/lib/pdf";
 import { BUCKET } from "@/lib/storage";
 import { notify } from "@/lib/notify";
 import { MAX_UPLOAD_BYTES } from "@/config/limits";
 
 const IMAGE_MIMES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+const ALL_MIMES = [...IMAGE_MIMES, "application/pdf"];
 
 /** Step 1 of an upload: the browser asks for a signed URL and sends the file straight to storage. */
 export async function createUploadUrl(slotId: string, filename: string, mime: string, bytes: number) {
   const { supabase, org } = await requireActiveUser();
   if (bytes > MAX_UPLOAD_BYTES) return { error: `Files must be under ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB.` };
-  if (!IMAGE_MIMES.includes(mime)) return { error: "PNG, JPG, WebP or GIF only for now. PDF support for print formats is coming." };
+  if (!ALL_MIMES.includes(mime)) return { error: "PNG, JPG, WebP, GIF, or a PDF for print formats." };
   const { data: slot } = await supabase.from("slots").select("id,event_id,events(org_id,status),formats(allowed_mimes)").eq("id", slotId).maybeSingle();
   const ev = slot?.events as unknown as { org_id: string; status: string } | null;
   if (!slot || ev?.org_id !== org.id) return { error: "Slot not found" };
@@ -37,8 +39,18 @@ export async function finalizeUpload(slotId: string, tmpPath: string, mime: stri
   const { data: file, error: dlErr } = await supabase.storage.from(BUCKET).download(tmpPath);
   if (dlErr || !file) return { error: "Upload not found in storage" };
   const input = Buffer.from(await file.arrayBuffer());
-  let processed;
-  try { processed = await processUpload(input, mime); } catch (e) { return { error: `Could not read that image: ${(e as Error).message}` }; }
+  const isPdf = mime === "application/pdf";
+  if (isPdf && fmt.class !== "print") return { error: "PDF uploads are for print formats. Export a PNG or JPG for digital formats." };
+
+  // A print PDF becomes one side per page (page 1 front, page 2 back); an image is one side.
+  let inputs: { side: "front" | "back"; buf: Buffer; mime: string }[];
+  try {
+    inputs = isPdf ? (await rasterisePdf(input)).map((buf, i) => ({ side: i === 0 ? "front" as const : "back" as const, buf, mime: "image/jpeg" })) : [{ side, buf: input, mime }];
+  } catch (e) { await supabase.storage.from(BUCKET).remove([tmpPath]); return { error: (e as Error).message }; }
+  const processedSides: { side: "front" | "back"; processed: Awaited<ReturnType<typeof processUpload>> }[] = [];
+  try { for (const inp of inputs) processedSides.push({ side: inp.side, processed: await processUpload(inp.buf, inp.mime) }); }
+  catch (e) { return { error: `Could not read that file: ${(e as Error).message}` }; }
+  const firstSide = inputs[0].side;
 
   // Attach a Back side to the latest version if it is a print format, same uploader, no back yet, within the hour.
   let versionId: string | null = null; let number = 1;
@@ -46,7 +58,7 @@ export async function finalizeUpload(slotId: string, tmpPath: string, mime: stri
   if (latest) {
     const sides = (latest.version_sides as { side: string }[]).map((s) => s.side);
     const recent = Date.now() - new Date(latest.created_at).getTime() < 60 * 60 * 1000;
-    if (side === "back" && fmt.class === "print" && latest.uploaded_by === user.id && !sides.includes("back") && recent) { versionId = latest.id; number = latest.number; }
+    if (!isPdf && side === "back" && fmt.class === "print" && latest.uploaded_by === user.id && !sides.includes("back") && recent) { versionId = latest.id; number = latest.number; }
     else number = latest.number + 1;
   }
   if (!versionId) {
@@ -54,22 +66,24 @@ export async function finalizeUpload(slotId: string, tmpPath: string, mime: stri
     if (error || !v) return { error: error?.message ?? "Could not create version" };
     versionId = v.id;
   }
-  const base = `${org.id}/${event.id}/${slotId}/v${number}/${side}`;
-  const put = async (name: string, r: { buf: Buffer; mime: string; ext: string }) => {
-    const p = `${base}/${name}.${r.ext}`;
-    const { error } = await supabase.storage.from(BUCKET).upload(p, r.buf, { contentType: r.mime, upsert: true });
-    if (error) throw new Error(error.message);
-    return p;
-  };
   try {
-    const optimised_path = await put("optimised", processed.optimised);
-    const preview_path = processed.preview ? await put("preview", processed.preview) : null;
-    const thumb_path = await put("thumb", processed.thumb);
-    await supabase.from("version_sides").upsert({ version_id: versionId, side, mime: processed.optimised.mime, width: processed.width, height: processed.height, bytes: processed.optimised.buf.length, optimised_path, preview_path, thumb_path }, { onConflict: "version_id,side" });
+    for (const { side: s, processed } of processedSides) {
+      const base = `${org.id}/${event.id}/${slotId}/v${number}/${s}`;
+      const put = async (name: string, r: { buf: Buffer; mime: string; ext: string }) => {
+        const p = `${base}/${name}.${r.ext}`;
+        const { error } = await supabase.storage.from(BUCKET).upload(p, r.buf, { contentType: r.mime, upsert: true });
+        if (error) throw new Error(error.message);
+        return p;
+      };
+      const optimised_path = await put("optimised", processed.optimised);
+      const preview_path = processed.preview ? await put("preview", processed.preview) : null;
+      const thumb_path = await put("thumb", processed.thumb);
+      await supabase.from("version_sides").upsert({ version_id: versionId, side: s, mime: processed.optimised.mime, width: processed.width, height: processed.height, bytes: processed.optimised.buf.length, optimised_path, preview_path, thumb_path }, { onConflict: "version_id,side" });
+    }
   } catch (e) { return { error: (e as Error).message }; }
   await supabase.storage.from(BUCKET).remove([tmpPath]);
 
-  if (side === "front") {
+  if (firstSide === "front") {
     await supabase.from("versions").update({ decision: "superseded" }).eq("slot_id", slotId).neq("id", versionId).in("decision", ["pending", "changes_requested"]);
     await supabase.from("slots").update({ state: "in_review", updated_at: new Date().toISOString() }).eq("id", slotId);
     if (!event.brief_locked_at) await supabase.from("events").update({ brief_locked_at: new Date().toISOString() }).eq("id", event.id);
