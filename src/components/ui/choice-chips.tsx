@@ -25,9 +25,9 @@ export function ChoiceChips({ name, options, defaultValue, multiple, size = "md"
         const on = values.includes(o.value);
         return (
           <button key={o.value} type="button" role={multiple ? "checkbox" : "radio"} aria-checked={on} onClick={() => toggle(o.value)}
-            className={cn("inline-flex items-center gap-1.5 rounded-full border font-medium transition-colors", size === "sm" ? "h-9 px-3.5 text-sm" : "h-11 px-4 text-[15px]",
+            className={cn("inline-flex items-center gap-1.5 rounded-full border font-medium transition-colors", size === "sm" ? "h-8 px-3 text-[13px]" : "h-10 px-3.5 text-sm",
               on ? "border-foreground bg-foreground text-background" : "border-border bg-card text-foreground hover:border-foreground/40")}>
-            {on && <Icon name="check" className="!text-[18px]" />}{o.label}
+            {on && <Icon name="check" className="!text-[16px]" />}{o.label}
           </button>
         );
       })}

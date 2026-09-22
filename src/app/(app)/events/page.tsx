@@ -30,8 +30,8 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const items = groups[tab as keyof typeof groups] ?? groups.upcoming;
   return (
     <>
-      <PageHeader title="Events" subtitle={`${org.name} · ${used ?? 0} of ${EVENT_CAP} event slots in use`} actions={<Button asChild size="lg"><Link href="/events/new">New event</Link></Button>} />
-      <nav className="mb-6 flex gap-6 border-b border-border text-[15px] font-medium">
+      <PageHeader title="Events" subtitle={`${org.name} · ${used ?? 0} of ${EVENT_CAP} event slots in use`} actions={<Button asChild><Link href="/events/new">New event</Link></Button>} />
+      <nav className="mb-6 flex gap-6 border-b border-border text-sm font-medium">
         {(["upcoming", "drafts", "past"] as const).map((k) => <Link key={k} href={`/events?tab=${k}`} className={"-mb-px flex items-center gap-2 border-b-2 pb-3 capitalize " + (tab === k ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{k}<span className="text-sm font-normal text-muted-foreground">{groups[k].length}</span></Link>)}
       </nav>
       <EventList items={items} emptyTitle={tab === "drafts" ? "No drafts" : tab === "past" ? "Nothing past yet" : "No upcoming events"} emptyBody={tab === "upcoming" ? `Create the first event for ${org.name}. The brief comes first, then formats.` : undefined} />

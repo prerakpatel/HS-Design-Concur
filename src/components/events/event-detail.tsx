@@ -21,8 +21,8 @@ export function FormatGrid({ eventId, cards }: { eventId: string; cards: FormatC
             <div className="absolute bottom-3 left-3"><StateBadge state={c.requested ? c.state : "na"} /></div>
             {c.version != null && <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium shadow-sm">v{c.version}</span>}
           </div>
-          <div className="space-y-2 p-4">
-            <p className="truncate text-[15px] font-medium leading-5">{c.name}</p>
+          <div className="space-y-1.5 p-3.5">
+            <p className="truncate text-sm font-medium leading-5">{c.name}</p>
             <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm text-muted-foreground"><span>{c.size}</span>{c.due && <span className="ml-auto text-xs">Due {format(new Date(c.due + "T00:00:00"), "d MMM")}</span>}</p>
             {c.assignee && <p className="flex items-center gap-2 pt-1 text-sm text-muted-foreground"><UserAvatar initials={c.assignee.initials} size={24} /><span className="truncate">{c.assignee.name}</span></p>}
           </div>
@@ -34,13 +34,13 @@ export function FormatGrid({ eventId, cards }: { eventId: string; cards: FormatC
 
 export function BriefCard({ description, timings, venue, notes, locked, editHref }: { description: string | null; timings: { label: string; when: string }[]; venue: string | null; notes: string | null; locked: boolean; editHref: string }) {
   return (
-    <section className="rounded-2xl bg-subtle p-5 md:p-6">
-      <div className="flex flex-wrap items-center gap-3"><h2 className="text-xl font-semibold leading-7 tracking-[-0.01em]">Brief</h2>{locked ? <StateBadge state="requested" label="Locked · changes via comments" /> : <Link href={editHref} className="text-sm font-medium underline-offset-4 hover:underline">Edit</Link>}</div>
-      <p className="mt-4 whitespace-pre-wrap text-[15px] leading-6">{description ?? <span className="text-muted-foreground">No brief yet. Add the description, timings and venue before designs start.</span>}</p>
+    <section className="rounded-2xl bg-subtle p-5">
+      <div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-semibold leading-7 tracking-[-0.01em]">Brief</h2>{locked ? <StateBadge state="requested" label="Locked · changes via comments" /> : <Link href={editHref} className="text-sm font-medium underline-offset-4 hover:underline">Edit</Link>}</div>
+      <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{description ?? <span className="text-muted-foreground">No brief yet. Add the description, timings and venue before designs start.</span>}</p>
       {(timings.length > 0 || venue) && (
         <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-4">
-          {timings.map((t, i) => <div key={i}><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.label}</dt><dd className="mt-1 text-[15px]">{t.when}</dd></div>)}
-          {venue && <div><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Venue</dt><dd className="mt-1 text-[15px]">{venue}</dd></div>}
+          {timings.map((t, i) => <div key={i}><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.label}</dt><dd className="mt-1 text-sm">{t.when}</dd></div>)}
+          {venue && <div><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Venue</dt><dd className="mt-1 text-sm">{venue}</dd></div>}
         </dl>
       )}
       {notes && <p className="mt-4 text-sm text-muted-foreground">Notes: {notes}</p>}

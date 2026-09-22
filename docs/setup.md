@@ -73,5 +73,5 @@ The JSON reply lists what it did (`retention.archived`, `filesRemoved`, `errors`
 - Event wizard: Basics → Brief (timings) → Formats (Requested / N/A, notes, custom size) → Assign (assignee, due) → Review → Publish (cap and horizon enforced).
 - Uploads: PNG/JPG/WebP/GIF up to 8 MB go straight to Supabase Storage, then a server action produces the optimised file, a DRAFT-watermarked preview and a thumbnail (`src/lib/images.ts`). PDF for print formats is not in yet.
 - Review: comments with @mentions and pins, addressed/confirm flags, Request changes, Approve and notify / download, Reopen. All approve/reopen actions pass an "Are you sure?" dialog.
-- Settings: approve or deny access requests with org membership, edit role / Approver / tags / orgs, remove users, per-org notification switches and Google Chat webhook URL (the webhook is stored; posting arrives with the notifications release).
+- Settings: approve or deny access requests with org membership, edit role / Approver / tags / orgs, remove users, per-org notification switches and Google Chat webhook URL. Formats tab: Designers and Core Admins add, edit, reorder and deactivate catalog formats; a new format joins every open event as N/A.
 - Inbox: in-app notifications with mark-all-read. Email and Google Chat fan-out are next.

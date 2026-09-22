@@ -47,12 +47,12 @@ export function FormatsForm({ eventId, rows, action }: { eventId: string; rows: 
         {rows.map((r) => (
           <li key={r.slotId} className="py-5">
             <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1 pt-1"><p className="text-[15px] font-medium">{r.name}</p><p className="mt-0.5 text-sm text-muted-foreground">{r.size} · {r.kind}</p></div>
+              <div className="min-w-0 flex-1 pt-1"><p className="text-sm font-medium">{r.name}</p><p className="mt-0.5 text-sm text-muted-foreground">{r.size} · {r.kind}</p></div>
               <ChoiceChips name={`req_${r.slotId}`} size="sm" className="shrink-0 flex-nowrap" defaultValue={r.requested ? "on" : "off"} options={[{ value: "on", label: "Requested" }, { value: "off", label: "N/A" }]} />
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Input name={`notes_${r.slotId}`} defaultValue={r.notes} placeholder="Notes for this format (optional)" className="h-11 min-w-0 basis-full text-[15px] sm:basis-0 sm:flex-1" />
-              {r.customSize && <><Input name={`w_${r.slotId}`} type="number" defaultValue={r.w ?? ""} placeholder="Width px" aria-label="Width in pixels" className="h-11 w-[calc(50%-4px)] text-[15px] sm:w-32" /><Input name={`h_${r.slotId}`} type="number" defaultValue={r.h ?? ""} placeholder="Height px" aria-label="Height in pixels" className="h-11 w-[calc(50%-4px)] text-[15px] sm:w-32" /></>}
+              <Input name={`notes_${r.slotId}`} defaultValue={r.notes} placeholder="Notes for this format (optional)" className="h-11 min-w-0 basis-full text-sm sm:basis-0 sm:flex-1" />
+              {r.customSize && <><Input name={`w_${r.slotId}`} type="number" defaultValue={r.w ?? ""} placeholder="Width px" aria-label="Width in pixels" className="h-11 w-[calc(50%-4px)] text-sm sm:w-32" /><Input name={`h_${r.slotId}`} type="number" defaultValue={r.h ?? ""} placeholder="Height px" aria-label="Height in pixels" className="h-11 w-[calc(50%-4px)] text-sm sm:w-32" /></>}
             </div>
           </li>
         ))}
@@ -67,12 +67,12 @@ export interface Person { id: string; label: string }
 export function AssignForm({ eventId, rows, people, action }: { eventId: string; rows: AssignRow[]; people: Person[]; action: Action }) {
   return (
     <form action={action}>
-      {rows.length === 0 ? <p className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-[15px] text-muted-foreground">No formats are requested yet. Go back to Formats.</p> : (
+      {rows.length === 0 ? <p className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">No formats are requested yet. Go back to Formats.</p> : (
         <ul className="divide-y divide-border">
           <li className="hidden grid-cols-[1fr_240px_180px] gap-4 pb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground md:grid"><span>Format</span><span>Designer</span><span>Due</span></li>
           {rows.map((r) => (
             <li key={r.slotId} className="grid grid-cols-1 gap-3 py-4 md:grid-cols-[1fr_240px_180px] md:items-center md:gap-4">
-              <p className="text-[15px] font-medium">{r.name}</p>
+              <p className="text-sm font-medium">{r.name}</p>
               <SelectField name={`assignee_${r.slotId}`} defaultValue={r.assignee}><option value="">Unassigned</option>{people.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</SelectField>
               <Input name={`due_${r.slotId}`} type="date" defaultValue={r.due} />
             </li>
@@ -90,15 +90,15 @@ export function ReviewPanel({ eventId, summary, slots, problems, isDraft, canDel
 }) {
   return (
     <div className="space-y-8">
-      <dl className="grid grid-cols-1 gap-5 rounded-2xl bg-subtle p-6 text-[15px] md:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-5 rounded-2xl bg-subtle p-6 text-sm md:grid-cols-2">
         <div><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Event</dt><dd className="mt-1 font-medium">{summary.title}</dd></div>
         <div><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Date · venue</dt><dd className="mt-1">{summary.when} · {summary.venue}</dd></div>
         <div className="md:col-span-2"><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Brief</dt><dd className="mt-1 whitespace-pre-wrap leading-6">{summary.brief ?? <span className="text-muted-foreground">Missing</span>}</dd></div>
       </dl>
       <ul className="divide-y divide-border rounded-2xl border border-border">
-        {slots.map((s, i) => <li key={i} className="flex items-center gap-4 px-5 py-4 text-[15px]"><span className="min-w-0 flex-1 truncate font-medium">{s.name}</span>{s.assignee ? <span className="flex items-center gap-2 text-muted-foreground"><UserAvatar initials={s.assignee.initials} size={24} /><span className="hidden sm:inline">{s.assignee.name}</span></span> : <span className="text-muted-foreground">Unassigned</span>}<span className="w-20 text-right text-sm text-muted-foreground">{s.due ? format(new Date(s.due + "T00:00:00"), "d MMM") : ""}</span></li>)}
+        {slots.map((s, i) => <li key={i} className="flex items-center gap-4 px-5 py-4 text-sm"><span className="min-w-0 flex-1 truncate font-medium">{s.name}</span>{s.assignee ? <span className="flex items-center gap-2 text-muted-foreground"><UserAvatar initials={s.assignee.initials} size={24} /><span className="hidden sm:inline">{s.assignee.name}</span></span> : <span className="text-muted-foreground">Unassigned</span>}<span className="w-20 text-right text-sm text-muted-foreground">{s.due ? format(new Date(s.due + "T00:00:00"), "d MMM") : ""}</span></li>)}
       </ul>
-      {problems.length > 0 && <ul className="space-y-1.5 rounded-2xl bg-warning-soft p-5 text-[15px] text-warning-text">{problems.map((p) => <li key={p}>{p}</li>)}</ul>}
+      {problems.length > 0 && <ul className="space-y-1.5 rounded-2xl bg-warning-soft p-5 text-sm text-warning-text">{problems.map((p) => <li key={p}>{p}</li>)}</ul>}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
         {canDelete ? <ConfirmButton variant="ghost" action={remove} label={isDraft ? "Delete draft" : "Delete event"} title={`Delete “${summary.title}”?`} description="Core Admins can restore it for 7 days. Its files are removed after that." confirmLabel="Delete" /> : <span />}
         <div className="flex gap-2">

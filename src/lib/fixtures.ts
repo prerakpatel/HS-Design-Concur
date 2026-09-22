@@ -5,6 +5,7 @@ import type { EditableUser } from "@/components/settings/user-editor";
 import type { PendingUser } from "@/components/settings/access-requests";
 import type { CommentView, Member } from "@/components/asset/comments";
 import type { FormatRow, AssignRow, Person } from "@/components/wizard/steps";
+import type { Format } from "@/lib/types";
 
 /** Static fixtures for the /preview design harness. Not used by the app. */
 export const ORGS: Organisation[] = [
@@ -59,6 +60,17 @@ export const COMMENTS: CommentView[] = [
   { id: "c-1", body: "Logo is too close to the bottom edge, move it inside the safe area.", created_at: ago(26), pin_x: 0.5, pin_y: 0.93, addressed_at: null, confirmed_at: null, author: { name: "Prerak Patel", initials: "PP", role: "Core Admin" } },
   { id: "c-2", body: "@mihir can we try the Gujarati headline in the brand red?", created_at: ago(20), pin_x: null, pin_y: null, addressed_at: ago(4), confirmed_at: null, author: { name: "Rina Desai", initials: "RD", role: "Approver" } },
 ];
+const fmt = (o: Partial<Format> & Pick<Format, "key" | "name">): Format => ({ id: "f-" + o.key, width: null, height: null, unit: "px", dpi: null, class: "digital", frame: "flat", safe_top: 0, safe_right: 0, safe_bottom: 0, safe_left: 0, bleed_in: null, safe_margin_in: null, allow_custom_size: false, allowed_mimes: ["image/png", "image/jpeg", "image/webp", "image/gif"], notes: null, active: true, sort: 0, ...o });
+export const FORMATS: Format[] = [
+  fmt({ key: "sambandh_event", name: "Sambandh Event", width: 1125, height: 1200, frame: "phone", safe_top: 249 }),
+  fmt({ key: "ig_story", name: "IG Reel / Story", width: 1080, height: 1920, frame: "phone", safe_top: 240, safe_bottom: 240 }),
+  fmt({ key: "ig_post", name: "IG Post", width: 1080, height: 1350, safe_top: 168, safe_bottom: 168 }),
+  fmt({ key: "tv", name: "TV", width: 1920, height: 1080, frame: "tv" }),
+  fmt({ key: "print_7x5", name: "Print 7 × 5 in", width: 7.5, height: 5.5, unit: "in", dpi: 300, class: "print", frame: "print", bleed_in: 0.25, safe_margin_in: 0.25, allowed_mimes: ["image/png", "image/jpeg", "application/pdf"] }),
+  fmt({ key: "led_backwall", name: "LED backwall", frame: "led", allow_custom_size: true }),
+  fmt({ key: "web_alt", name: "Web (1500)", width: 1500, height: 548, active: false }),
+];
+export const USERS_PREFS: Record<string, "instant" | "digest" | "off"> = { "u-1": "instant", "u-2": "digest", "u-3": "instant", "u-4": "off", "u-5": "digest" };
 export const INBOX = [["assignment_ind", "Rina Desai assigned you Lobby TV", ago(2), false], ["alternate_email", "Rina Desai mentioned you on WhatsApp flyer v1", ago(20), false], ["check_circle", "Prerak Patel approved Instagram post v3", ago(30), true], ["schedule", "Instagram story is due in 3 days", ago(50), true]] as const;
 export const MEMBERS: Member[] = USERS.map((u) => ({ id: u.id, name: u.name, handle: u.email.split("@")[0].toLowerCase() }));
 

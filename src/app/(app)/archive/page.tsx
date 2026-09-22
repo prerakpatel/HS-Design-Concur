@@ -34,7 +34,7 @@ export default async function ArchivePage() {
     <>
       <PageHeader title="Archive" subtitle={`Read-only. Events arrive ${PURGE_AFTER_DAYS} days after their date with one compressed reference per approved format. Briefs, decisions and comments are kept.`} />
       {cards.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border px-6 py-16 text-center text-[15px] text-muted-foreground">Nothing archived yet. Events move here a week after their date.</p>
+        <p className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">Nothing archived yet. Events move here a week after their date.</p>
       ) : (
         <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">
           {cards.map((c) => (
@@ -44,7 +44,7 @@ export default async function ArchivePage() {
                   {c.cover ? <img src={c.cover} alt="" className="absolute inset-0 size-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><Icon name="inventory_2" size={24} /></div>}
                 </div>
                 <div className="space-y-1 p-4">
-                  <p className="truncate text-[15px] font-medium leading-5">{c.title}</p>
+                  <p className="truncate text-sm font-medium leading-5">{c.title}</p>
                   <p className="text-sm text-muted-foreground">{c.date ? format(new Date(c.date + "T00:00:00"), "d MMM yyyy") : "Undated"}</p>
                   <p className="text-sm text-muted-foreground">{c.approved} of {c.requested} approved</p>
                 </div>
@@ -64,7 +64,7 @@ export default async function ArchivePage() {
                 <li key={d.id} className="flex items-center gap-4 py-4">
                   <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Icon name="delete" size={24} /></span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] font-medium leading-5">{d.title}</p>
+                    <p className="truncate text-sm font-medium leading-5">{d.title}</p>
                     <p className="text-sm text-muted-foreground">{d.status === "draft" ? "Draft" : "Event"}{d.event_date ? ` · ${format(new Date(d.event_date + "T00:00:00"), "d MMM yyyy")}` : ""} · deleted {relativeTime(d.deleted_at)} · {left} day{left === 1 ? "" : "s"} left</p>
                   </div>
                   <ConfirmButton variant="secondary" label="Restore" title={`Restore “${d.title}”?`} description="It returns to the Events list exactly as it was." confirmLabel="Restore" action={restoreEvent.bind(null, d.id)} />

@@ -12,7 +12,7 @@ export function AppShell({ org, orgs, user, slots, children, wide }: ShellProps 
       <div className="hidden md:contents"><AppSidebar org={org} orgs={orgs} user={user} slots={slots} /></div>
       <SidebarInset className="min-h-dvh bg-background">
         <MobileTopBar org={org} orgs={orgs} initials={user.initials} />
-        <main className={wide ? "w-full" : "mx-auto w-full max-w-[1120px] px-5 pb-28 pt-5 md:px-12 md:pb-16 md:pt-10"}>{children}</main>
+        <main className={wide ? "w-full" : "mx-auto w-full max-w-[1120px] px-5 pb-28 pt-4 md:px-10 md:pb-16 md:pt-8"}>{children}</main>
         <MobileNav />
       </SidebarInset>
     </SidebarProvider>

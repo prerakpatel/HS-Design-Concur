@@ -12,7 +12,7 @@ import { Icon } from "@/components/material-icon";
 import { ConfirmButton } from "@/components/confirm-button";
 import { updateUser, removeUser } from "@/app/actions/admin";
 
-export interface EditableUser { id: string; name: string; email: string; initials: string; role: "member" | "core_admin"; is_approver: boolean; function_tags: string[]; orgIds: string[] }
+export interface EditableUser { id: string; name: string; email: string; initials: string; role: "member" | "core_admin"; is_approver: boolean; function_tags: string[]; orgIds: string[]; email_pref?: "instant" | "digest" | "off" }
 export interface OrgOption { id: string; label: string }
 const TAGS = [{ value: "central", label: "Central" }, { value: "publication", label: "Publication" }, { value: "designer", label: "Designer" }];
 const tagLabel = (t: string) => TAGS.find((x) => x.value === t)?.label ?? t;
@@ -25,17 +25,25 @@ export function UsersList({ users, orgs, currentUserId }: { users: EditableUser[
       <ul className="divide-y divide-border">
         {users.map((u) => (
           <li key={u.id}>
-            <button type="button" onClick={() => setOpen(u)} className="-mx-3 flex w-[calc(100%+24px)] items-center gap-4 rounded-2xl px-3 py-4 text-left transition-colors hover:bg-subtle">
-              <UserAvatar initials={u.initials} size={40} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-medium leading-5">{u.name}{u.id === currentUserId && <span className="ml-2 text-xs font-normal text-muted-foreground">you</span>}</p>
-                <p className="truncate text-sm text-muted-foreground">{u.email}</p>
-                <p className="mt-1 truncate text-xs text-muted-foreground md:hidden">{[u.role === "core_admin" ? "Core Admin" : u.is_approver ? "Approver" : null, ...u.function_tags.map(tagLabel), orgs.filter((o) => u.orgIds.includes(o.id)).map((o) => o.label).join(", ")].filter(Boolean).join(" · ")}</p>
-              </div>
-              <div className="hidden flex-wrap items-center justify-end gap-1.5 md:flex">
-                {u.role === "core_admin" ? <StateBadge state="in_review" label="Core Admin" /> : u.is_approver ? <StateBadge state="approved" label="Approver" /> : null}
-                {u.function_tags.map((t) => <StateBadge key={t} state="requested" label={tagLabel(t)} />)}
-                {orgs.filter((o) => u.orgIds.includes(o.id)).map((o) => <span key={o.id} className="text-xs text-muted-foreground">{o.label}</span>)}
+            <button type="button" onClick={() => setOpen(u)} className="-mx-3 flex w-[calc(100%+24px)] items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-subtle md:gap-4">
+              <UserAvatar initials={u.initials} size={36} />
+              <div className="min-w-0 flex-1 md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_120px] md:items-center md:gap-4">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium leading-5">{u.name}{u.id === currentUserId && <span className="ml-2 text-xs font-normal text-muted-foreground">you</span>}</p>
+                  <p className="truncate text-[13px] text-muted-foreground">{u.email}</p>
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:mt-0">
+                  {u.role === "core_admin" ? <StateBadge state="in_review" label="Core Admin" /> : <StateBadge state="requested" label="Member" />}
+                  {(u.is_approver || u.role === "core_admin") && <StateBadge state="approved" label="Approver" />}
+                  <span className="ml-1 text-[13px] text-muted-foreground md:hidden">{u.function_tags.map(tagLabel).join(" · ") || "No function"}</span>
+                </div>
+                <div className="hidden flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-muted-foreground md:flex">
+                  {u.function_tags.length ? u.function_tags.map((t) => <span key={t}>{tagLabel(t)}</span>) : <span className="text-muted-foreground/70">No function</span>}
+                </div>
+                <div className="mt-1 text-[13px] text-muted-foreground md:mt-0">
+                  <p className="truncate">{orgs.filter((o) => u.orgIds.includes(o.id)).map((o) => o.label).join(", ") || "No org"}{u.email_pref && <span className="text-muted-foreground/80 md:hidden"> · Email {u.email_pref === "instant" ? "as it happens" : u.email_pref === "digest" ? "daily" : "off"}</span>}</p>
+                  {u.email_pref && <p className="hidden truncate text-xs text-muted-foreground/80 md:block">Email {u.email_pref === "instant" ? "as it happens" : u.email_pref === "digest" ? "daily" : "off"}</p>}
+                </div>
               </div>
               <Icon name="chevron_right" className="shrink-0 text-muted-foreground" />
             </button>
@@ -85,7 +93,7 @@ function ApproverRow({ defaultOn, lockedOn }: { defaultOn: boolean; lockedOn: bo
   const [on, setOn] = useState(defaultOn);
   return (
     <label className="flex items-center justify-between gap-4 rounded-2xl border border-border p-4">
-      <span><span className="block text-[15px] font-medium">Can approve designs</span><span className="block text-sm text-muted-foreground">{lockedOn ? "Core Admins always can." : "Approvers sign off, request changes and reopen."}</span></span>
+      <span><span className="block text-sm font-medium">Can approve designs</span><span className="block text-sm text-muted-foreground">{lockedOn ? "Core Admins always can." : "Approvers sign off, request changes and reopen."}</span></span>
       <input type="hidden" name="is_approver" value={on ? "on" : "off"} />
       <Switch checked={lockedOn || on} onCheckedChange={setOn} disabled={lockedOn} />
     </label>
@@ -93,5 +101,5 @@ function ApproverRow({ defaultOn, lockedOn }: { defaultOn: boolean; lockedOn: bo
 }
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return <div className="space-y-3"><div><p className="text-[15px] font-medium">{label}</p>{hint && <p className="mt-0.5 text-sm text-muted-foreground">{hint}</p>}</div>{children}</div>;
+  return <div className="space-y-3"><div><p className="text-sm font-medium">{label}</p>{hint && <p className="mt-0.5 text-sm text-muted-foreground">{hint}</p>}</div>{children}</div>;
 }
