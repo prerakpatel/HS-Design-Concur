@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { createClient } from "@/lib/supabase/client";
-import { createUploadUrl, finalizeUpload } from "@/app/actions/uploads";
+import { createUploadUrl } from "@/app/actions/uploads";
 
 export function UploadPanel({ slotId, accept, isPrint, nextNumber, compact }: { slotId: string; accept: string[]; isPrint: boolean; nextNumber: number; compact?: boolean }) {
   const [side, setSide] = useState<"front" | "back">("front");
@@ -21,8 +21,9 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, compact }: { 
       const { error } = await createClient().storage.from("assets").uploadToSignedUrl(start.path, start.token, file, { contentType: file.type });
       if (error) throw new Error(error.message);
       setBusy("Optimising and watermarking…");
-      const done = await finalizeUpload(slotId, start.path, file.type, side);
-      if ("error" in done) throw new Error(done.error);
+      const res = await fetch("/api/uploads/finalize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slotId, tmpPath: start.path, mime: file.type, side }) });
+      const done = await res.json().catch(() => ({ error: `Processing failed (${res.status})` })) as { error?: string; number?: number };
+      if (!res.ok || done.error) throw new Error(done.error ?? `Processing failed (${res.status})`);
       toast.success(`Version ${done.number} is in review`);
       router.refresh();
     } catch (e) { toast.error((e as Error).message); }

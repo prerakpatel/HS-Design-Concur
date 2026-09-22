@@ -8,7 +8,7 @@ import { SelectField } from "@/components/ui/select-field";
 import { ChoiceChips } from "@/components/ui/choice-chips";
 import { StateBadge } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
-import { TimingsEditor, type Timing } from "@/components/wizard/timings-editor";
+import { DateField } from "@/components/ui/date-field";
 import { WizardFooter } from "@/components/wizard/wizard-shell";
 import { ConfirmButton } from "@/components/confirm-button";
 
@@ -28,13 +28,29 @@ export function BasicsForm({ eventId, orgName, values, action, notice }: { event
   );
 }
 
-export function BriefForm({ eventId, values, timings, action }: { eventId: string; values: { description: string; venue: string; notes: string }; timings: Timing[]; action: Action }) {
+export interface BriefValues { event_date: string; time_text: string; timing_note: string; description: string; venue_name: string; venue_address: string; notes: string }
+/** The brief is exactly what goes on the designs: when, the invite text, where. */
+export function BriefForm({ eventId, values, action }: { eventId: string; values: BriefValues; action: Action }) {
+  const group = "space-y-5 rounded-2xl border border-border p-5";
+  const legend = "text-xs font-medium uppercase tracking-wide text-muted-foreground";
   return (
-    <form action={action} className="space-y-8">
-      <div className={field}><Label htmlFor="description">Description</Label><Textarea id="description" name="description" rows={6} defaultValue={values.description} placeholder="What the event is, who it is for, what to highlight…" /></div>
-      <div className="space-y-3"><Label>Timings</Label><TimingsEditor initial={timings} /></div>
-      <div className={field}><Label htmlFor="venue">Venue, as it should appear on the design</Label><Input id="venue" name="venue" defaultValue={values.venue} /></div>
-      <div className={field}><Label htmlFor="notes">Notes for designers</Label><Textarea id="notes" name="notes" rows={3} defaultValue={values.notes} placeholder="Sponsor line, language, colours to avoid…" /></div>
+    <form action={action} className="space-y-6">
+      <section className={group}>
+        <p className={legend}>When</p>
+        <div className={field}><Label htmlFor="event_date">Date</Label><DateField id="event_date" name="event_date" defaultValue={values.event_date} /></div>
+        <div className={field}><Label htmlFor="time_text">Time</Label><Input id="time_text" name="time_text" defaultValue={values.time_text} placeholder="10:30 AM EST onwards" /><p className="text-sm text-muted-foreground">Written exactly as it should appear on the design.</p></div>
+        <div className={field}><Label htmlFor="timing_note">Timing note</Label><Input id="timing_note" name="timing_note" defaultValue={values.timing_note} placeholder="Followed by Aarti and Mahaprasad" /></div>
+      </section>
+      <section className={group}>
+        <p className={legend}>Invite text</p>
+        <div className={field}><Label htmlFor="description" className="sr-only">Invite text</Label><Textarea id="description" name="description" rows={7} defaultValue={values.description} placeholder="The words that go on the invite: who is invited, what the occasion is, what to highlight…" /></div>
+      </section>
+      <section className={group}>
+        <p className={legend}>Where</p>
+        <div className={field}><Label htmlFor="venue_name">Venue name</Label><Input id="venue_name" name="venue_name" defaultValue={values.venue_name} placeholder="Harisumiran Mandir" /></div>
+        <div className={field}><Label htmlFor="venue_address">Address</Label><Textarea id="venue_address" name="venue_address" rows={2} defaultValue={values.venue_address} placeholder="1 Temple Way, Edison, NJ 08817" /></div>
+      </section>
+      <div className={field}><Label htmlFor="notes">Anything else for the designers <span className="font-normal text-muted-foreground">(optional)</span></Label><Textarea id="notes" name="notes" rows={2} defaultValue={values.notes} placeholder="Sponsor line, language, colours to avoid…" /></div>
       <WizardFooter eventId={eventId} step="brief" />
     </form>
   );

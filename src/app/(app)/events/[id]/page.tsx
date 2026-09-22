@@ -10,7 +10,7 @@ import { Icon } from "@/components/material-icon";
 import { Button } from "@/components/ui/button";
 import { BriefCard, ActivityFeed } from "@/components/events/event-detail";
 import { FormatGrid, type FormatCardData } from "@/components/events/format-grid";
-import type { EventRow, Format, Slot } from "@/lib/types";
+import type { Brief, EventRow, Format, Slot } from "@/lib/types";
 
 const VERB: Record<string, (p: Record<string, string>) => string> = { "event.created": () => "created the event", "event.published": () => "published the event", "event.deleted": () => "deleted the event", "version.uploaded": (p) => `uploaded ${p.format} v${p.number}`, "version.approved": (p) => `approved ${p.format} v${p.number}`, "version.changes_requested": (p) => `requested changes on ${p.format} v${p.number}`, "version.reopened": (p) => `reopened ${p.format} v${p.number}`, "event.archived": (p) => `archived the event · ${p.filesRemoved ?? 0} files reduced to references`, "event.restored": () => "restored the event" };
 
@@ -19,9 +19,8 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   const { supabase, org, user } = await requireActiveUser();
   const { data: event } = await supabase.from("events").select("*").eq("id", id).is("deleted_at", null).maybeSingle<EventRow>();
   if (!event || event.org_id !== org.id) notFound();
-  const [{ data: brief }, { data: timings }, { data: slots }, { data: formats }, { data: activity }, { data: creator }] = await Promise.all([
-    supabase.from("briefs").select("*").eq("event_id", id).maybeSingle<{ description: string | null; venue: string | null; notes: string | null }>(),
-    supabase.from("brief_timings").select("*").eq("event_id", id).order("sort"),
+  const [{ data: brief }, { data: slots }, { data: formats }, { data: activity }, { data: creator }] = await Promise.all([
+    supabase.from("briefs").select("*").eq("event_id", id).maybeSingle<Brief>(),
     supabase.from("slots").select("*,assignee:assignee_id(name,email),versions(id,number,uploaded_by,version_sides(side,thumb_path,reference_path))").eq("event_id", id),
     supabase.from("formats").select("*").order("sort").returns<Format[]>(),
     supabase.from("activity").select("*,actor:actor_id(name,email)").eq("event_id", id).order("created_at", { ascending: false }).limit(12),
@@ -45,8 +44,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         actions={event.status === "archived" ? <StateBadge state="requested" label="Archived · read-only" className="h-8 px-3 text-sm" /> : <>{event.status === "draft" && <StateBadge state="draft" className="h-8 px-3 text-sm" />}<Button asChild variant="secondary"><Link href={`/events/${id}/edit/${event.status === "draft" ? "review" : "basics"}`}>{event.status === "draft" ? "Continue setup" : "Edit event"}</Link></Button></>} />
       <div className="grid gap-10 lg:grid-cols-[1fr_280px]">
         <div className="space-y-10">
-          <BriefCard description={brief?.description ?? null} venue={brief?.venue ?? null} notes={brief?.notes ?? null} locked={!!event.brief_locked_at || event.status === "archived"} editHref={event.status === "archived" ? "#" : `/events/${id}/edit/brief`}
-            timings={(timings ?? []).map((t) => ({ label: t.label ?? "Timing", when: [t.on_date ? format(new Date(t.on_date + "T00:00:00"), "EEE d MMM") : "", t.starts_at ? `${t.starts_at.slice(0, 5)}${t.ends_at ? "–" + t.ends_at.slice(0, 5) : ""}` : ""].filter(Boolean).join(" · ") }))} />
+          <BriefCard brief={{ date: event.event_date, timeText: brief?.time_text ?? null, timingNote: brief?.timing_note ?? null, inviteText: brief?.description ?? null, venueName: brief?.venue_name ?? event.venue ?? null, venueAddress: brief?.venue_address ?? null, notes: brief?.notes ?? null }} locked={!!event.brief_locked_at || event.status === "archived"} editHref={event.status === "archived" ? "#" : `/events/${id}/edit/brief`} />
           <FormatGrid eventId={id} cards={cards} canApprove={event.status !== "archived" && (user.is_approver || user.role === "core_admin")} meta={`${approved} approved · ${requested.length - approved} in progress · ${cards.length - requested.length} N/A`} />
         </div>
         <ActivityFeed items={(activity ?? []).map((a) => { const who = a.actor as unknown as { name: string | null; email: string } | null; return { id: a.id, who: who?.name ?? who?.email ?? "Design & Concur", initials: initials(who?.name ?? null, who?.email ?? "?"), what: (VERB[a.kind] ?? (() => a.kind))(a.payload as Record<string, string>), when: a.created_at }; })} />

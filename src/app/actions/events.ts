@@ -39,7 +39,7 @@ export async function createDraftEvent(formData: FormData) {
   if (!horizonOk(eventDate)) throw new Error(`Events can be at most ${MONTHS_AHEAD} months out`);
   const { data, error } = await supabase.from("events").insert({ org_id: org.id, title, event_date: eventDate, venue, created_by: user.id, status: "draft" }).select("id").single();
   if (error) throw new Error(error.message);
-  await supabase.from("briefs").insert({ event_id: data.id, venue });
+  await supabase.from("briefs").insert({ event_id: data.id, venue_name: venue });
   const { data: formats } = await supabase.from("formats").select("id").eq("active", true);
   if (formats?.length) await supabase.from("slots").insert(formats.map((f) => ({ event_id: data.id, format_id: f.id, requested: true })));
   await supabase.from("activity").insert({ org_id: org.id, event_id: data.id, actor_id: user.id, kind: "event.created", payload: { title } });
@@ -62,18 +62,13 @@ export async function updateBasics(eventId: string, formData: FormData) {
 export async function saveBrief(eventId: string, formData: FormData) {
   const { supabase, event } = await ownEvent(eventId);
   if (event.brief_locked_at) throw new Error("The brief is locked once a design has been uploaded. Use comments for changes.");
-  const description = String(formData.get("description") ?? "").trim() || null;
-  const notes = String(formData.get("notes") ?? "").trim() || null;
-  const venue = String(formData.get("venue") ?? "").trim() || null;
-  await supabase.from("briefs").upsert({ event_id: event.id, description, notes, venue });
-  const labels = formData.getAll("timing_label").map(String);
-  const dates = formData.getAll("timing_date").map(String);
-  const starts = formData.getAll("timing_start").map(String);
-  const ends = formData.getAll("timing_end").map(String);
-  await supabase.from("brief_timings").delete().eq("event_id", event.id);
-  const rows = labels.map((label, i) => ({ event_id: event.id, label: label.trim() || null, on_date: dates[i] || null, starts_at: starts[i] || null, ends_at: ends[i] || null, sort: i })).filter((r) => r.label || r.on_date || r.starts_at);
-  if (rows.length) await supabase.from("brief_timings").insert(rows);
-  await supabase.from("events").update({ last_edited_at: new Date().toISOString() }).eq("id", event.id);
+  const str = (k: string) => String(formData.get(k) ?? "").trim() || null;
+  const eventDate = str("event_date");
+  if (!horizonOk(eventDate)) throw new Error(`Events can be at most ${MONTHS_AHEAD} months out`);
+  const venue_name = str("venue_name");
+  const { error } = await supabase.from("briefs").upsert({ event_id: event.id, description: str("description"), time_text: str("time_text"), timing_note: str("timing_note"), venue_name, venue_address: str("venue_address"), notes: str("notes") });
+  if (error) throw new Error(error.message);
+  await supabase.from("events").update({ event_date: eventDate, venue: venue_name, last_edited_at: new Date().toISOString() }).eq("id", event.id);
   revalidatePath(`/events/${event.id}`);
   goto(event.id, formData, "formats");
 }

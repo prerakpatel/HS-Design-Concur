@@ -77,7 +77,7 @@ The JSON reply lists what it did (`retention.archived`, `filesRemoved`, `errors`
 
 ## What works after step 4
 
-- Event wizard (full-screen, outside the app shell, route group `(wizard)`): Basics → Brief (timings) → Formats (Requested / N/A, notes, custom size) → Assign (assignee, due) → Review → Publish (cap and horizon enforced).
+- Event wizard (full-screen, outside the app shell, route group `(wizard)`): Basics → Brief (date with weekday, time as free text, timing note, invite text, venue name + address) → Formats (Requested / N/A, notes, custom size) → Assign (assignee, due) → Review → Publish (cap and horizon enforced).
 - Uploads: PNG/JPG/WebP/GIF up to 8 MB go straight to Supabase Storage, then a server action produces the optimised file, a DRAFT-watermarked preview and a thumbnail (`src/lib/images.ts`). Print formats also take a PDF of up to two pages, rasterised at 150 dpi to Front and Back (`src/lib/pdf.ts`); the PDF itself is not kept.
 - Bulk approve: on an event page, approvers use Select to approve several in-review formats together (own uploads excluded).
 - Review: comments with @mentions and pins, addressed/confirm flags, Request changes, Approve and notify / download, Reopen. All approve/reopen actions pass an "Are you sure?" dialog.

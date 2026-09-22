@@ -378,7 +378,7 @@ formats(id, key, name, width, height, unit enum('px','in'), dpi, class enum('pri
 events(id, org_id, title, event_date date, venue, status enum('draft','active','archived'),
        created_by, brief_locked_at, deleted_at, last_edited_at, created_at)
 brief(event_id pk, description, venue, notes)
-brief_timings(id, event_id, label, on_date, starts_at, ends_at, sort)
+briefs(event_id, description [invite text], time_text, timing_note, venue_name, venue_address, notes)  — v1.1: replaced the brief_timings table; time is free text as written on the design
 slots(id, event_id, format_id, requested bool /* false = N/A */, custom_w, custom_h, notes,
       assignee_id, due_on, state enum('requested','in_review','changes_requested','approved'))
 versions(id, slot_id, number, uploaded_by, created_at, decision enum('pending','approved','changes_requested','superseded'),

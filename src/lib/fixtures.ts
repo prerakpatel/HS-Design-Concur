@@ -42,7 +42,7 @@ export const ACTIVITY: ActivityItem[] = [
   { id: 4, who: "Rina Desai", initials: "RD", what: "published the event", when: ago(120) },
 ];
 
-export const TIMINGS = [{ label: "Annakut darshan", when: "Sun 8 Nov · 10:00–13:00" }, { label: "Aarti", when: "Sun 8 Nov · 18:30" }];
+export const BRIEF_VIEW = { date: "2026-11-08", timeText: "10:30 AM EST onwards", timingNote: "Followed by Aarti and Mahaprasad", inviteText: null as string | null, venueName: "Harisumiran Mandir", venueAddress: "1 Temple Way\nEdison, NJ 08817", notes: "Keep the sponsor line small. Avoid purple." };
 export const BRIEF = "Annual Annakut darshan with over 1,000 food items offered to Thakorji. Invite families to darshan and evening aarti. Highlight free parking and the youth volunteer sign-up. Bilingual (English + Gujarati) where the format allows.";
 
 export const USERS: EditableUser[] = [
