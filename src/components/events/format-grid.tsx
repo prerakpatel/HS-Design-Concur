@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { approveMany } from "@/app/actions/reviews";
 import { cn } from "@/lib/utils";
 
-export interface FormatCardData { slotId: string; name: string; size: string; state: BadgeState; requested: boolean; version: number | null; versionId: string | null; uploadedByMe?: boolean; thumb: string | null; due: string | null; assignee: { name: string; initials: string } | null }
+export interface FormatCardData { slotId: string; name: string; size: string; state: BadgeState; requested: boolean; version: number | null; versionId: string | null; uploadedByMe?: boolean; thumb: string | null; due: string | null; assignee: { name: string; initials: string } | null; isPrimary?: boolean }
 
 /**
  * Format cards: media-first, badge and version overlaid, 2 columns on phones, 3 on desktop.
@@ -29,7 +29,7 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
   const [pending, start] = useTransition();
   const router = useRouter();
   const eligible = cards.filter((c) => c.requested && c.state === "in_review" && c.versionId && !c.uploadedByMe);
-  const canBulk = canApprove && eligible.length > 1;
+  const canBulk = canApprove && eligible.length > 0;
   const chosen = eligible.filter((c) => picked.includes(c.slotId));
   const stop = () => { setSelecting(false); setPicked([]); setConfirm(false); };
   const approve = () => start(async () => {
@@ -54,6 +54,7 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
                 {!c.thumb && c.requested && <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><Icon name="add_photo_alternate" size={24} /></div>}
                 <div className="absolute bottom-3 left-3"><StateBadge state={c.requested ? c.state : "na"} /></div>
                 {c.version != null && <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium shadow-sm">v{c.version}</span>}
+                {c.isPrimary && <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-xs font-medium text-brand-foreground shadow-sm">Primary</span>}
                 {selectable && <span className={cn("absolute left-3 top-3 flex size-7 items-center justify-center rounded-full border-2 shadow-sm transition-colors", on ? "border-primary bg-primary text-primary-foreground" : "border-white bg-white/80")}>{on && <Icon name="check" className="!text-[18px]" />}</span>}
               </div>
               <div className="space-y-1.5 p-3.5">

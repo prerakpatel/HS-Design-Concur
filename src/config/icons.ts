@@ -6,6 +6,7 @@ export const ICON_NAMES = [
   "add_photo_alternate",
   "alternate_email",
   "arrow_back",
+  "arrow_forward",
   "assignment_ind",
   "auto_delete",
   "block",
@@ -14,10 +15,12 @@ export const ICON_NAMES = [
   "check_circle",
   "checklist",
   "chevron_right",
+  "close",
   "delete",
   "devices",
   "event",
   "expand_more",
+  "flip",
   "hourglass_top",
   "how_to_reg",
   "inventory_2",
@@ -35,5 +38,6 @@ export const ICON_NAMES = [
   "schedule",
   "settings",
   "unfold_more",
-  "upload"
+  "upload",
+  "zoom_in"
 ] as const;

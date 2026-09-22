@@ -7,7 +7,7 @@ import { Icon } from "@/components/material-icon";
 import { createClient } from "@/lib/supabase/client";
 import { createUploadUrl } from "@/app/actions/uploads";
 
-export function UploadPanel({ slotId, accept, isPrint, nextNumber, compact }: { slotId: string; accept: string[]; isPrint: boolean; nextNumber: number; compact?: boolean }) {
+export function UploadPanel({ slotId, accept, isPrint, nextNumber, compact, needsBack }: { slotId: string; accept: string[]; isPrint: boolean; nextNumber: number; compact?: boolean; needsBack?: boolean }) {
   const [side, setSide] = useState<"front" | "back">("front");
   const [busy, setBusy] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -31,16 +31,12 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, compact }: { 
   }
 
   return (
-    <div className={compact ? "flex items-center gap-2" : "rounded-2xl border border-dashed border-border p-5 text-center"}>
+    <div className={compact ? "flex flex-wrap items-center gap-2" : "rounded-2xl border border-dashed border-border p-5 text-center"}>
       <input ref={input} type="file" accept={accept.join(",")} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f); }} />
-      {isPrint && (
-        <div className="mb-3 inline-flex rounded-full bg-muted p-1 text-xs font-medium">
-          {(["front", "back"] as const).map((s) => <button key={s} type="button" onClick={() => setSide(s)} className={"rounded-full px-3 py-1 capitalize " + (side === s ? "bg-card shadow-sm" : "text-muted-foreground")}>{s}</button>)}
-        </div>
-      )}
-      <Button onClick={() => input.current?.click()} disabled={!!busy} size={compact ? "default" : "lg"} className={compact ? "" : "h-11 rounded-[10px] px-5"}>
-        <Icon name="upload" />{busy ?? (isPrint && side === "back" ? "Upload back" : `Upload version ${nextNumber}`)}
+      <Button onClick={() => { setSide("front"); input.current?.click(); }} disabled={!!busy} size={compact ? "default" : "lg"}>
+        <Icon name="upload" />{busy ?? (isPrint && !compact ? `Upload version ${nextNumber} (front, or a 2-page PDF)` : `Upload version ${nextNumber}`)}
       </Button>
+      {isPrint && needsBack && <Button variant="secondary" onClick={() => { setSide("back"); input.current?.click(); }} disabled={!!busy}><Icon name="flip" />Add back side</Button>}
       {!compact && <p className="mt-3 text-xs text-muted-foreground">{accept.map((m) => m.split("/")[1].toUpperCase().replace("JPEG", "JPG")).join(", ")} up to 8 MB. It is optimised once and shown with a DRAFT watermark until approved.{isPrint && accept.includes("application/pdf") ? " A PDF with two pages fills Front and Back in one go." : ""}</p>}
     </div>
   );

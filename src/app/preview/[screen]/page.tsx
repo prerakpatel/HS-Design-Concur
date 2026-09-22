@@ -14,7 +14,8 @@ import { AccessRequests } from "@/components/settings/access-requests";
 import { FormatsList } from "@/components/settings/format-editor";
 import { WizardShell } from "@/components/wizard/wizard-shell";
 import { BasicsForm, BriefForm, FormatsForm, AssignForm, ReviewPanel } from "@/components/wizard/steps";
-import { CommentsPanel } from "@/components/asset/comments";
+import { AssetWorkspace } from "@/components/asset/asset-workspace";
+import { BackLink } from "@/components/page-header";
 import { ReviewActions } from "@/components/asset/review-actions";
 import { UploadPanel } from "@/components/asset/upload-panel";
 import { relativeTime } from "@/lib/labels";
@@ -54,20 +55,23 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     </div>
   </>); }
 
-  if (screen === "slot") return shell(<div className="space-y-8">
-    <div className="flex flex-wrap items-start justify-between gap-5">
+  if (screen === "slot") return shell(<div className="space-y-6">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <BackLink href="#" label="Diwali Annakut Darshan" />
+      <div className="flex items-center gap-2"><Button asChild variant="outline" size="sm"><Link href="#"><Icon name="arrow_back" className="!text-[16px]" />Instagram story</Link></Button><span className="text-xs text-muted-foreground">3 of 6</span><Button asChild variant="outline" size="sm"><Link href="#">Lobby TV<Icon name="arrow_forward" className="!text-[16px]" /></Link></Button></div>
+    </div>
+    <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">
-        <Link href="#" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><Icon name="arrow_back" className="!text-[18px]" />Diwali Annakut Darshan</Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="text-[24px] font-semibold leading-8 tracking-[-0.02em] md:text-[26px] md:leading-9">WhatsApp flyer</h1><StateBadge state="changes_requested" /></div>
-        <p className="mt-1.5 text-sm text-muted-foreground">1080 × 1350 px · digital · v1 by Kinjal Patel · Gujarati headline</p>
+        <div className="flex flex-wrap items-center gap-2.5"><h1 className="text-[24px] font-semibold leading-8 tracking-[-0.02em] md:text-[26px]">WhatsApp flyer</h1><span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">v1</span><StateBadge state="changes_requested" /><StateBadge state="needs_you" label="Primary" /></div>
+        <p className="mt-1 text-sm text-muted-foreground">1080 × 1350 px · digital · v1 by Kinjal Patel · Gujarati headline</p>
       </div>
-      <ReviewActions versionId="v-1" label="WhatsApp flyer v1" eventTitle="Diwali Annakut Darshan" decision="changes_requested" canApprove isOwnUpload={false} downloadUrl={null} />
+      <ReviewActions versionId="v-1" label="WhatsApp flyer v1" eventTitle="Diwali Annakut Darshan" decision="changes_requested" canApprove isOwnUpload={false} hasBack={false} />
     </div>
     <div className="flex flex-wrap items-center gap-3">
-      <div className="inline-flex rounded-full bg-muted p-1 text-sm font-medium"><span className="rounded-full bg-card px-4 py-1.5 shadow-sm">v1</span></div>
+      <div className="inline-flex rounded-full bg-muted p-1 text-sm font-medium"><span className="rounded-full bg-card px-3.5 py-1.5 shadow-sm">v1</span></div>
       <UploadPanel slotId="s-3" accept={["image/png", "image/jpeg", "image/webp"]} isPrint={false} nextNumber={2} compact />
     </div>
-    <CommentsPanel versionId="v-1" viewer={{ src: "/preview/flyer.webp", isGif: false, width: 1080, height: 1350, safe: { top: 0.08, right: 0.06, bottom: 0.1, left: 0.06 }, caption: "DRAFT · v1 · 20 Sep 2026", frame: "flat" }} comments={F.COMMENTS} members={F.MEMBERS} canApprove canComment />
+    <AssetWorkspace versionId="v-1" sides={[{ side: "front", src: "/preview/flyer.webp", isGif: false, width: 1080, height: 1350, guideColor: "#00E5FF" }]} safe={{ top: 90, right: 60, bottom: 110, left: 60 }} print={null} caption="DRAFT · v1 · 20 Sep 2026" comments={F.COMMENTS} members={F.MEMBERS} canApprove canComment guideHint="Artwork may run into the tinted bands, but keep text, murti and logos out of them." />
   </div>);
 
   if (screen === "settings" || screen === "requests" || screen === "formats") return shell(<>

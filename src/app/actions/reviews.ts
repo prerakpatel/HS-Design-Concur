@@ -2,6 +2,8 @@
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
 import { notify, eventParticipants } from "@/lib/notify";
+import { signedUrl } from "@/lib/storage";
+import { assetFilename } from "@/lib/labels";
 
 async function loadVersion(versionId: string) {
   const ctx = await requireActiveUser();
@@ -60,7 +62,7 @@ export async function reopenVersion(versionId: string, reason: string) {
 }
 
 /** Comment with @mentions ("@Nikhil Joshi" or "@nikhil") and an optional pin. */
-export async function addComment(versionId: string, body: string, pin?: { x: number; y: number } | null) {
+export async function addComment(versionId: string, body: string, pin?: { x: number; y: number; side?: "front" | "back" } | null) {
   const { supabase, user, org, slot, event, formatName } = await loadVersion(versionId);
   const text = body.trim(); if (!text) throw new Error("Empty comment");
   const { data: members } = await supabase.from("users").select("id,name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id);
@@ -70,20 +72,24 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
     const lower = text.toLowerCase();
     if ((name && lower.includes("@" + name)) || (first && new RegExp(`@${first}(\\b|$)`).test(lower)) || lower.includes("@" + handle)) mentions.add(m.id);
   }
-  const { error } = await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: text, mentions: [...mentions], pin_x: pin?.x ?? null, pin_y: pin?.y ?? null });
+  const { error } = await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: text, mentions: [...mentions], pin_x: pin?.x ?? null, pin_y: pin?.y ?? null, pin_side: pin?.side ?? "front" });
   if (error) throw new Error(error.message);
   await notify(supabase, mentions, "comment.mention", { eventId: event.id, slotId: slot.id, title: event.title, format: formatName, by: user.name ?? user.email, excerpt: text.slice(0, 120) }, user.id);
   revalidatePath(`/events/${event.id}/slots/${slot.id}`);
   return { ok: true };
 }
 
-export async function setCommentFlag(commentId: string, flag: "addressed" | "confirmed" | "reopen") {
+/** addressed: anyone on the event. unaddress: undo an unconfirmed "addressed". confirmed / reopen: approvers. */
+export async function setCommentFlag(commentId: string, flag: "addressed" | "unaddress" | "confirmed" | "reopen") {
   const { supabase, user } = await requireActiveUser();
   const now = new Date().toISOString();
   const patch = flag === "addressed" ? { addressed_at: now, addressed_by: user.id }
     : flag === "confirmed" ? { confirmed_at: now, confirmed_by: user.id }
     : { addressed_at: null, addressed_by: null, confirmed_at: null, confirmed_by: null };
-  if (flag !== "addressed" && !canApprove(user)) throw new Error("Only approvers can confirm or reopen a comment");
+  if (flag === "unaddress") {
+    const { data: c } = await supabase.from("comments").select("confirmed_at").eq("id", commentId).maybeSingle();
+    if (c?.confirmed_at && !canApprove(user)) throw new Error("This comment was confirmed by an approver; ask them to reopen it");
+  } else if (flag !== "addressed" && !canApprove(user)) throw new Error("Only approvers can confirm or reopen a comment");
   const { data } = await supabase.from("comments").update(patch).eq("id", commentId).select("versions(slots(id,event_id))").single();
   const s = (data?.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;
   if (s) revalidatePath(`/events/${s.event_id}/slots/${s.id}`);
@@ -96,4 +102,16 @@ export async function approveMany(versionIds: string[]) {
     try { await approveVersion(id); approved++; } catch (e) { failed.push((e as Error).message); }
   }
   return { approved, failed };
+}
+
+/** Short-lived download link for an approved side, named year_event_format_vN. */
+export async function downloadLink(versionId: string, side: "front" | "back" = "front") {
+  const { supabase, version, event, formatName } = await loadVersion(versionId);
+  if (version.decision !== "approved") throw new Error("Only approved versions can be downloaded");
+  const { data: s } = await supabase.from("version_sides").select("optimised_path").eq("version_id", versionId).eq("side", side).maybeSingle();
+  if (!s?.optimised_path) throw new Error("This file was removed after the event");
+  const { data: ev } = await supabase.from("events").select("event_date").eq("id", event.id).single();
+  const url = await signedUrl(supabase, s.optimised_path, 120, assetFilename({ eventDate: ev?.event_date ?? null, eventTitle: event.title, formatName, side, number: version.number, path: s.optimised_path }));
+  if (!url) throw new Error("Could not create the download link");
+  return url;
 }
