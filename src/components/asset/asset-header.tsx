@@ -3,20 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { StateBadge, type BadgeState } from "@/components/state-badge";
 import { BackLink } from "@/components/page-header";
-import { ReviewActions } from "@/components/asset/review-actions";
 
 export interface AssetHeaderProps {
   eventId: string; eventTitle: string; formatName: string; version: number | null; state: BadgeState;
   position: { at: number; total: number }; prev: { id: string; name: string } | null; next: { id: string; name: string } | null;
-  actions: { versionId: string; decision: string; canApprove: boolean; isOwnUpload: boolean; hasBack: boolean } | null;
 }
 
 /**
  * One sticky row that answers "where am I, where next": back to the event, the format's name, version and state,
  * prev / next. Everything else (uploader, size, actions, versions) lives in the status panel beside the canvas.
- * Phones get the review actions in a fixed bottom bar.
+ * Actions live in the footer bar.
  */
-export function AssetHeader({ eventId, eventTitle, formatName, version, state, position, prev, next, actions }: AssetHeaderProps) {
+export function AssetHeader({ eventId, eventTitle, formatName, version, state, position, prev, next }: AssetHeaderProps) {
   const slotHref = (id: string) => `/events/${eventId}/slots/${id}`;
   return (
     <>
@@ -34,34 +32,20 @@ export function AssetHeader({ eventId, eventTitle, formatName, version, state, p
           {next ? <Button asChild variant="ghost" size="icon" title={next.name}><Link href={slotHref(next.id)} aria-label={`Next: ${next.name}`}><Icon name="chevron_right" /></Link></Button> : <Button variant="ghost" size="icon" disabled aria-label="Last format"><Icon name="chevron_right" /></Button>}
         </div>
       </div>
-      {actions && (actions.canApprove || actions.decision === "approved") && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur md:hidden [&>div]:justify-end">
-          <ReviewActions versionId={actions.versionId} label={`${formatName} v${version ?? ""}`} eventTitle={eventTitle} decision={actions.decision} canApprove={actions.canApprove} isOwnUpload={actions.isOwnUpload} hasBack={actions.hasBack} />
-        </div>
-      )}
     </>
   );
 }
 
-/** Status panel: what this is, who made it, what to do with it, and the versions. */
-export function StatusPanel({ state, isPrimary, meta, uploader, uploadedAt, notes, versions, actions, upload }: {
-  state: BadgeState; isPrimary: boolean; meta: string; uploader: string | null; uploadedAt: string | null; notes: string | null;
-  versions: React.ReactNode; actions: (NonNullable<AssetHeaderProps["actions"]> & { formatName: string; version: number | null; eventTitle: string }) | null; upload: React.ReactNode;
-}) {
+/** Status panel: what this is and who made it. Doing lives in the footer bar. */
+export function StatusPanel({ state, isPrimary, meta, uploader, uploadedAt, notes }: { state: BadgeState; isPrimary: boolean; meta: string; uploader: string | null; uploadedAt: string | null; notes: string | null }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-border p-4">
+    <div className="space-y-3 rounded-2xl border border-border p-4">
       <div className="flex flex-wrap items-center gap-2"><StateBadge state={state} />{isPrimary && <StateBadge state="needs_you" label="Primary" />}</div>
       <div className="space-y-0.5 text-sm">
         {uploader && <p className="font-medium">{uploader}{uploadedAt ? <span className="font-normal text-muted-foreground"> · {uploadedAt}</span> : null}</p>}
         <p className="text-muted-foreground">{meta}</p>
         {notes && <p className="text-muted-foreground">Note: {notes}</p>}
       </div>
-      {actions && (actions.canApprove || actions.decision === "approved") && (
-        <div className="hidden md:block [&>div]:flex-col [&>div>button]:w-full [&>div>a]:w-full">
-          <ReviewActions versionId={actions.versionId} label={`${actions.formatName} v${actions.version ?? ""}`} eventTitle={actions.eventTitle} decision={actions.decision} canApprove={actions.canApprove} isOwnUpload={actions.isOwnUpload} hasBack={actions.hasBack} />
-        </div>
-      )}
-      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">{versions}{upload}</div>
     </div>
   );
 }

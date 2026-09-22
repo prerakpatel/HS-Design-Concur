@@ -60,7 +60,7 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
         ) : (
           <>
             <Button disabled={isOwnUpload || pending} onClick={() => setMode("approve")}>Approve…</Button>
-            <Button variant="outline" onClick={() => setMode("changes")} disabled={isOwnUpload}>Request changes</Button>
+            <Button variant="outline" onClick={() => setMode("changes")} disabled={isOwnUpload}><span className="sm:hidden">Changes</span><span className="hidden sm:inline">Request changes</span></Button>
           </>
         )}
         {isOwnUpload && !approved && <p className="w-full text-xs text-muted-foreground">You uploaded this version, so someone else has to approve it.</p>}

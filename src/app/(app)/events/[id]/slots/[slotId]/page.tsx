@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireActiveUser, initials } from "@/lib/auth";
 import { signedUrl } from "@/lib/storage";
@@ -6,6 +5,7 @@ import { formatSize, relativeTime } from "@/lib/labels";
 import { orderSlots } from "@/lib/slot-order";
 import { UploadPanel } from "@/components/asset/upload-panel";
 import { AssetHeader, StatusPanel } from "@/components/asset/asset-header";
+import { AssetFooter } from "@/components/asset/asset-footer";
 import { AssetWorkspace, type CommentView, type Member, type SideView } from "@/components/asset/asset-workspace";
 import type { AppUser, EventRow, Format, Slot } from "@/lib/types";
 
@@ -46,7 +46,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
 
   const { data: comments } = current ? await supabase.from("comments").select("*,author:author_id(name,email,role,is_approver,function_tags)").eq("version_id", current.id).order("created_at") : { data: [] as never[] };
   const roleOf = (u: { role: string; is_approver: boolean; function_tags: string[] }) => u.role === "core_admin" ? "Core Admin" : u.is_approver ? "Approver" : u.function_tags?.[0] ? u.function_tags[0][0].toUpperCase() + u.function_tags[0].slice(1) : "Member";
-  const cviews: CommentView[] = (comments ?? []).map((c) => { const a = c.author as unknown as { name: string | null; email: string; role: string; is_approver: boolean; function_tags: string[] }; return { id: c.id, body: c.body, created_at: c.created_at, pin_x: c.pin_x, pin_y: c.pin_y, pin_side: (c.pin_side ?? "front") as "front" | "back", addressed_at: c.addressed_at, confirmed_at: c.confirmed_at, author: { name: a?.name ?? a?.email ?? "Someone", initials: initials(a?.name ?? null, a?.email ?? "?"), role: a ? roleOf(a) : "" } }; });
+  const cviews: CommentView[] = (comments ?? []).map((c) => { const a = c.author as unknown as { name: string | null; email: string; role: string; is_approver: boolean; function_tags: string[] }; return { id: c.id, body: c.body, created_at: c.created_at, pin_x: c.pin_x, pin_y: c.pin_y, pin_side: (c.pin_side ?? "front") as "front" | "back", edited_at: c.edited_at, mine: c.author_id === user.id, addressed_at: c.addressed_at, confirmed_at: c.confirmed_at, author: { name: a?.name ?? a?.email ?? "Someone", initials: initials(a?.name ?? null, a?.email ?? "?"), role: a ? roleOf(a) : "" } }; });
   const mlist: Member[] = ((members ?? []) as unknown as Pick<AppUser, "id" | "name" | "email">[]).map((m) => ({ id: m.id, name: m.name ?? m.email.split("@")[0], handle: m.email.split("@")[0].toLowerCase() }));
   const canApprove = user.is_approver || user.role === "core_admin";
   const uploader = current?.uploader as unknown as { name: string | null; email: string } | null;
@@ -61,13 +61,10 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const state = !slot.requested ? "na" : slot.state;
   const caption = current ? (purged ? `Reference · v${current.number}${approved ? " · approved" : ""}` : approved ? `Approved · v${current.number}` : `DRAFT · v${current.number} · ${new Date(current.created_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}`) : "";
   const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved } : null;
-  const versionsRow = vlist.length > 0 ? <div className="inline-flex rounded-full bg-muted p-1 text-sm font-medium">{[...vlist].reverse().map((x) => <Link key={x.id} href={`/events/${id}/slots/${slotId}?v=${x.number}`} className={"rounded-full px-3 py-1 " + (current?.id === x.id ? "bg-card shadow-sm" : "text-muted-foreground")}>v{x.number}{x.decision === "approved" ? " ✓" : ""}</Link>)}</div> : null;
-  const uploadRow = !readOnly && slot.requested && vlist.length > 0 ? <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={isPrint} nextNumber={(vlist[0]?.number ?? 0) + 1} needsBack={isPrint && current === vlist[0] && !hasBack && !purged} compact /> : null;
-  const guideHint = print ? `Dashed line: trim. Everything outside it (${print.bleedIn} in) is cut off. Dotted line: keep text inside.` : "Artwork may run into the hatched bands, but keep text, murti and logos out of them.";
 
   return (
-    <div className="space-y-5 md:space-y-6">
-      <AssetHeader eventId={id} eventTitle={event.title} formatName={fmt.name} version={current?.number ?? null} state={state as "requested"} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null} actions={actionProps} />
+    <div className="space-y-5 pb-20 md:space-y-6 md:pb-16">
+      <AssetHeader eventId={id} eventTitle={event.title} formatName={fmt.name} version={current?.number ?? null} state={state as "requested"} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null} />
 
       {!slot.requested ? (
         <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">This format is marked N/A for this event. Change it from Edit event → Formats if it is needed.</p>
@@ -76,14 +73,20 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
       ) : (
         <>
           {!event.brief_locked_at && <p className="text-xs text-muted-foreground">Uploading the first design locks the brief.</p>}
-          <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={isPrint} nextNumber={1} />
+          <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={isPrint} nextNumber={1} variant="dropzone" />
         </>
       ) : (
         <>
           {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{sides[0]?.src ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept."}</p>}
-          <AssetWorkspace versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} caption={caption} comments={cviews} members={mlist} canApprove={canApprove && !readOnly} canComment={!readOnly} guideHint={guideHint}
-            aside={<StatusPanel state={state as "requested"} isPrimary={slot.is_primary} meta={`${formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} · ${fmt.class}`} uploader={uploader ? (uploader.name ?? uploader.email) : null} uploadedAt={current ? relativeTime(current.created_at) : null} notes={slot.notes} versions={versionsRow} upload={uploadRow} actions={actionProps ? { ...actionProps, formatName: fmt.name, version: current?.number ?? null, eventTitle: event.title } : null} />} />
+          <AssetWorkspace versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} caption={caption} comments={cviews} members={mlist} canApprove={canApprove && !readOnly} canComment={!readOnly} canModerate={user.role === "core_admin"}
+            aside={<StatusPanel state={state as "requested"} isPrimary={slot.is_primary} meta={`${formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} · ${fmt.class}`} uploader={uploader ? (uploader.name ?? uploader.email) : null} uploadedAt={current ? relativeTime(current.created_at) : null} notes={slot.notes} />} />
         </>
+      )}
+      {slot.requested && vlist.length > 0 && (
+        <AssetFooter eventId={id} slotId={slotId} currentId={current?.id ?? null} isPrint={isPrint} accept={fmt.allowed_mimes} readOnly={readOnly}
+          versions={vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, canManage: x.uploaded_by === user.id || user.role === "core_admin", hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }))}
+          upload={{ nextNumber: (vlist[0]?.number ?? 0) + 1 }}
+          actions={actionProps ? { ...actionProps, label: `${fmt.name} v${current?.number ?? ""}`, eventTitle: event.title } : null} />
       )}
     </div>
   );
