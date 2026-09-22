@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ChoiceChips } from "@/components/ui/choice-chips";
@@ -50,23 +50,23 @@ export function UsersList({ users, orgs, currentUserId }: { users: EditableUser[
           </li>
         ))}
       </ul>
-      <UserSheet user={open} orgs={orgs} isSelf={open?.id === currentUserId} onClose={() => setOpen(null)} />
+      <UserPanel user={open} orgs={orgs} isSelf={open?.id === currentUserId} onClose={() => setOpen(null)} />
     </>
   );
 }
 
-function UserSheet({ user, orgs, isSelf, onClose }: { user: EditableUser | null; orgs: OrgOption[]; isSelf: boolean; onClose: () => void }) {
+function UserPanel({ user, orgs, isSelf, onClose }: { user: EditableUser | null; orgs: OrgOption[]; isSelf: boolean; onClose: () => void }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   return (
-    <Sheet open={!!user} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-[460px]">
+    <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="flex max-h-[calc(100dvh-1.5rem)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-h-[calc(100dvh-3rem)] sm:max-w-[520px]">
         {user && (
-          <form key={user.id} className="flex h-full flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await updateUser(user.id, fd); toast.success("Saved"); onClose(); router.refresh(); } catch (err) { toast.error((err as Error).message); } }); }}>
-            <SheetHeader className="px-6 pt-6">
-              <div className="flex items-center gap-3"><UserAvatar initials={user.initials} size={40} /><div><SheetTitle className="text-lg">{user.name}</SheetTitle><SheetDescription>{user.email}</SheetDescription></div></div>
-            </SheetHeader>
-            <div className="flex-1 space-y-8 px-6 py-6">
+          <form key={user.id} className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await updateUser(user.id, fd); toast.success("Saved"); onClose(); router.refresh(); } catch (err) { toast.error((err as Error).message); } }); }}>
+            <DialogHeader className="border-b border-border px-6 py-5 text-left">
+              <div className="flex items-center gap-3"><UserAvatar initials={user.initials} size={40} /><div><DialogTitle className="text-lg">{user.name}</DialogTitle><DialogDescription>{user.email}</DialogDescription></div></div>
+            </DialogHeader>
+            <div className="min-h-0 flex-1 space-y-7 overflow-y-auto px-6 py-6">
               <Field label="Role" hint="Core Admins approve access, manage people and can delete any event.">
                 <ChoiceChips name="role" defaultValue={user.role} options={[{ value: "member", label: "Member" }, { value: "core_admin", label: "Core Admin" }]} />
               </Field>
@@ -84,8 +84,8 @@ function UserSheet({ user, orgs, isSelf, onClose }: { user: EditableUser | null;
             </div>
           </form>
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 

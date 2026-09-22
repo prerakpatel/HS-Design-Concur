@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,12 +59,12 @@ export function FormatsList({ formats }: { formats: Format[] }) {
           </li>
         ))}
       </ul>
-      <FormatSheet format={open} onClose={() => setOpen(null)} />
+      <FormatPanel format={open} onClose={() => setOpen(null)} />
     </>
   );
 }
 
-function FormatSheet({ format, onClose }: { format: Format | "new" | null; onClose: () => void }) {
+function FormatPanel({ format, onClose }: { format: Format | "new" | null; onClose: () => void }) {
   const f = format === "new" ? null : format;
   const [pending, start] = useTransition();
   const [cls, setCls] = useState<"digital" | "print">(f?.class ?? "digital");
@@ -72,16 +72,16 @@ function FormatSheet({ format, onClose }: { format: Format | "new" | null; onClo
   const [active, setActive] = useState(f?.active ?? true);
   const router = useRouter();
   return (
-    <Sheet open={!!format} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-[480px]">
+    <Dialog open={!!format} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="flex max-h-[calc(100dvh-1.5rem)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-h-[calc(100dvh-3rem)] sm:max-w-[520px]">
         {format && (
-          <form key={f?.id ?? "new"} className="flex h-full flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await saveFormat(fd); toast.success(f ? "Format saved" : "Format added"); onClose(); router.refresh(); } catch (err) { toast.error((err as Error).message); } }); }}>
+          <form key={f?.id ?? "new"} className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await saveFormat(fd); toast.success(f ? "Format saved" : "Format added"); onClose(); router.refresh(); } catch (err) { toast.error((err as Error).message); } }); }}>
             {f && <input type="hidden" name="id" value={f.id} />}
             <input type="hidden" name="class" value={cls} />
             <input type="hidden" name="allow_custom_size" value={custom ? "on" : "off"} />
             <input type="hidden" name="active" value={active ? "on" : "off"} />
-            <SheetHeader className="px-6 pt-6"><SheetTitle className="text-lg">{f ? f.name : "New format"}</SheetTitle><SheetDescription>{f ? `Key ${f.key}. Changes apply to future uploads; existing versions keep their files.` : "Added to the catalog and, as N/A, to every open event."}</SheetDescription></SheetHeader>
-            <div className="flex-1 space-y-6 px-6 py-6">
+            <DialogHeader className="border-b border-border px-6 py-5 text-left"><DialogTitle className="text-lg">{f ? f.name : "New format"}</DialogTitle><DialogDescription>{f ? `Key ${f.key}. Changes apply to future uploads; existing versions keep their files.` : "Added to the catalog and, as N/A, to every open event."}</DialogDescription></DialogHeader>
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-6">
               <div className="space-y-2"><Label htmlFor="f-name">Name</Label><Input id="f-name" name="name" required defaultValue={f?.name ?? ""} placeholder="IG Post" /></div>
               <div className="space-y-2"><Label>Kind</Label><ChoiceChips name="class_choice" defaultValue={cls} onChange={(v) => setCls(v[0] === "print" ? "print" : "digital")} options={[{ value: "digital", label: "Digital" }, { value: "print", label: "Print" }]} /></div>
               <div className="space-y-2">
@@ -124,7 +124,7 @@ function FormatSheet({ format, onClose }: { format: Format | "new" | null; onClo
             </div>
           </form>
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
