@@ -15,8 +15,11 @@ const TABS = [
   { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
+const isTaskScreen = (path: string) => /\/events\/[^/]+\/slots\/|\/preview\/slot$/.test(path);
+
 export function MobileNav() {
   const pathname = usePathname();
+  if (isTaskScreen(pathname)) return null;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-[max(env(safe-area-inset-bottom),12px)] pt-2 backdrop-blur md:hidden">
       <ul className="mx-auto flex max-w-md items-stretch justify-around">
@@ -33,6 +36,8 @@ export function MobileNav() {
 }
 
 export function MobileTopBar({ org, orgs, initials }: { org: Organisation; orgs: Organisation[]; initials: string }) {
+  const pathname = usePathname();
+  if (isTaskScreen(pathname)) return null;
   return (
     <header className="flex items-center justify-between px-5 py-3 md:hidden">
       <DropdownMenu>

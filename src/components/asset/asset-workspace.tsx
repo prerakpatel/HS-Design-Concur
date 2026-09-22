@@ -77,7 +77,7 @@ export function AssetWorkspace({ versionId, sides, safe, print, caption, comment
             {sides.map((s) => <button key={s.side} type="button" onClick={() => { setSideKey(s.side); setPin(null); setPicking(false); }} className={cn("rounded-full px-4 py-1.5 capitalize", side?.side === s.side ? "bg-card shadow-sm" : "text-muted-foreground")}>{s.side}</button>)}
           </div>
         )}
-        <div className="flex w-full justify-center rounded-2xl bg-canvas p-3 md:p-5">
+        <div className="-mx-5 flex w-[calc(100%+2.5rem)] justify-center bg-canvas p-0 md:mx-0 md:w-full md:rounded-2xl md:p-5">
           {side && <Viewer src={side.src} isGif={side.isGif} width={side.width} height={side.height} safe={safe} print={print} showGuides={showGuides} guideColor={side.guideColor} caption={caption} pins={pins} picked={pin} onPick={picking ? (p) => { setPin(p); setPicking(false); } : undefined} onOpen={() => setOpen(true)} />}
         </div>
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground">

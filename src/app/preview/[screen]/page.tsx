@@ -4,7 +4,6 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
-import { StateBadge } from "@/components/state-badge";
 import { SelectField } from "@/components/ui/select-field";
 import { EventList } from "@/components/events/event-list";
 import { BriefCard, ActivityFeed } from "@/components/events/event-detail";
@@ -15,8 +14,7 @@ import { FormatsList } from "@/components/settings/format-editor";
 import { WizardShell } from "@/components/wizard/wizard-shell";
 import { BasicsForm, BriefForm, FormatsForm, AssignForm, ReviewPanel } from "@/components/wizard/steps";
 import { AssetWorkspace } from "@/components/asset/asset-workspace";
-import { BackLink } from "@/components/page-header";
-import { ReviewActions } from "@/components/asset/review-actions";
+import { AssetHeader } from "@/components/asset/asset-header";
 import { UploadPanel } from "@/components/asset/upload-panel";
 import { relativeTime } from "@/lib/labels";
 import { noop, noopForm, noopUser } from "@/app/preview/actions";
@@ -55,18 +53,8 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     </div>
   </>); }
 
-  if (screen === "slot") return shell(<div className="space-y-6">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <BackLink href="#" label="Diwali Annakut Darshan" />
-      <div className="flex items-center gap-2"><Button asChild variant="outline" size="sm"><Link href="#"><Icon name="arrow_back" className="!text-[16px]" />Instagram story</Link></Button><span className="text-xs text-muted-foreground">3 of 6</span><Button asChild variant="outline" size="sm"><Link href="#">Lobby TV<Icon name="arrow_forward" className="!text-[16px]" /></Link></Button></div>
-    </div>
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2.5"><h1 className="text-[24px] font-semibold leading-8 tracking-[-0.02em] md:text-[26px]">WhatsApp flyer</h1><span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">v1</span><StateBadge state="changes_requested" /><StateBadge state="needs_you" label="Primary" /></div>
-        <p className="mt-1 text-sm text-muted-foreground">1080 × 1350 px · digital · v1 by Kinjal Patel · Gujarati headline</p>
-      </div>
-      <ReviewActions versionId="v-1" label="WhatsApp flyer v1" eventTitle="Diwali Annakut Darshan" decision="changes_requested" canApprove isOwnUpload={false} hasBack={false} />
-    </div>
+  if (screen === "slot") return shell(<div className="space-y-5 md:space-y-6">
+    <AssetHeader eventId="e-1" eventTitle="Diwali Annakut Darshan" formatName="WhatsApp flyer" version={1} state="changes_requested" isPrimary meta="1080 × 1350 px · digital" uploader="Kinjal Patel" notes="Gujarati headline" position={{ at: 3, total: 6 }} prev={{ id: "s-2", name: "Instagram story" }} next={{ id: "s-4", name: "Lobby TV" }} actions={{ versionId: "v-1", decision: "changes_requested", canApprove: true, isOwnUpload: false, hasBack: false }} />
     <div className="flex flex-wrap items-center gap-3">
       <div className="inline-flex rounded-full bg-muted p-1 text-sm font-medium"><span className="rounded-full bg-card px-3.5 py-1.5 shadow-sm">v1</span></div>
       <UploadPanel slotId="s-3" accept={["image/png", "image/jpeg", "image/webp"]} isPrint={false} nextNumber={2} compact />
