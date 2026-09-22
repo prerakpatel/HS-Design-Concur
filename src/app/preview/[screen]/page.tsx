@@ -14,7 +14,7 @@ import { FormatsList } from "@/components/settings/format-editor";
 import { WizardShell } from "@/components/wizard/wizard-shell";
 import { BasicsForm, BriefForm, FormatsForm, AssignForm, ReviewPanel } from "@/components/wizard/steps";
 import { AssetWorkspace } from "@/components/asset/asset-workspace";
-import { AssetHeader } from "@/components/asset/asset-header";
+import { AssetHeader, StatusPanel } from "@/components/asset/asset-header";
 import { UploadPanel } from "@/components/asset/upload-panel";
 import { relativeTime } from "@/lib/labels";
 import { noop, noopForm, noopUser } from "@/app/preview/actions";
@@ -54,12 +54,9 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
   </>); }
 
   if (screen === "slot") return shell(<div className="space-y-5 md:space-y-6">
-    <AssetHeader eventId="e-1" eventTitle="Diwali Annakut Darshan" formatName="WhatsApp flyer" version={1} state="changes_requested" isPrimary meta="1080 × 1350 px · digital" uploader="Kinjal Patel" notes="Gujarati headline" position={{ at: 3, total: 6 }} prev={{ id: "s-2", name: "Instagram story" }} next={{ id: "s-4", name: "Lobby TV" }} actions={{ versionId: "v-1", decision: "changes_requested", canApprove: true, isOwnUpload: false, hasBack: false }} />
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="inline-flex rounded-full bg-muted p-1 text-sm font-medium"><span className="rounded-full bg-card px-3.5 py-1.5 shadow-sm">v1</span></div>
-      <UploadPanel slotId="s-3" accept={["image/png", "image/jpeg", "image/webp"]} isPrint={false} nextNumber={2} compact />
-    </div>
-    <AssetWorkspace versionId="v-1" sides={[{ side: "front", src: "/preview/flyer.webp", isGif: false, width: 1080, height: 1350, guideColor: "#00E5FF" }]} safe={{ top: 90, right: 60, bottom: 110, left: 60 }} print={null} caption="DRAFT · v1 · 20 Sep 2026" comments={F.COMMENTS} members={F.MEMBERS} canApprove canComment guideHint="Artwork may run into the tinted bands, but keep text, murti and logos out of them." />
+    <AssetHeader eventId="e-1" eventTitle="Diwali Annakut Darshan" formatName="WhatsApp flyer" version={1} state="changes_requested" position={{ at: 3, total: 6 }} prev={{ id: "s-2", name: "Instagram story" }} next={{ id: "s-4", name: "Lobby TV" }} actions={{ versionId: "v-1", decision: "changes_requested", canApprove: true, isOwnUpload: false, hasBack: false }} />
+    <AssetWorkspace versionId="v-1" sides={[{ side: "front", src: "/preview/flyer.webp", isGif: false, width: 1080, height: 1350, guideColor: "#00E5FF" }]} safe={{ top: 90, right: 60, bottom: 110, left: 60 }} print={null} caption="DRAFT · v1 · 20 Sep 2026" comments={F.COMMENTS} members={F.MEMBERS} canApprove canComment guideHint="Artwork may run into the hatched bands, but keep text, murti and logos out of them."
+      aside={<StatusPanel state="changes_requested" isPrimary meta="1080 × 1350 px · digital" uploader="Kinjal Patel" uploadedAt="2 d ago" notes="Gujarati headline" versions={<div className="inline-flex rounded-full bg-muted p-1 text-sm font-medium"><span className="rounded-full bg-card px-3 py-1 shadow-sm">v1</span></div>} upload={<UploadPanel slotId="s-3" accept={["image/png", "image/jpeg", "image/webp"]} isPrint={false} nextNumber={2} compact />} actions={{ versionId: "v-1", decision: "changes_requested", canApprove: true, isOwnUpload: false, hasBack: false, formatName: "WhatsApp flyer", version: 1, eventTitle: "Diwali Annakut Darshan" }} />} />
   </div>);
 
   if (screen === "settings" || screen === "requests" || screen === "formats") return shell(<>

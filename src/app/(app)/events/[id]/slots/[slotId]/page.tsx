@@ -2,10 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireActiveUser, initials } from "@/lib/auth";
 import { signedUrl } from "@/lib/storage";
-import { formatSize } from "@/lib/labels";
+import { formatSize, relativeTime } from "@/lib/labels";
 import { orderSlots } from "@/lib/slot-order";
 import { UploadPanel } from "@/components/asset/upload-panel";
-import { AssetHeader } from "@/components/asset/asset-header";
+import { AssetHeader, StatusPanel } from "@/components/asset/asset-header";
 import { AssetWorkspace, type CommentView, type Member, type SideView } from "@/components/asset/asset-workspace";
 import type { AppUser, EventRow, Format, Slot } from "@/lib/types";
 
@@ -60,21 +60,14 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const scaledSides = sides.map((s) => ({ ...s, width: nativeW || s.width, height: nativeH || s.height }));
   const state = !slot.requested ? "na" : slot.state;
   const caption = current ? (purged ? `Reference · v${current.number}${approved ? " · approved" : ""}` : approved ? `Approved · v${current.number}` : `DRAFT · v${current.number} · ${new Date(current.created_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}`) : "";
-  const guideHint = print ? `Dashed line: trim. Everything outside it (${print.bleedIn} in) is cut off. Dotted line: keep text inside.` : "Artwork may run into the tinted bands, but keep text, murti and logos out of them.";
+  const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved } : null;
+  const versionsRow = vlist.length > 0 ? <div className="inline-flex rounded-full bg-muted p-1 text-sm font-medium">{[...vlist].reverse().map((x) => <Link key={x.id} href={`/events/${id}/slots/${slotId}?v=${x.number}`} className={"rounded-full px-3 py-1 " + (current?.id === x.id ? "bg-card shadow-sm" : "text-muted-foreground")}>v{x.number}{x.decision === "approved" ? " ✓" : ""}</Link>)}</div> : null;
+  const uploadRow = !readOnly && slot.requested && vlist.length > 0 ? <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={isPrint} nextNumber={(vlist[0]?.number ?? 0) + 1} needsBack={isPrint && current === vlist[0] && !hasBack && !purged} compact /> : null;
+  const guideHint = print ? `Dashed line: trim. Everything outside it (${print.bleedIn} in) is cut off. Dotted line: keep text inside.` : "Artwork may run into the hatched bands, but keep text, murti and logos out of them.";
 
   return (
     <div className="space-y-5 md:space-y-6">
-      <AssetHeader eventId={id} eventTitle={event.title} formatName={fmt.name} version={current?.number ?? null} state={state as "requested"} isPrimary={slot.is_primary} meta={`${formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} · ${fmt.class}`} uploader={uploader ? (uploader.name ?? uploader.email) : null} notes={slot.notes} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null}
-        actions={current && slot.requested && !readOnly ? { versionId: current.id, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved } : null} />
-
-      {vlist.length > 0 && slot.requested && (
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex rounded-full bg-muted p-1 text-sm font-medium">
-            {[...vlist].reverse().map((x) => <Link key={x.id} href={`/events/${id}/slots/${slotId}?v=${x.number}`} className={"rounded-full px-3.5 py-1.5 " + (current?.id === x.id ? "bg-card shadow-sm" : "text-muted-foreground")}>v{x.number}{x.decision === "approved" ? " ✓" : ""}</Link>)}
-          </div>
-          {!readOnly && <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={isPrint} nextNumber={(vlist[0]?.number ?? 0) + 1} needsBack={isPrint && current === vlist[0] && !hasBack && !purged} compact />}
-        </div>
-      )}
+      <AssetHeader eventId={id} eventTitle={event.title} formatName={fmt.name} version={current?.number ?? null} state={state as "requested"} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null} actions={actionProps} />
 
       {!slot.requested ? (
         <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">This format is marked N/A for this event. Change it from Edit event → Formats if it is needed.</p>
@@ -88,7 +81,8 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
       ) : (
         <>
           {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{sides[0]?.src ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept."}</p>}
-          <AssetWorkspace versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} caption={caption} comments={cviews} members={mlist} canApprove={canApprove && !readOnly} canComment={!readOnly} guideHint={guideHint} />
+          <AssetWorkspace versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} caption={caption} comments={cviews} members={mlist} canApprove={canApprove && !readOnly} canComment={!readOnly} guideHint={guideHint}
+            aside={<StatusPanel state={state as "requested"} isPrimary={slot.is_primary} meta={`${formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} · ${fmt.class}`} uploader={uploader ? (uploader.name ?? uploader.email) : null} uploadedAt={current ? relativeTime(current.created_at) : null} notes={slot.notes} versions={versionsRow} upload={uploadRow} actions={actionProps ? { ...actionProps, formatName: fmt.name, version: current?.number ?? null, eventTitle: event.title } : null} />} />
         </>
       )}
     </div>

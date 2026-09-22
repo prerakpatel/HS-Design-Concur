@@ -59,13 +59,8 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
           <>{downloadButtons}<Button variant="outline" onClick={() => setMode("reopen")}>Reopen for changes</Button></>
         ) : (
           <>
+            <Button disabled={isOwnUpload || pending} onClick={() => setMode("approve")}>Approve…</Button>
             <Button variant="outline" onClick={() => setMode("changes")} disabled={isOwnUpload}>Request changes</Button>
-            {mobile ? <Button onClick={() => setMode("approve")} disabled={isOwnUpload}>Approve</Button> : (
-              <>
-                <Button variant="secondary" disabled={isOwnUpload || pending} onClick={() => setMode("approve")}>Approve and notify</Button>
-                <Button disabled={isOwnUpload || pending} onClick={() => setMode("approve")}>Approve and download</Button>
-              </>
-            )}
           </>
         )}
         {isOwnUpload && !approved && <p className="w-full text-xs text-muted-foreground">You uploaded this version, so someone else has to approve it.</p>}
