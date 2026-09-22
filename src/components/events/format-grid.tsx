@@ -23,6 +23,9 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [confirm, setConfirm] = useState(false);
+  const [showNa, setShowNa] = useState(false);
+  const naCount = cards.filter((c) => !c.requested).length;
+  const visible = showNa ? cards : cards.filter((c) => c.requested);
   const [pending, start] = useTransition();
   const router = useRouter();
   const eligible = cards.filter((c) => c.requested && c.state === "in_review" && c.versionId && !c.uploadedByMe);
@@ -38,10 +41,10 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
 
   return (
     <section>
-      <SectionHeader title="Formats" meta={meta} action={canBulk ? (selecting ? <Button variant="ghost" size="sm" onClick={stop}>Cancel</Button> : <Button variant="secondary" size="sm" onClick={() => setSelecting(true)}><Icon name="checklist" className="!text-[18px]" />Select</Button>) : undefined} />
+      <SectionHeader title="Formats" meta={meta} action={<span className="flex items-center gap-1">{naCount > 0 && !selecting && <Button variant="ghost" size="sm" onClick={() => setShowNa((v) => !v)}>{showNa ? "Hide N/A" : `Show N/A (${naCount})`}</Button>}{canBulk && (selecting ? <Button variant="ghost" size="sm" onClick={stop}>Cancel</Button> : <Button variant="secondary" size="sm" onClick={() => setSelecting(true)}><Icon name="checklist" className="!text-[18px]" />Select</Button>)}</span>} />
       {selecting && <p className="mb-3 text-sm text-muted-foreground">Pick the in-review formats to approve together. Ones you uploaded yourself are left out.</p>}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">
-        {cards.map((c) => {
+        {visible.map((c) => {
           const selectable = selecting && eligible.some((e) => e.slotId === c.slotId);
           const on = picked.includes(c.slotId);
           const body = (
