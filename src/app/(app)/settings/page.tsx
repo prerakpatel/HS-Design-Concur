@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { UsersList } from "@/components/settings/user-editor";
 import { AccessRequests } from "@/components/settings/access-requests";
 import { FormatsList } from "@/components/settings/format-editor";
+import { OrgMark } from "@/components/org-mark";
 import { TestButton } from "@/components/settings/test-button";
 import { emailConfigured } from "@/lib/email";
 import type { AppUser, Format, Organisation } from "@/lib/types";
@@ -21,7 +22,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const canEditCatalog = isAdmin || user.function_tags.includes("designer");
   if (!canEditCatalog) redirect("/events");
   const { tab: requested = isAdmin ? "users" : "formats" } = await searchParams;
-  const tab = isAdmin ? requested : "formats";
+  const tab = isAdmin ? (requested === "notifications" ? "orgs" : requested) : "formats";
   const [{ data: users }, { data: memberships }, { data: orgs }, { data: formats }, { data: requests }] = await Promise.all([
     supabase.from("users").select("*").order("name").returns<AppUser[]>(),
     supabase.from("org_memberships").select("user_id,org_id"),
@@ -35,7 +36,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const pending = (users ?? []).filter((u) => u.status === "pending");
   const active = (users ?? []).filter((u) => u.status === "active");
   const orgOptions = (orgs ?? []).map((o) => ({ id: o.id, label: o.short_name }));
-  const tabs: [string, string][] = isAdmin ? [["users", "Users"], ["requests", pending.length ? `Requests · ${pending.length}` : "Requests"], ["formats", "Formats"], ["notifications", "Notifications"]] : [["formats", "Formats"]];
+  const tabs: [string, string][] = isAdmin ? [["users", "Users"], ["requests", pending.length ? `Requests · ${pending.length}` : "Requests"], ["formats", "Formats"], ["orgs", "Organisations"]] : [["formats", "Formats"]];
   return (
     <>
       <PageHeader title="Settings" subtitle={isAdmin ? "People, access, the format catalog and notifications" : "Format catalog · Designers can edit"} />
@@ -49,12 +50,20 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <FormatsList formats={formats ?? []} />
       )}
 
-      {tab === "notifications" && (
+      {tab === "orgs" && (
         <div className="space-y-10">
           <section className="grid gap-6 md:grid-cols-2">
             {(orgs ?? []).map((o) => (
               <form key={o.id} action={updateOrgSettings.bind(null, o.id)} className="space-y-5 rounded-2xl border border-border p-5">
-                <h2 className="text-lg font-semibold tracking-[-0.01em]">{o.name}</h2>
+                <div className="flex items-center gap-4">
+                  <OrgMark org={o} size={48} />
+                  <div className="min-w-0 flex-1"><h2 className="text-lg font-semibold tracking-[-0.01em]">{o.name}</h2><p className="text-sm text-muted-foreground">{o.logo_path ? "Logo shown in the sidebar, on phones and on the sign-in page." : "No logo yet. Upload a PNG or SVG, ideally square, under 1 MB."}</p></div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`logo-${o.id}`}>Logo</Label>
+                  <Input id={`logo-${o.id}`} name="logo" type="file" accept="image/png,image/svg+xml,image/webp,image/jpeg" className="h-auto py-2 file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium" />
+                  {o.logo_path && <label className="flex items-center gap-2 text-sm text-muted-foreground"><input type="checkbox" name="remove_logo" className="size-4 rounded border-border" />Remove the current logo</label>}
+                </div>
                 <ToggleRow name="accepting_signups" label="Accepting new members" hint="Off hides the request button on the sign-in page." on={o.accepting_signups} />
                 <ToggleRow name="email_enabled" label="Email notifications" hint="Each person still picks instant, daily or off." on={o.email_enabled} />
                 <ToggleRow name="chat_enabled" label="Google Chat notifications" hint="Sent for review, changes requested, approved, reopened." on={o.chat_enabled} />

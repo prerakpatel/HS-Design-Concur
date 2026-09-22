@@ -53,15 +53,33 @@ export async function removeUser(userId: string) {
   revalidatePath("/settings");
 }
 
+const LOGO_EXT: Record<string, string> = { "image/png": "png", "image/svg+xml": "svg", "image/webp": "webp", "image/jpeg": "jpg" };
+
 export async function updateOrgSettings(orgId: string, formData: FormData) {
   const { supabase } = await requireCoreAdmin();
-  await supabase.from("organisations").update({
+  const patch: Record<string, unknown> = {
     accepting_signups: formData.get("accepting_signups") === "on",
     email_enabled: formData.get("email_enabled") === "on",
     chat_enabled: formData.get("chat_enabled") === "on",
     chat_webhook_url: String(formData.get("chat_webhook_url") ?? "").trim() || null,
-  }).eq("id", orgId);
-  revalidatePath("/settings");
+  };
+  const { data: cur } = await supabase.from("organisations").select("slug,logo_path").eq("id", orgId).single();
+  const logo = formData.get("logo");
+  if (formData.get("remove_logo") === "on") {
+    patch.logo_path = null;
+  } else if (logo instanceof File && logo.size > 0) {
+    const ext = LOGO_EXT[logo.type];
+    if (!ext) throw new Error("Logo must be PNG, SVG, WebP or JPG");
+    if (logo.size > 1_000_000) throw new Error("Logo must be under 1 MB");
+    const path = `${cur?.slug ?? orgId}/logo-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("branding").upload(path, Buffer.from(await logo.arrayBuffer()), { contentType: logo.type, upsert: true });
+    if (error) throw new Error(error.message);
+    patch.logo_path = path;
+  }
+  const { error } = await supabase.from("organisations").update(patch).eq("id", orgId);
+  if (error) throw new Error(error.message);
+  if ("logo_path" in patch && cur?.logo_path && cur.logo_path !== patch.logo_path) await supabase.storage.from("branding").remove([cur.logo_path]);
+  revalidatePath("/settings"); revalidatePath("/", "layout");
 }
 
 export async function sendTestChat(orgId: string) {
