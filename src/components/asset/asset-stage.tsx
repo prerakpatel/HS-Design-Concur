@@ -1,38 +1,42 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/user-avatar";
-import { StateBadge } from "@/components/state-badge";
 import { Icon } from "@/components/material-icon";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Lightbox } from "@/components/asset/lightbox";
+import { UploadPanel, requestUpload } from "@/components/asset/upload-panel";
 import { Guides, PinBubble, guideGeometry, type SafeArea, type Pin, type PrintGuides } from "@/components/asset/viewer";
-import { addComment, setCommentFlag, editComment, deleteComment } from "@/app/actions/reviews";
+import { addComment, setCommentFlag, editComment, deleteComment, deleteVersion } from "@/app/actions/reviews";
 import { relativeTime } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-// icons: add_comment grid_on zoom_out_map check close arrow_upward
+// icons: add_comment grid_on zoom_out_map check close arrow_upward more_horiz upload sync flip delete done_all replay edit
 export type Side = "front" | "back";
-export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number; guideColor: string }
+export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number }
 export interface CommentView { id: string; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; author: { name: string; initials: string; role: string } }
 export interface Member { id: string; name: string; handle: string }
+export interface VersionChip { id: string; number: number; decision: string; canManage: boolean; hasBack: boolean }
 
 /**
- * The design on a dark stage with one floating tool pill (Comment · Guides · Front/Back · Enlarge), and the comment
- * thread beside it. Comment mode: click the artwork, a numbered bubble drops and a small input opens next to it.
+ * The asset page body. Left: the artwork (front and back stacked) on a quiet canvas with two corner clusters:
+ * version + upload (designers) top-left, comment + guides top-right; Enlarge appears on hover. Right: the
+ * decision (approvers) and the comment thread. Comment mode: click the artwork, a bubble drops, an input opens.
  */
-export function AssetStage({ versionId, sides, safe, print, caption, comments, members, canApprove, canComment, canModerate = false }: {
-  versionId: string | null; sides: SideView[]; safe: SafeArea; print: PrintGuides | null; caption: string;
-  comments: CommentView[]; members: Member[]; canApprove: boolean; canComment: boolean; canModerate?: boolean;
+export function AssetStage({ versionId, sides, safe, print, comments, members, canComment, canModerate = false, versions, currentVersionId, eventId, slotId, upload, decision, readOnly }: {
+  versionId: string | null; sides: SideView[]; safe: SafeArea; print: PrintGuides | null;
+  comments: CommentView[]; members: Member[]; canComment: boolean; canModerate?: boolean;
+  versions: VersionChip[]; currentVersionId: string | null; eventId: string; slotId: string;
+  upload: { accept: string[]; isPrint: boolean; nextNumber: number } | null; decision: React.ReactNode; readOnly: boolean;
 }) {
-  const [sideKey, setSideKey] = useState<Side>("front");
-  const side = sides.find((s) => s.side === sideKey) ?? sides[0];
   const [showGuides, setShowGuides] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<Side | null>(null);
   const [mode, setMode] = useState<"view" | "place">("view");
-  const [draft, setDraft] = useState<{ x: number; y: number } | null>(null);
+  const [draft, setDraft] = useState<{ side: Side; x: number; y: number } | null>(null);
   const [draftText, setDraftText] = useState("");
   const [active, setActive] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
@@ -44,116 +48,160 @@ export function AssetStage({ versionId, sides, safe, print, caption, comments, m
   const router = useRouter();
 
   const numbered = useMemo(() => { let n = 0; return new Map(comments.filter((c) => c.pin_x != null && c.pin_y != null).map((c) => [c.id, ++n])); }, [comments]);
-  const pins: Pin[] = comments.filter((c) => c.pin_x != null && c.pin_y != null && c.pin_side === (side?.side ?? "front")).map((c) => ({ id: c.id, n: numbered.get(c.id)!, x: c.pin_x!, y: c.pin_y! }));
-  const g = side ? guideGeometry(safe, print, side.width, side.height) : null;
-  const hasGuides = !!g && (g.bands.top + g.bands.right + g.bands.bottom + g.bands.left > 0 || g.rects.length > 0);
+  const pinsFor = (side: Side): Pin[] => comments.filter((c) => c.pin_x != null && c.pin_y != null && c.pin_side === side).map((c) => ({ id: c.id, n: numbered.get(c.id)!, x: c.pin_x!, y: c.pin_y! }));
   const suggestions = mentionQuery == null ? [] : members.filter((m) => m.name.toLowerCase().includes(mentionQuery) || m.handle.includes(mentionQuery)).slice(0, 5);
   useEffect(() => { if (draft) draftInput.current?.focus(); }, [draft]);
-  useEffect(() => { if (!active) return; document.getElementById(`comment-${active}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [active]);
+  useEffect(() => { if (active) document.getElementById(`comment-${active}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [active]);
 
   const stop = () => { setMode("view"); setDraft(null); setDraftText(""); };
-  const post = (body: string, pin: { x: number; y: number } | null) => start(async () => {
-    try { await addComment(versionId!, body, pin ? { ...pin, side: side?.side ?? "front" } : null); setText(""); stop(); toast.success(pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
+  const post = (body: string, pin: { side: Side; x: number; y: number } | null) => start(async () => {
+    try { await addComment(versionId!, body, pin); setText(""); stop(); toast.success(pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
     catch (e) { toast.error((e as Error).message); }
   });
-  const flag = (id: string, f: "addressed" | "unaddress" | "confirmed" | "reopen") => start(async () => {
-    try {
-      await setCommentFlag(id, f); router.refresh();
-      if (f === "addressed") toast.success("Marked as addressed", { action: { label: "Undo", onClick: () => flag(id, "unaddress") }, duration: 8000 });
-      else if (f === "confirmed") toast.success("Confirmed");
-    } catch (e) { toast.error((e as Error).message); }
+  const flag = (id: string, f: "addressed" | "unaddress" | "reopen") => start(async () => {
+    try { await setCommentFlag(id, f); router.refresh(); if (f === "addressed") toast.success("Marked as done", { action: { label: "Undo", onClick: () => flag(id, "unaddress") }, duration: 8000 }); }
+    catch (e) { toast.error((e as Error).message); }
+  });
+  const removeVersion = (v: VersionChip) => start(async () => {
+    if (!confirm(`Delete v${v.number}? Its files are removed for good.`)) return;
+    try { await deleteVersion(v.id); toast.success(`Version ${v.number} deleted`); router.replace(`/events/${eventId}/slots/${slotId}`); router.refresh(); } catch (e) { toast.error((e as Error).message); }
   });
   function onChange(v: string) { setText(v); const m = v.slice(0, ta.current?.selectionStart ?? v.length).match(/@([\w.-]*)$/); setMentionQuery(m ? m[1].toLowerCase() : null); }
   function pick(m: Member) { const pos = ta.current?.selectionStart ?? text.length; setText(text.slice(0, pos).replace(/@([\w.-]*)$/, `@${m.name} `) + text.slice(pos)); setMentionQuery(null); ta.current?.focus(); }
 
-  const tool = (label: string, icon: string, on: boolean, onClick: () => void, extra?: string) => (
-    <button type="button" onClick={onClick} className={cn("flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors", on ? "bg-white text-black" : "text-white/90 hover:bg-white/15", extra)}><Icon name={icon} className="!text-[18px]" />{label}</button>
-  );
+  const hasGuides = sides.some((s) => { const g = guideGeometry(safe, print, s.width, s.height); return g.cut || g.safe.top + g.safe.right + g.safe.bottom + g.safe.left > 0; });
+  const showVersions = versions.length > 1 || versions.some((v) => v.canManage);
+  const chip = "flex h-9 items-center gap-1.5 rounded-full bg-card/90 px-3 text-[13px] font-medium shadow-sm ring-1 ring-border backdrop-blur transition-colors hover:bg-card";
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="min-w-0">
-        <div className="relative -mx-5 flex min-h-[320px] items-center justify-center bg-zinc-900 px-3 pb-3 pt-16 md:mx-0 md:rounded-2xl md:px-6 md:pb-6 md:pt-[72px]">
-          {/* One floating tool pill */}
-          <div className="absolute left-1/2 top-3 z-10 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-0.5 rounded-full bg-black/70 p-1 shadow-lg backdrop-blur md:top-4">
+        <div className="relative rounded-2xl bg-canvas px-4 pb-4 pt-16 md:px-8 md:pb-8">
+          {/* Corner clusters: who-can-change on the left, everyone's tools on the right */}
+          <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 md:left-4 md:top-4">
+            {showVersions && !readOnly && [...versions].sort((a, b) => a.number - b.number).map((v) => (
+              <div key={v.id} className={cn(chip, "gap-0 px-0", currentVersionId === v.id ? "ring-foreground/60" : "text-muted-foreground")}>
+                <Link href={`/events/${eventId}/slots/${slotId}?v=${v.number}`} className="py-1.5 pl-3 pr-2">v{v.number}{v.decision === "approved" ? " ✓" : ""}</Link>
+                {v.canManage && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger aria-label={`Version ${v.number} options`} className="mr-1 flex size-7 items-center justify-center rounded-full hover:bg-muted"><Icon name="more_horiz" className="!text-[16px]" /></DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56 rounded-xl p-1.5">
+                      <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => requestUpload({ side: "front", replaceVersionId: v.id })}><Icon name="sync" />Replace v{v.number}</DropdownMenuItem>
+                      {upload?.isPrint && !v.hasBack && <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => requestUpload({ side: "back", replaceVersionId: null })}><Icon name="flip" />Add back side</DropdownMenuItem>}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm text-destructive-text" disabled={pending} onSelect={() => removeVersion(v)}><Icon name="delete" />Delete v{v.number}</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            ))}
+            {upload && !readOnly && <UploadPanel slotId={slotId} accept={upload.accept} isPrint={upload.isPrint} nextNumber={upload.nextNumber} label="Upload" compactOnPhone />}
+          </div>
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5 md:right-4 md:top-4">
             {mode === "place" ? (
-              <><span className="whitespace-nowrap px-3 text-[13px] font-medium text-white">{draft ? "Describe the change" : <><span className="md:hidden">Tap where the change goes</span><span className="hidden md:inline">Click the design where the change is needed</span></>}</span><button type="button" onClick={stop} aria-label="Cancel" className="flex size-9 items-center justify-center rounded-full text-white hover:bg-white/15"><Icon name="close" className="!text-[18px]" /></button></>
+              <div className={cn(chip, "pr-1")}><span>{draft ? "Describe the change" : "Click the design where the change is needed"}</span><button type="button" onClick={stop} aria-label="Cancel" className="ml-1 flex size-7 items-center justify-center rounded-full hover:bg-muted"><Icon name="close" className="!text-[16px]" /></button></div>
             ) : (
               <>
-                {canComment && versionId && side?.src && tool("Comment", "add_comment", false, () => setMode("place"))}
-                {hasGuides && side?.src && tool("Guides", "grid_on", showGuides, () => setShowGuides((v) => !v))}
-                {sides.length > 1 && <div className="mx-0.5 flex rounded-full bg-white/10 p-0.5">{sides.map((s) => <button key={s.side} type="button" onClick={() => { setSideKey(s.side); stop(); }} className={cn("h-8 rounded-full px-3 text-[13px] font-medium capitalize", side?.side === s.side ? "bg-white text-black" : "text-white/80")}>{s.side}</button>)}</div>}
-                {side?.src && tool("Enlarge", "zoom_out_map", false, () => setOpen(true))}
+                {canComment && versionId && <button type="button" onClick={() => setMode("place")} className={chip}><Icon name="add_comment" className="!text-[18px]" />Comment</button>}
+                {hasGuides && <button type="button" onClick={() => setShowGuides((v) => !v)} aria-pressed={showGuides} className={cn(chip, showGuides && "bg-foreground text-background ring-foreground hover:bg-foreground")}><Icon name="grid_on" className="!text-[18px]" />Guides</button>}
               </>
             )}
           </div>
 
-          {side?.src ? (
-            <div className="relative inline-block max-w-full">
-              <img src={side.src} alt="" className={cn("block max-h-[62dvh] max-w-full rounded-lg object-contain md:max-h-[max(360px,calc(100dvh-300px))]", mode === "place" ? "cursor-crosshair" : "cursor-zoom-in")} style={{ aspectRatio: side.width && side.height ? `${side.width} / ${side.height}` : undefined }}
-                onClick={(e) => { if (mode === "place") { const r = e.currentTarget.getBoundingClientRect(); setDraft({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }); } else setOpen(true); }} />
-              {side.isGif && <div className="pointer-events-none absolute inset-0 rounded-lg" style={{ backgroundImage: "url(/watermark-tile.png)", backgroundSize: "40%" }} />}
-              {showGuides && g && hasGuides && <Guides bands={g.bands} rects={g.rects} color={side.guideColor} />}
-              {pins.map((p) => <PinBubble key={p.id} n={p.n} x={p.x} y={p.y} active={active === p.id} onClick={() => setActive(active === p.id ? null : p.id)} />)}
-              {draft && <PinBubble n={numbered.size + 1} x={draft.x} y={draft.y} draft />}
-              {draft && (
-                <div className={cn("absolute z-10 flex h-12 w-[min(320px,80vw)] items-center gap-1 rounded-full bg-zinc-800 pl-4 pr-1.5 shadow-2xl ring-1 ring-white/15", draft.y > 0.85 ? "-translate-y-[calc(100%+14px)]" : "translate-y-4")} style={{ left: `min(max(${draft.x * 100}% - 20px, 8px), calc(100% - min(320px, 80vw) - 8px))`, top: `${draft.y * 100}%` }}>
-                  <input ref={draftInput} value={draftText} onChange={(e) => setDraftText(e.target.value)} placeholder="Describe the change" className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/50 focus:outline-none" onKeyDown={(e) => { if (e.key === "Enter" && draftText.trim() && !pending) post(draftText.trim(), draft); if (e.key === "Escape") stop(); }} />
-                  <button type="button" disabled={!draftText.trim() || pending} onClick={() => post(draftText.trim(), draft)} aria-label="Post" className={cn("flex size-9 items-center justify-center rounded-full", draftText.trim() ? "bg-white text-black" : "text-white/30")}><Icon name="check" className="!text-[18px]" /></button>
-                  <button type="button" onClick={stop} aria-label="Cancel" className="flex size-9 items-center justify-center rounded-full text-white/70 hover:bg-white/15"><Icon name="close" className="!text-[18px]" /></button>
-                </div>
-              )}
-              <span className="pointer-events-none absolute bottom-2.5 left-2.5 max-w-[60%] truncate rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-medium text-white"><span className="md:hidden">{caption.split(" · ").slice(0, 2).join(" · ")}</span><span className="hidden md:inline">{caption}</span></span>
-            </div>
-          ) : <p className="text-sm text-white/60">No design uploaded yet</p>}
+          <div className="flex flex-col items-center gap-6">
+            {sides.map((s) => {
+              const g = guideGeometry(safe, print, s.width, s.height);
+              const pins = pinsFor(s.side);
+              return (
+                <figure key={s.side} className="group relative inline-block max-w-full">
+                  {s.src ? (
+                    <>
+                      <img src={s.src} alt="" className={cn("block max-h-[70dvh] max-w-full rounded-lg shadow-md", mode === "place" ? "cursor-crosshair" : "")} style={{ aspectRatio: s.width && s.height ? `${s.width} / ${s.height}` : undefined }}
+                        onClick={(e) => { if (mode !== "place") return; const r = e.currentTarget.getBoundingClientRect(); setDraft({ side: s.side, x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }); }} />
+                      {s.isGif && <div className="pointer-events-none absolute inset-0 rounded-lg" style={{ backgroundImage: "url(/watermark-tile.png)", backgroundSize: "40%" }} />}
+                      {showGuides && <Guides cut={g.cut} safe={g.safe} />}
+                      {pins.map((p) => <PinBubble key={p.id} n={p.n} x={p.x} y={p.y} active={active === p.id} onClick={() => setActive(active === p.id ? null : p.id)} />)}
+                      {draft?.side === s.side && <PinBubble n={numbered.size + 1} x={draft.x} y={draft.y} draft />}
+                      {draft?.side === s.side && (
+                        <div className={cn("absolute z-10 flex h-11 w-[min(320px,78vw)] items-center gap-1 rounded-full bg-card pl-4 pr-1 shadow-xl ring-1 ring-border", draft.y > 0.85 ? "-translate-y-[calc(100%+14px)]" : "translate-y-4")} style={{ left: `min(max(${draft.x * 100}% - 20px, 4px), calc(100% - min(320px, 78vw) - 4px))`, top: `${draft.y * 100}%` }}>
+                          <input ref={draftInput} value={draftText} onChange={(e) => setDraftText(e.target.value)} placeholder="Describe the change" className="min-w-0 flex-1 bg-transparent text-sm focus:outline-none" onKeyDown={(e) => { if (e.key === "Enter" && draftText.trim() && !pending) post(draftText.trim(), draft); if (e.key === "Escape") stop(); }} />
+                          <button type="button" disabled={!draftText.trim() || pending} onClick={() => post(draftText.trim(), draft)} aria-label="Post" className={cn("flex size-8 items-center justify-center rounded-full", draftText.trim() ? "bg-primary text-primary-foreground" : "text-muted-foreground/50")}><Icon name="check" className="!text-[18px]" /></button>
+                          <button type="button" onClick={stop} aria-label="Cancel" className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><Icon name="close" className="!text-[18px]" /></button>
+                        </div>
+                      )}
+                      {mode === "view" && <button type="button" onClick={() => setOpen(s.side)} aria-label="Enlarge" className="absolute bottom-2.5 right-2.5 flex size-9 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 max-md:opacity-70"><Icon name="zoom_out_map" className="!text-[18px]" /></button>}
+                    </>
+                  ) : <div className="flex aspect-[4/5] w-64 items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground">No design yet</div>}
+                  {sides.length > 1 && <figcaption className="mt-2 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">{s.side}</figcaption>}
+                </figure>
+              );
+            })}
+          </div>
         </div>
-        {side && <Lightbox open={open} onClose={() => setOpen(false)} src={side.src} caption={caption} isGif={side.isGif} />}
+        {open && <Lightbox open onClose={() => setOpen(null)} src={sides.find((s) => s.side === open)?.src ?? null} caption={open} isGif={sides.find((s) => s.side === open)?.isGif} />}
       </div>
 
-      <div className="flex max-h-[min(78dvh,880px)] flex-col rounded-2xl border border-border">
-        <p className="border-b border-border px-4 py-3 text-sm font-medium">Comments <span className="text-muted-foreground">· {comments.length}</span></p>
-        <ul className="flex-1 space-y-4 overflow-y-auto px-2 py-2">
-          {comments.length === 0 && <li className="px-2 py-3 text-sm text-muted-foreground">No comments yet. Use Comment on the design to pin one, or write below.</li>}
-          {comments.map((c) => (
-            <li key={c.id} id={`comment-${c.id}`} onClick={() => numbered.has(c.id) && setActive(c.id)} className={cn("flex gap-3 rounded-xl px-2 py-2 transition-colors", active === c.id && "bg-info-soft/60")}>
-              {numbered.has(c.id) ? <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-info text-xs font-semibold text-white ring-2 ring-white shadow-sm">{numbered.get(c.id)}</span> : <UserAvatar initials={c.author.initials} size={28} />}
-              <div className="min-w-0 flex-1 space-y-1">
-                <p className="flex flex-wrap items-baseline gap-x-1.5 text-sm"><span className="font-medium">{c.author.name}</span><span className="text-xs text-muted-foreground">{relativeTime(c.created_at)}{numbered.has(c.id) && sides.length > 1 ? ` · ${c.pin_side}` : ""}{c.edited_at ? " · edited" : ""}</span></p>
-                {editing?.id === c.id ? (
-                  <div className="space-y-2">
-                    <Textarea rows={3} value={editing.text} onChange={(e) => setEditing({ id: c.id, text: e.target.value })} className="rounded-xl" autoFocus />
-                    <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending || !editing.text.trim()} onClick={() => start(async () => { try { await editComment(c.id, editing.text); setEditing(null); toast.success("Saved"); router.refresh(); } catch (e) { toast.error((e as Error).message); } })}>Save</Button></div>
+      <div className="flex flex-col gap-4">
+        {decision && <div className="hidden rounded-2xl border border-border p-4 md:block"><p className="mb-3 text-sm font-medium">Decision</p>{decision}</div>}
+        <div className="flex max-h-[min(78dvh,880px)] flex-col rounded-2xl border border-border">
+          <p className="border-b border-border px-4 py-3 text-sm font-medium">Comments <span className="text-muted-foreground">· {comments.length}</span></p>
+          <ul className="flex-1 overflow-y-auto px-2 py-2">
+            {comments.length === 0 && <li className="px-2 py-3 text-sm text-muted-foreground">No comments yet. Use Comment on the design to pin one, or write below.</li>}
+            {comments.map((c) => {
+              const done = !!c.addressed_at || !!c.confirmed_at; const n = numbered.get(c.id);
+              return (
+                <li key={c.id} id={`comment-${c.id}`} onClick={() => n && setActive(c.id)} className={cn("group/c flex gap-3 rounded-xl px-2 py-2.5 transition-colors", active === c.id && "bg-info-soft/60", done && "opacity-70")}>
+                  <span className="relative mt-0.5 shrink-0">
+                    <UserAvatar initials={c.author.initials} size={32} />
+                    {n && <span className="absolute -bottom-1 -right-1 flex size-4.5 items-center justify-center rounded-full bg-info text-[10px] font-semibold text-white ring-2 ring-card">{n}</span>}
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-start gap-2">
+                      <p className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5 text-sm"><span className="font-medium">{c.author.name}</span><span className="text-xs text-muted-foreground">{relativeTime(c.created_at)}{n && sides.length > 1 ? ` · ${c.pin_side}` : ""}{c.edited_at ? " · edited" : ""}</span></p>
+                      {canComment && editing?.id !== c.id && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger aria-label="Comment options" className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-60 hover:bg-muted hover:opacity-100 group-hover/c:opacity-100"><Icon name="more_horiz" className="!text-[18px]" /></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44 rounded-xl p-1.5">
+                            {done ? <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "reopen")}><Icon name="replay" />Reopen</DropdownMenuItem> : <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "addressed")}><Icon name="check" />Mark as done</DropdownMenuItem>}
+                            {(c.mine || canModerate) && <>
+                              <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => setEditing({ id: c.id, text: c.body })}><Icon name="edit" />Edit</DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm text-destructive-text" onSelect={() => start(async () => { if (!confirm("Delete this comment?")) return; try { await deleteComment(c.id); toast.success("Comment deleted"); router.refresh(); } catch (err) { toast.error((err as Error).message); } })}><Icon name="delete" />Delete</DropdownMenuItem>
+                            </>}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                    {editing?.id === c.id ? (
+                      <div className="space-y-2">
+                        <Textarea rows={3} value={editing.text} onChange={(e) => setEditing({ id: c.id, text: e.target.value })} className="rounded-xl" autoFocus />
+                        <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending || !editing.text.trim()} onClick={() => start(async () => { try { await editComment(c.id, editing.text); setEditing(null); toast.success("Saved"); router.refresh(); } catch (e) { toast.error((e as Error).message); } })}>Save</Button></div>
+                      </div>
+                    ) : <p className={cn("whitespace-pre-wrap text-sm leading-5", done && "line-through decoration-muted-foreground/60")}>{c.body}</p>}
+                    {!done && canComment && <button className="text-[13px] font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "addressed"); }} disabled={pending}>Mark as done</button>}
+                    {done && <span className="flex items-center gap-1 text-[13px] text-success-text"><Icon name="check" className="!text-[16px]" />Done</span>}
                   </div>
-                ) : <p className="whitespace-pre-wrap text-sm leading-5">{c.body}</p>}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-[13px]">
-                  {c.confirmed_at ? <StateBadge state="approved" label="Confirmed" /> : c.addressed_at ? <StateBadge state="in_review" label="Addressed" /> : null}
-                  {!c.addressed_at && !c.confirmed_at && canComment && <button className="font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "addressed"); }} disabled={pending}>Mark as addressed</button>}
-                  {c.addressed_at && !c.confirmed_at && canComment && <button className="text-muted-foreground hover:text-foreground hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "unaddress"); }} disabled={pending}>Undo</button>}
-                  {c.addressed_at && !c.confirmed_at && canApprove && <button className="font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "confirmed"); }} disabled={pending}>Confirm fixed</button>}
-                  {c.confirmed_at && canApprove && <button className="text-muted-foreground hover:text-foreground hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "reopen"); }} disabled={pending}>Reopen</button>}
-                  {(c.mine || canModerate) && canComment && editing?.id !== c.id && <>
-                    <button className="text-muted-foreground hover:text-foreground hover:underline" onClick={(e) => { e.stopPropagation(); setEditing({ id: c.id, text: c.body }); }} disabled={pending}>Edit</button>
-                    <button className="text-muted-foreground hover:text-destructive-text hover:underline" disabled={pending} onClick={(e) => { e.stopPropagation(); start(async () => { if (!confirm("Delete this comment?")) return; try { await deleteComment(c.id); toast.success("Comment deleted"); router.refresh(); } catch (err) { toast.error((err as Error).message); } }); }}>Delete</button>
-                  </>}
-                </div>
+                </li>
+              );
+            })}
+          </ul>
+          {canComment && versionId && (
+            <div className="relative border-t border-border p-3">
+              {suggestions.length > 0 && (
+                <ul className="absolute bottom-full left-3 right-3 mb-1 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+                  {suggestions.map((m) => <li key={m.id}><button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted" onMouseDown={(e) => { e.preventDefault(); pick(m); }}><UserAvatar initials={m.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()} size={24} />{m.name}</button></li>)}
+                </ul>
+              )}
+              <div className="flex items-end gap-2">
+                <Textarea ref={ta} rows={1} value={text} onChange={(e) => onChange(e.target.value)} placeholder="Write a comment… @ to mention" className="min-h-11 resize-none rounded-xl" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && text.trim() && !pending) { e.preventDefault(); post(text, null); } }} />
+                <Button size="icon" disabled={pending || !text.trim()} onClick={() => post(text, null)} aria-label="Post"><Icon name="arrow_upward" /></Button>
               </div>
-            </li>
-          ))}
-        </ul>
-        {canComment && versionId && (
-          <div className="relative border-t border-border p-3">
-            {suggestions.length > 0 && (
-              <ul className="absolute bottom-full left-3 right-3 mb-1 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-                {suggestions.map((m) => <li key={m.id}><button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted" onMouseDown={(e) => { e.preventDefault(); pick(m); }}><UserAvatar initials={m.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()} size={24} />{m.name}</button></li>)}
-              </ul>
-            )}
-            <div className="flex items-end gap-2">
-              <Textarea ref={ta} rows={1} value={text} onChange={(e) => onChange(e.target.value)} placeholder="Write a comment… @ to mention" className="min-h-11 resize-none rounded-xl" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && text.trim() && !pending) { e.preventDefault(); post(text, null); } }} />
-              <Button size="icon" disabled={pending || !text.trim()} onClick={() => post(text, null)} aria-label="Post"><Icon name="arrow_upward" /></Button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+      {/* Phones: approvers get their decision in a fixed bar */}
+      {decision && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur md:hidden [&>div]:justify-end">{decision}</div>}
     </div>
   );
 }

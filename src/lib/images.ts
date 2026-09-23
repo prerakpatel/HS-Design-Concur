@@ -1,5 +1,6 @@
 import sharp from "sharp";
-import { WATERMARK_TILE_BASE64 } from "./watermark-tile";
+import path from "node:path";
+import { createCanvas, GlobalFonts } from "@napi-rs/canvas";
 
 export interface Rendition { buf: Buffer; mime: string; ext: string }
 export interface Processed { optimised: Rendition; preview: Rendition | null; thumb: Rendition; width: number; height: number }
@@ -10,7 +11,7 @@ const THUMB_MAX = 480;
 /**
  * One-time processing of an upload (PRD §7.2). Nothing is kept at original size:
  * - optimised: the file people download: JPEG q85 (accepted everywhere), PNG only when the image has transparency
- * - preview:   ≤1600px with the tiled DRAFT watermark baked in
+ * - preview:   ≤1600px with one large, faint DRAFT mark baked in across the diagonal
  * - thumb:     ≤480px WebP
  * GIFs pass through untouched (the viewer overlays the watermark in CSS instead).
  */
@@ -29,11 +30,7 @@ export async function processUpload(input: Buffer, mime: string): Promise<Proces
 
   const previewBase = await base.clone().resize({ width: PREVIEW_MAX, height: PREVIEW_MAX, fit: "inside", withoutEnlargement: true }).toBuffer();
   const pm = await sharp(previewBase).metadata();
-  const short = Math.min(pm.width ?? PREVIEW_MAX, pm.height ?? PREVIEW_MAX);
-  // One big tile (the tile carries a few sparse marks) so a preview shows a handful of DRAFTs, not a wall.
-  const tileSize = Math.max(240, short); // the tile spans the short side, so a preview carries a handful of large marks
-  const tile = await sharp(Buffer.from(WATERMARK_TILE_BASE64, "base64")).resize(tileSize, tileSize).png().toBuffer();
-  const preview = await sharp(previewBase).composite([{ input: tile, tile: true, blend: "over" }]).webp({ quality: 80 }).toBuffer();
+  const preview = await sharp(previewBase).composite([{ input: await draftMark(pm.width ?? PREVIEW_MAX, pm.height ?? PREVIEW_MAX), top: 0, left: 0, blend: "over" }]).webp({ quality: 80 }).toBuffer();
   const thumb = await sharp(previewBase).resize({ width: THUMB_MAX, height: THUMB_MAX, fit: "inside", withoutEnlargement: true }).webp({ quality: 75 }).toBuffer();
 
   return {
@@ -74,4 +71,22 @@ function hslToHex(h: number, s: number, l: number) {
   const a = S * Math.min(L, 1 - L);
   const f = (n: number) => L - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
   return "#" + [f(0), f(8), f(4)].map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+const MARK_ALPHA = 0.22;
+let fontReady = false;
+/** One giant "DRAFT" across the diagonal: white fill with a dark edge so it reads on light and dark art, faded to 22%. */
+async function draftMark(w: number, h: number): Promise<Buffer> {
+  if (!fontReady) { GlobalFonts.registerFromPath(path.join(process.cwd(), "src/assets/Inter-ExtraBold.ttf"), "DCMark"); fontReady = true; }
+  const c = createCanvas(w, h); const ctx = c.getContext("2d");
+  let size = Math.round(Math.min(w, h) * 0.3);
+  ctx.font = `800 ${size}px DCMark`;
+  size = Math.round(size * ((Math.hypot(w, h) * 0.6) / Math.max(1, ctx.measureText("DRAFT").width)));
+  ctx.font = `800 ${size}px DCMark`;
+  ctx.translate(w / 2, h / 2); ctx.rotate(-Math.atan2(h, w) * 0.85);
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+  ctx.lineWidth = Math.max(3, size * 0.05); ctx.strokeStyle = "#111"; ctx.strokeText("DRAFT", 0, 0);
+  ctx.fillStyle = "#fff"; ctx.fillText("DRAFT", 0, 0);
+  // Drawn opaque, then the whole mark is faded so the edge never shows through the fill.
+  return sharp(c.toBuffer("image/png")).ensureAlpha().linear([1, 1, 1, MARK_ALPHA], [0, 0, 0, 0]).png().toBuffer();
 }

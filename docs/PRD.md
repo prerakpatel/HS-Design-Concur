@@ -185,8 +185,8 @@ Nothing is kept at original size. Each side is optimised once and only the deriv
 All versions are kept until the event purge; with files this small no pruning is needed.
 
 ### 7.3 Watermark
-- Tiled "DRAFT" at 45°, ~12 % opacity, dual light/dark outline so it reads on any background,
-  plus a corner caption `DRAFT · v{n} · {date}`.
+- One giant "DRAFT" along the diagonal, white with a dark outline so it reads on any background,
+  faded to 22 % opacity. Version, uploader and time show in the page header, not on the image.
 - **GIFs are not baked.** The viewer draws the same watermark as a CSS overlay over the
   animated GIF. Protection is by access control, not by the file.
 - Approved = the `preview` is no longer served; the `optimised` file is.
@@ -230,8 +230,8 @@ against Supabase's 1 GB free storage.
 | 11 | print_10x7 | Print 10 × 7 in | 10.5 × 7.5 in @ 300 dpi | print | bleed 0.25 in, safe 0.25 in | print |
 | 12 | led_backwall | LED backwall | custom W × H per request | LED (decorative seams) | none | digital |
 
-Print sizes follow the existing Figma templates: the file is trim + 0.25 in on each side, the
-red band is the bleed zone, and a lighter inner guide marks a 0.25 in safe margin from trim.
+Print sizes follow the existing Figma templates: the file is trim + bleed on each side. The viewer
+draws the trim as a dashed cut line with crop ticks and the safe margin as a translucent mint band.
 
 ### 9.2 Catalog editing
 Rows are editable **in-line** by users tagged Designer and by Core Admins, including adding
