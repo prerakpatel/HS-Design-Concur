@@ -75,6 +75,13 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://hsdesign.vercel.app/api/job
 
 The JSON reply lists what it did (`retention.archived`, `filesRemoved`, `errors`, …).
 
+## Email (on hold)
+
+Resend needs a verified sender domain, and nobody on the team controls hariss.org DNS yet, so email is parked.
+The Inbox "Email me" row, the per-org email switch and the Settings → Email section are hidden until
+`RESEND_API_KEY` and `EMAIL_FROM` are set on Vercel; nothing else changes when they are. Push, in-app, Google
+Chat and Slack cover everyone meanwhile.
+
 ## Push notifications
 
 Web Push to phones and desktops that turned it on from Inbox → "Notify this device". The browser keeps a

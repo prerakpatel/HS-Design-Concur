@@ -59,7 +59,7 @@ export async function updateOrgSettings(orgId: string, formData: FormData) {
   const { supabase } = await requireCoreAdmin();
   const patch: Record<string, unknown> = {
     accepting_signups: formData.get("accepting_signups") === "on",
-    email_enabled: formData.get("email_enabled") === "on",
+    ...(formData.has("email_enabled") || process.env.RESEND_API_KEY ? { email_enabled: formData.get("email_enabled") === "on" } : {}),
     chat_enabled: formData.get("chat_enabled") === "on",
     chat_webhook_url: String(formData.get("chat_webhook_url") ?? "").trim() || null,
     slack_enabled: formData.get("slack_enabled") === "on",
