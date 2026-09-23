@@ -6,7 +6,7 @@ import { SectionHeader } from "@/components/page-header";
 import { relativeTime } from "@/lib/labels";
 
 export type { FormatCardData } from "@/components/events/format-grid";
-export interface ActivityItem { id: string | number; who: string; initials: string; what: string; when: string }
+export interface ActivityItem { id: string | number; who: string; initials: string; avatar?: string | null; what: string; when: string }
 
 export interface BriefView { date: string | null; timeText: string | null; inviteText: string | null; venueName: string | null; venueAddress: string | null; notes: string | null }
 /** What goes on the designs: when, where, the invite text. */
@@ -42,7 +42,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
       <SectionHeader title="Activity" />
       <ul className="space-y-5">
         {items.length === 0 && <li className="text-sm text-muted-foreground">Nothing yet.</li>}
-        {items.map((a) => <li key={a.id} className="flex gap-3"><UserAvatar initials={a.initials} size={28} /><div className="min-w-0 text-sm leading-5"><p><span className="font-medium">{a.who}</span> {a.what}</p><p className="text-muted-foreground">{relativeTime(a.when)}</p></div></li>)}
+        {items.map((a) => <li key={a.id} className="flex gap-3"><UserAvatar initials={a.initials} src={a.avatar} size={28} /><div className="min-w-0 text-sm leading-5"><p><span className="font-medium">{a.who}</span> {a.what}</p><p className="text-muted-foreground">{relativeTime(a.when)}</p></div></li>)}
       </ul>
     </aside>
   );

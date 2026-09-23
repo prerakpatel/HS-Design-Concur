@@ -12,7 +12,7 @@ import { Icon } from "@/components/material-icon";
 import { ConfirmButton } from "@/components/confirm-button";
 import { updateUser, removeUser } from "@/app/actions/admin";
 
-export interface EditableUser { id: string; name: string; email: string; initials: string; role: "member" | "core_admin"; is_approver: boolean; function_tags: string[]; orgIds: string[]; email_pref?: "instant" | "digest" | "off" }
+export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; is_approver: boolean; function_tags: string[]; orgIds: string[]; email_pref?: "instant" | "digest" | "off" }
 export interface OrgOption { id: string; label: string }
 const TAGS = [{ value: "central", label: "Central" }, { value: "publication", label: "Publication" }, { value: "designer", label: "Designer" }];
 const tagLabel = (t: string) => TAGS.find((x) => x.value === t)?.label ?? t;
@@ -26,7 +26,7 @@ export function UsersList({ users, orgs, currentUserId }: { users: EditableUser[
         {users.map((u) => (
           <li key={u.id}>
             <button type="button" onClick={() => setOpen(u)} className="-mx-3 flex w-[calc(100%+24px)] items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-subtle md:gap-4">
-              <UserAvatar initials={u.initials} size={36} />
+              <UserAvatar initials={u.initials} src={u.avatar} size={36} />
               <div className="min-w-0 flex-1 md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_120px] md:items-center md:gap-4">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium leading-5">{u.name}{u.id === currentUserId && <span className="ml-2 text-xs font-normal text-muted-foreground">you</span>}</p>
@@ -64,7 +64,7 @@ function UserPanel({ user, orgs, isSelf, onClose }: { user: EditableUser | null;
         {user && (
           <form key={user.id} className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await updateUser(user.id, fd); toast.success("Saved"); onClose(); router.refresh(); } catch (err) { toast.error((err as Error).message); } }); }}>
             <DialogHeader className="border-b border-border px-6 py-5 text-left">
-              <div className="flex items-center gap-3"><UserAvatar initials={user.initials} size={40} /><div><DialogTitle className="text-lg">{user.name}</DialogTitle><DialogDescription>{user.email}</DialogDescription></div></div>
+              <div className="flex items-center gap-3"><UserAvatar initials={user.initials} src={user.avatar} size={40} /><div><DialogTitle className="text-lg">{user.name}</DialogTitle><DialogDescription>{user.email}</DialogDescription></div></div>
             </DialogHeader>
             <div className="min-h-0 flex-1 space-y-7 overflow-y-auto px-6 py-6">
               <Field label="Role" hint="Core Admins approve access, manage people and can delete any event.">

@@ -16,15 +16,14 @@ import { addComment, setCommentFlag, editComment, deleteComment, deleteVersion }
 import { relativeTime } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-// icons: add_comment grid_on zoom_out_map check close arrow_upward more_horiz upload sync flip delete replay edit location_on keyboard_command_key
+// icons: add_comment grid_on zoom_out_map check close arrow_upward more_horiz upload sync flip delete replay edit chat_bubble
 export type Side = "front" | "back";
 export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number }
-export interface CommentView { id: string; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; author: { name: string; initials: string; role: string } }
-export interface Member { id: string; name: string; handle: string }
+export interface CommentView { id: string; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
+export interface Member { id: string; name: string; handle: string; avatar?: string | null }
 export interface VersionChip { id: string; number: number; decision: string; canManage: boolean; hasBack: boolean }
 export interface StatusView { state: BadgeState; version: number | null; uploader: string | null; uploadedAt: string | null }
 
-const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 /** Enter = new line. ⌘/Ctrl+Enter posts, everywhere a comment is written. */
 const postKey = (e: React.KeyboardEvent) => e.key === "Enter" && (e.metaKey || e.ctrlKey);
 
@@ -129,8 +128,8 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
               <figure key={s.side} className="group max-w-full">
                 {s.src ? (
                   <div className="relative inline-block max-w-full">
-                    <img src={s.src} alt="" className={cn("block max-h-[75dvh] max-w-full rounded-md shadow-md", mode === "place" ? "cursor-crosshair" : "")} style={{ aspectRatio: s.width && s.height ? `${s.width} / ${s.height}` : undefined }}
-                      onClick={(e) => { if (mode !== "place") return; const r = e.currentTarget.getBoundingClientRect(); setDraft({ side: s.side, x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }); }} />
+                    <img src={s.src} alt="" className={cn("block max-h-[75dvh] max-w-full rounded-md shadow-md", mode === "place" ? "cursor-crosshair" : "cursor-zoom-in")} style={{ aspectRatio: s.width && s.height ? `${s.width} / ${s.height}` : undefined }}
+                      onClick={(e) => { if (mode !== "place") { setOpen(s.side); return; } const r = e.currentTarget.getBoundingClientRect(); setDraft({ side: s.side, x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }); }} />
                     {s.isGif && <DraftMark width={s.width} height={s.height} />}
                     {showGuides && <Guides cut={g.cut} safe={g.safe} />}
                     {pins.map((p) => <PinBubble key={p.id} n={p.n} x={p.x} y={p.y} active={active === p.id} onClick={() => setActive(active === p.id ? null : p.id)} />)}
@@ -139,12 +138,9 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                       <div className={cn("absolute z-10 w-[min(340px,calc(100vw-2rem))] rounded-2xl bg-card p-2 shadow-xl ring-1 ring-border", draft.y > 0.7 ? "-translate-y-[calc(100%+26px)]" : "translate-y-[26px]")} style={{ left: `clamp(0px, ${draft.x * 100}% - 24px, calc(100% - min(340px, calc(100vw - 2rem))))`, top: `${draft.y * 100}%` }} onClick={(e) => e.stopPropagation()}>
                         <Textarea ref={draftInput} rows={2} value={draftText} onChange={(e) => setDraftText(e.target.value)} placeholder="Describe the change" className="min-h-0 resize-none border-0 bg-transparent px-2 py-1.5 text-sm shadow-none focus-visible:ring-0"
                           onKeyDown={(e) => { if (postKey(e) && draftText.trim() && !pending) { e.preventDefault(); post(draftText.trim(), draft); } if (e.key === "Escape") stop(); }} />
-                        <div className="flex items-center justify-between gap-2 pl-2">
-                          <span className="hidden text-xs text-muted-foreground sm:inline">{isMac() ? "⌘" : "Ctrl"} ↵ to post</span>
-                          <div className="ml-auto flex gap-1">
-                            <Button type="button" variant="ghost" size="icon-sm" onClick={stop} aria-label="Cancel"><Icon name="close" className="!text-[18px]" /></Button>
-                            <Button type="button" size="icon-sm" disabled={!draftText.trim() || pending} onClick={() => post(draftText.trim(), draft)} aria-label="Post comment"><Icon name="check" className="!text-[18px]" /></Button>
-                          </div>
+                        <div className="flex justify-end gap-1">
+                          <Button type="button" variant="ghost" size="icon-sm" onClick={stop} aria-label="Cancel"><Icon name="close" className="!text-[18px]" /></Button>
+                          <Button type="button" size="icon-sm" disabled={!draftText.trim() || pending} onClick={() => post(draftText.trim(), draft)} aria-label="Post comment"><Icon name="check" className="!text-[18px]" /></Button>
                         </div>
                       </div>
                     )}
@@ -166,28 +162,25 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
             <StateBadge state={status.state} />
             {status.version != null && <span className="text-sm font-medium">v{status.version}</span>}
           </div>
-          <dl className="mt-3 space-y-1 text-sm">
-            {status.uploader && <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Uploaded by</dt><dd className="truncate text-right">{status.uploader}{status.uploadedAt ? <span className="text-muted-foreground"> · {relativeTime(status.uploadedAt)}</span> : null}</dd></div>}
-            <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Open comments</dt><dd>{openCount}</dd></div>
-          </dl>
+          {status.uploader && <p className="mt-3 flex justify-between gap-3 text-sm"><span className="text-muted-foreground">Uploaded by</span><span className="truncate text-right">{status.uploader}{status.uploadedAt ? <span className="text-muted-foreground"> · {relativeTime(status.uploadedAt)}</span> : null}</span></p>}
           {decision && <div className="mt-4 hidden md:block">{decision}</div>}
         </div>
 
         <div className="flex max-h-[min(78dvh,880px)] flex-col rounded-2xl border border-border">
-          <p className="border-b border-border px-4 py-3 text-sm font-medium">Comments <span className="text-muted-foreground">· {comments.length}</span></p>
+          <p className="flex items-baseline justify-between border-b border-border px-4 py-3 text-sm font-medium">Comments <span className="text-muted-foreground">· {comments.length}</span>{openCount > 0 && <span className="ml-auto text-xs font-normal text-muted-foreground">{openCount} open</span>}</p>
           <ul className="flex-1 overflow-y-auto px-2 py-2">
             {comments.length === 0 && <li className="px-2 py-3 text-sm text-muted-foreground">No comments yet. Use Comment to pin one on the design, or write below.</li>}
             {comments.map((c) => {
               const done = !!c.addressed_at || !!c.confirmed_at; const n = numbered.get(c.id);
               return (
-                <li key={c.id} id={`comment-${c.id}`} onClick={() => n && setActive(c.id)} className={cn("group/c flex gap-3 rounded-xl px-2 py-2.5 transition-colors", active === c.id && "bg-info-soft/60", done && "opacity-70")}>
-                  <UserAvatar initials={c.author.initials} size={32} className="mt-0.5 shrink-0" />
+                <li key={c.id} id={`comment-${c.id}`} onClick={() => n && setActive(c.id)} className={cn("group/c flex gap-3 rounded-xl px-2 py-2.5 transition-colors", active === c.id && "bg-subtle", done && "opacity-70")}>
+                  <UserAvatar initials={c.author.initials} src={c.author.avatar} size={32} className="mt-0.5 shrink-0" />
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-start gap-2">
                       <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 text-sm">
                         <span className="font-medium">{c.author.name}</span>
                         <span className="text-xs text-muted-foreground">{relativeTime(c.created_at)}{c.edited_at ? " · edited" : ""}</span>
-                        {n && <span className="inline-flex items-center gap-0.5 text-xs font-medium text-info"><Icon name="location_on" className="!text-[14px]" />{n}{sides.length > 1 ? ` · ${c.pin_side}` : ""}</span>}
+                        {n && <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground"><Icon name="chat_bubble" className="!text-[13px]" />{n}{sides.length > 1 ? ` · ${c.pin_side}` : ""}</span>}
                       </p>
                       {canComment && editing?.id !== c.id && (
                         <DropdownMenu>
@@ -220,7 +213,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
             <div className="relative border-t border-border p-3">
               {suggestions.length > 0 && (
                 <ul className="absolute bottom-full left-3 right-3 mb-1 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-                  {suggestions.map((m) => <li key={m.id}><button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted" onMouseDown={(e) => { e.preventDefault(); pick(m); }}><UserAvatar initials={m.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()} size={24} />{m.name}</button></li>)}
+                  {suggestions.map((m) => <li key={m.id}><button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted" onMouseDown={(e) => { e.preventDefault(); pick(m); }}><UserAvatar initials={m.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()} src={m.avatar} size={24} />{m.name}</button></li>)}
                 </ul>
               )}
               <div className="flex items-end gap-2">

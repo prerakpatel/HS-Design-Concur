@@ -35,7 +35,7 @@ export function MobileNav() {
   );
 }
 
-export function MobileTopBar({ org, orgs, initials }: { org: Organisation; orgs: Organisation[]; initials: string }) {
+export function MobileTopBar({ org, orgs, initials, avatar }: { org: Organisation; orgs: Organisation[]; initials: string; avatar?: string | null }) {
   const pathname = usePathname();
   if (isTaskScreen(pathname)) return null;
   return (
@@ -49,7 +49,7 @@ export function MobileTopBar({ org, orgs, initials }: { org: Organisation; orgs:
           {orgs.map((o) => <DropdownMenuItem key={o.id} className="h-10 rounded-lg px-3 text-sm" onSelect={() => setCurrentOrg(o.slug)}><OrgMark org={o} size={24} />{o.name}{o.id === org.id && <Icon name="check" className="ml-auto text-muted-foreground" />}</DropdownMenuItem>)}
         </DropdownMenuContent>
       </DropdownMenu>
-      <UserAvatar initials={initials} size={32} />
+      <UserAvatar initials={initials} src={avatar} size={32} />
     </header>
   );
 }

@@ -68,12 +68,12 @@ outline pill; on phones they collapse to icons. Enlarge appears on hover.
 
 The sticky, edge-to-edge header only says where you are (back, format name + version, n of N) and is
 left-aligned so it never shifts with the label. A status card beside the artwork carries the state badge,
-version, uploader + time and the open-comment count; approvers get Approve / Request changes stacked
-inside it on desktop and in a fixed bottom bar on phones.
+version and uploader + time; approvers get Request changes over Approve inside it on desktop and in a
+fixed bottom bar on phones. The comments panel header shows how many are still open.
 
-Comments show the author's avatar; a pinned comment carries a small pin token (📍 n) in its meta line
-that matches the numbered bubble on the design. Enter is a new line everywhere; ⌘/Ctrl + Enter posts, as
-does the check / arrow button.
+Comments show the author's Google photo (initials when there is none); a pinned comment carries a small
+grey chat-bubble token with its number in the meta line, matching the bubble on the design. Enter is a new
+line everywhere; ⌘/Ctrl + Enter posts, as does the check / arrow button. Tapping the design enlarges it.
 
 **Guides** read like a print proof: the safe zone is a translucent mint band with a hairline inner
 edge; print formats add a dashed pink cut (trim) line with crop ticks outside the corners. Insets
