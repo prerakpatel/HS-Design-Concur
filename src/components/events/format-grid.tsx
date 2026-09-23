@@ -66,10 +66,9 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
               </Link>
               {selectable && (
                 <button type="button" role="checkbox" aria-checked={on} aria-label={`Select ${c.name}`} onClick={toggle}
-                  className={cn("absolute left-3 top-3 z-10 flex size-6 items-center justify-center rounded-full text-white backdrop-blur-sm transition-[opacity,colors] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    on ? "bg-primary ring-2 ring-white" : "bg-black/30 hover:bg-black/45",
-                    on || selecting ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100")}>
-                  <Icon name="check" className={cn("!text-[16px]", !on && "opacity-80")} />
+                  className={cn("absolute left-2.5 top-2.5 z-10 flex size-7 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    on ? "bg-white text-primary" : "bg-black/25 text-white/90 backdrop-blur-sm hover:bg-black/40 hover:text-white")}>
+                  <Icon name="check_circle" size={24} fill={on} />
                 </button>
               )}
             </div>
