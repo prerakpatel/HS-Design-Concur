@@ -10,7 +10,7 @@ const ICON_FONT = `https://fonts.googleapis.com/css2?family=Material+Symbols+Rou
 export const metadata: Metadata = {
   title: { default: "Design & Concur", template: "%s · Design & Concur" },
   description: "Event asset request, review and approval for Harisumiran and Atmiya Care Charities.",
-  appleWebApp: { capable: true, title: "Design & Concur", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Design Seva", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = { themeColor: "#ffffff", width: "device-width", initialScale: 1 };
