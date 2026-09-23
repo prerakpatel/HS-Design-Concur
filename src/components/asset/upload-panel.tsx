@@ -37,7 +37,7 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
   return (
     <div className={variant === "dropzone" ? "rounded-2xl border border-dashed border-border p-6 text-center" : "contents"} data-upload-panel>
       <input ref={input} type="file" accept={accept.join(",")} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f); }} />
-      <Button onClick={() => openWith({ side: "front", replaceVersionId: null })} disabled={!!busy} size={variant === "dropzone" ? "lg" : "default"} variant={variant === "dropzone" ? "default" : variant === "pill" ? "outline" : "secondary"} className={className} aria-label={compactOnPhone ? (label ?? "Upload") : undefined}>
+      <Button onClick={() => openWith({ side: "front", replaceVersionId: null })} disabled={!!busy} size={variant === "dropzone" ? "lg" : "default"} variant={variant === "pill" || variant === "dropzone" ? "default" : "secondary"} className={className} aria-label={compactOnPhone ? (label ?? "Upload") : undefined}>
         <Icon name="upload" /><span className={compactOnPhone && !busy ? "hidden sm:inline" : undefined}>{busy ?? label ?? (nextNumber === 1 ? "Upload design" : "Upload new version")}</span>
       </Button>
       {variant === "dropzone" && <p className="mt-3 text-xs text-muted-foreground">{accept.map((m) => m.split("/")[1].toUpperCase().replace("JPEG", "JPG")).join(", ")} up to 8 MB. Shown with a DRAFT mark until approved.{isPrint && accept.includes("application/pdf") ? " A two-page PDF fills Front and Back at once." : ""}</p>}

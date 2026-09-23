@@ -4,16 +4,16 @@ import { Icon } from "@/components/material-icon";
 import { BackLink } from "@/components/page-header";
 
 export interface AssetHeaderProps {
-  eventId: string; eventTitle: string; formatName: string; version: number | null;
+  eventId: string; eventTitle: string; formatName: string;
   position: { at: number; total: number }; prev: { id: string; name: string } | null; next: { id: string; name: string } | null;
 }
 
 /**
- * Edge-to-edge sticky row that only answers "where am I, where next": back to the event, the format's name and
- * version, prev / next. Left-aligned so it never shifts with the label's length. State, uploader and the decision
+ * Edge-to-edge sticky row that only answers "where am I, where next": back to the event, the format's name,
+ * prev / next. Left-aligned so it never shifts with the label's length. State, uploader and the decision
  * live in the status card beside the artwork.
  */
-export function AssetHeader({ eventId, eventTitle, formatName, version, position, prev, next }: AssetHeaderProps) {
+export function AssetHeader({ eventId, eventTitle, formatName, position, prev, next }: AssetHeaderProps) {
   const slotHref = (id: string) => `/events/${eventId}/slots/${id}`;
   return (
     <div className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
@@ -21,7 +21,7 @@ export function AssetHeader({ eventId, eventTitle, formatName, version, position
         <Button asChild variant="ghost" size="icon" className="md:hidden"><Link href={`/events/${eventId}`} aria-label={`Back to ${eventTitle}`}><Icon name="arrow_back" /></Link></Button>
         <div className="hidden md:block"><BackLink href={`/events/${eventId}`} label={eventTitle} /></div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold md:text-base">{formatName}{version != null && <span className="ml-1.5 font-normal text-muted-foreground">v{version}</span>}</p>
+          <p className="truncate text-sm font-semibold md:text-base">{formatName}</p>
           <p className="truncate text-[11px] text-muted-foreground md:hidden">{eventTitle}</p>
         </div>
         <div className="flex items-center gap-1 md:gap-2">

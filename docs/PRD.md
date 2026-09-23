@@ -307,13 +307,13 @@ the event); yearly device reminder (Designers, Core Admins).
 
 | Role | Token | Hex | Notes |
 |---|---|---|---|
-| Brand accent | `--color-brand` / hover / foreground / soft | `#FF5A52` / `#E8463E` / `#1F0B09` / `#FFF1F0` | Coral is an accent (org mark, FAB, unread dots, "Needs you"). Text on coral is always the dark foreground (5.3:1). |
-| Primary action | `--color-primary` / foreground | `#18181B` / `#FAFAFA` | Near-black buttons, 15:1. |
+| Brand accent | `--color-brand` / hover / foreground / soft | `#F27267` / `#E05F55` / `#672D15` / `#FFF0EC` | The logo's coral is an accent (FAB, unread dots, "Needs you", initials discs). Text on it is the cocoa foreground. |
+| Primary action | `--color-primary` / foreground | `#672D15` / `#FFFFFF` | Cocoa from the logo wordmark, 10.6:1. |
 | Secondary action | `--color-secondary` / foreground | `#F4F4F5` / `#18181B` | Tinted neutral. |
 | Background / Card | `--color-background`, `--color-card` | `#FFFFFF` | Subtle surface `#FAFAFA`, viewer canvas `#F4F4F5`. |
 | Foreground | `--color-foreground` | `#09090B` | |
 | Muted / Muted fg | `--color-muted` / `--color-muted-foreground` | `#F4F4F5` / `#52525B` | Muted text is 7.5:1 on white (was 4.3:1). |
-| Border / Input / Ring | `--color-border`, `--color-input`, `--color-ring` | `#E4E4E7` / `#E4E4E7` / `#18181B` | Hairlines, no drop shadows on lists. |
+| Border / Input / Ring | `--color-border`, `--color-input`, `--color-ring` | `#E4E4E7` / `#E4E4E7` / `#672D15` | Hairlines, no drop shadows on lists. |
 | Info | `--color-info` / soft / text | `#2563EB` / `#DBEAFE` / `#1E40AF` | In review. |
 | Success | `--color-success` / soft / text | `#15803D` / `#DCFCE7` / `#166534` | Approved, progress bars. |
 | Warning | `--color-warning` / soft / text | `#D97706` / `#FEF3C7` / `#92400E` | Draft. |

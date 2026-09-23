@@ -83,7 +83,7 @@ function hslToHex(h: number, s: number, l: number) {
   return "#" + [f(0), f(8), f(4)].map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("").toUpperCase();
 }
 
-const MARK_ALPHA = 0.22;
+const MARK_ALPHA = 0.15;
 let fontReady = false;
 /** One giant "DRAFT" across the diagonal: white fill with a dark edge so it reads on light and dark art, faded to 22%. */
 async function draftMark(w: number, h: number): Promise<Buffer> {
@@ -95,8 +95,7 @@ async function draftMark(w: number, h: number): Promise<Buffer> {
   ctx.font = `800 ${size}px DCMark`;
   ctx.translate(w / 2, h / 2); ctx.rotate(-Math.atan2(h, w) * 0.85);
   ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
-  ctx.lineWidth = Math.max(3, size * 0.05); ctx.strokeStyle = "#111"; ctx.strokeText("DRAFT", 0, 0);
-  ctx.fillStyle = "#fff"; ctx.fillText("DRAFT", 0, 0);
+  ctx.fillStyle = "#111"; ctx.fillText("DRAFT", 0, 0);
   // Drawn opaque, then the whole mark is faded so the edge never shows through the fill.
   return sharp(c.toBuffer("image/png")).ensureAlpha().linear([1, 1, 1, MARK_ALPHA], [0, 0, 0, 0]).png().toBuffer();
 }

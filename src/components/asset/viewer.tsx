@@ -22,7 +22,7 @@ export function DraftMark({ width, height }: { width: number; height: number }) 
   const angle = -(Math.atan2(height, width) * 180) / Math.PI * 0.85;
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden rounded-[inherit]" style={{ containerType: "size" }}>
-      <span className="font-extrabold uppercase leading-none text-white" style={{ fontSize: `${Math.hypot(width, height) / Math.max(width, height) * 22}cqw`, transform: `rotate(${angle}deg)`, WebkitTextStroke: "0.05em #111", opacity: 0.22, letterSpacing: "-0.02em" }}>Draft</span>
+      <span className="font-extrabold uppercase leading-none" style={{ fontSize: `${Math.hypot(width, height) / Math.max(width, height) * 22}cqw`, transform: `rotate(${angle}deg)`, color: "#111", opacity: 0.15, letterSpacing: "-0.02em" }}>Draft</span>
     </div>
   );
 }

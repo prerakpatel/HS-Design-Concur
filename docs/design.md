@@ -6,7 +6,7 @@
 
 ## Direction
 
-Current-day, quiet UI: white surfaces with hairline borders, near-black primary buttons, coral
+Current-day, quiet UI: white surfaces with hairline borders, cocoa primary buttons (the logo wordmark colour), coral
 used only as an accent (org mark, FAB, unread dots, "Needs you"), tinted state badges whose text
 is the dark shade of the same hue (all ≥ 7:1), radii 10 / 16 / 24, initials avatars, hairline
 list rows instead of boxed cards. Mobile media is edge-to-edge. Full token table in PRD §12.1.
