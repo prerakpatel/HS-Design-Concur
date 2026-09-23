@@ -5,11 +5,9 @@ import { relativeTime } from "@/lib/labels";
 import { orderSlots } from "@/lib/slot-order";
 import { UploadPanel } from "@/components/asset/upload-panel";
 import { AssetHeader } from "@/components/asset/asset-header";
-import { AssetFooter } from "@/components/asset/asset-footer";
+import { ReviewActions } from "@/components/asset/review-actions";
 import { AssetStage, type CommentView, type Member, type SideView } from "@/components/asset/asset-stage";
 import type { AppUser, EventRow, Format, Slot } from "@/lib/types";
-
-const FALLBACK_GUIDE = "#00E5FF";
 
 export default async function SlotPage({ params, searchParams }: { params: Promise<{ id: string; slotId: string }>; searchParams: Promise<{ v?: string }> }) {
   const { id, slotId } = await params; const { v } = await searchParams;
@@ -33,14 +31,14 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
 
   const vlist = versions ?? [];
   const current = (v && vlist.find((x) => x.number === Number(v))) || vlist[0] || null;
-  const rawSides = (current?.version_sides ?? []) as { side: "front" | "back"; width: number; height: number; mime: string; optimised_path: string | null; preview_path: string | null; thumb_path: string | null; reference_path: string | null; guide_color: string | null }[];
+  const rawSides = (current?.version_sides ?? []) as { side: "front" | "back"; width: number; height: number; mime: string; optimised_path: string | null; preview_path: string | null; thumb_path: string | null; reference_path: string | null }[];
   const approved = current?.decision === "approved";
   const purged = !!current?.purged_at;
   const readOnly = event.status === "archived";
   const pick = (s: (typeof rawSides)[number]) => approved ? (s.optimised_path ?? s.reference_path) : (s.preview_path ?? s.optimised_path ?? s.reference_path);
   const sides: SideView[] = (await Promise.all(["front", "back"].map(async (k) => {
     const s = rawSides.find((x) => x.side === k); if (!s) return null;
-    return { side: k as "front" | "back", src: await signedUrl(supabase, pick(s)), isGif: s.mime === "image/gif", width: s.width, height: s.height, guideColor: s.guide_color ?? FALLBACK_GUIDE };
+    return { side: k as "front" | "back", src: await signedUrl(supabase, pick(s)), isGif: s.mime === "image/gif", width: s.width, height: s.height };
   }))).filter((s): s is SideView => !!s);
   const hasBack = sides.some((s) => s.side === "back");
 
@@ -60,14 +58,17 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const scaledSides = sides.map((s) => ({ ...s, width: nativeW || s.width, height: nativeH || s.height }));
   const state = !slot.requested ? "na" : slot.state;
   const who = uploader ? (uploader.name ?? uploader.email) : null;
-  const caption = current ? [purged ? "Reference" : approved ? "Approved" : "DRAFT", `v${current.number}`, who, relativeTime(current.created_at)].filter(Boolean).join(" · ") : "";
+  const meta = current ? [purged ? "Reference" : null, who, relativeTime(current.created_at)].filter(Boolean).join(" · ") : null;
   const canUpload = user.role === "core_admin" || slot.assignee_id === user.id || user.function_tags.includes("designer");
   const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved } : null;
 
-  return (
-    <div className="space-y-5 pb-20 md:space-y-6 md:pb-16">
-      <AssetHeader eventId={id} eventTitle={event.title} formatName={fmt.name} version={current?.number ?? null} state={state as "requested"} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null} />
+  const chips = vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, canManage: x.uploaded_by === user.id || user.role === "core_admin", hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }));
+  const decision = actionProps ? <ReviewActions {...actionProps} label={`${fmt.name} v${current?.number ?? ""}`} eventTitle={event.title} /> : null;
 
+  return (
+    <div className={"pb-8" + (decision ? " max-md:pb-24" : "")}>
+      <AssetHeader eventId={id} eventTitle={event.title} formatName={fmt.name} version={current?.number ?? null} state={state as "requested"} meta={meta} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null} />
+      <div className="mx-auto max-w-[1440px] space-y-5 px-4 pt-4 md:px-6 md:pt-6">
       {!slot.requested ? (
         <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">This format is marked N/A for this event. Change it from Edit event → Formats if it is needed.</p>
       ) : vlist.length === 0 ? readOnly ? (
@@ -80,15 +81,11 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
       ) : (
         <>
           {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{sides[0]?.src ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept."}</p>}
-          <AssetStage versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} caption={caption} comments={cviews} members={mlist} canApprove={canApprove && !readOnly} canComment={!readOnly} canModerate={user.role === "core_admin"} />
+          <AssetStage versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} comments={cviews} members={mlist} canComment={!readOnly} canModerate={user.role === "core_admin"}
+            versions={chips} currentVersionId={current?.id ?? null} eventId={id} slotId={slotId} upload={canUpload && !readOnly ? { accept: fmt.allowed_mimes, isPrint, nextNumber: (vlist[0]?.number ?? 0) + 1 } : null} decision={decision} readOnly={readOnly} />
         </>
       )}
-      {slot.requested && vlist.length > 0 && (
-        <AssetFooter eventId={id} slotId={slotId} currentId={current?.id ?? null} isPrint={isPrint} accept={fmt.allowed_mimes} readOnly={readOnly}
-          versions={vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, canManage: x.uploaded_by === user.id || user.role === "core_admin", hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }))}
-          upload={canUpload ? { nextNumber: (vlist[0]?.number ?? 0) + 1 } : null}
-          actions={actionProps ? { ...actionProps, label: `${fmt.name} v${current?.number ?? ""}`, eventTitle: event.title } : null} />
-      )}
+      </div>
     </div>
   );
 }

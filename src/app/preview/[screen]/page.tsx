@@ -15,7 +15,7 @@ import { WizardShell } from "@/components/wizard/wizard-shell";
 import { BasicsForm, BriefForm, FormatsForm, AssignForm, ReviewPanel } from "@/components/wizard/steps";
 import { AssetStage } from "@/components/asset/asset-stage";
 import { AssetHeader } from "@/components/asset/asset-header";
-import { AssetFooter } from "@/components/asset/asset-footer";
+import { ReviewActions } from "@/components/asset/review-actions";
 import { relativeTime } from "@/lib/labels";
 import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
@@ -53,10 +53,13 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     </div>
   </>); }
 
-  if (screen === "slot") return shell(<div className="space-y-5 pb-20 md:space-y-6 md:pb-16">
-    <AssetHeader eventId="e-1" eventTitle="Diwali Annakut Darshan" formatName="WhatsApp flyer" version={1} state="changes_requested" position={{ at: 3, total: 6 }} prev={{ id: "s-2", name: "Instagram story" }} next={{ id: "s-4", name: "Lobby TV" }} />
-    <AssetStage versionId="v-1" sides={[{ side: "front", src: "/preview/flyer.webp", isGif: false, width: 1080, height: 1350, guideColor: "#00E5FF" }]} safe={{ top: 90, right: 60, bottom: 110, left: 60 }} print={null} caption="DRAFT · v1 · Kinjal Patel · 2 d ago" comments={F.COMMENTS} members={F.MEMBERS} canApprove canComment canModerate />
-    <AssetFooter eventId="e-1" slotId="s-3" currentId="v-1" isPrint={false} accept={["image/png", "image/jpeg", "image/webp"]} readOnly={false} versions={[{ id: "v-1", number: 1, decision: "changes_requested", canManage: true, hasBack: false }]} upload={{ nextNumber: 2 }} actions={{ versionId: "v-1", label: "WhatsApp flyer v1", eventTitle: "Diwali Annakut Darshan", decision: "changes_requested", canApprove: true, isOwnUpload: false, hasBack: false }} />
+  if (screen === "slot") return shell(<div className="pb-8 max-md:pb-24">
+    <AssetHeader eventId="e-1" eventTitle="Diwali Annakut Darshan" formatName="WhatsApp flyer" version={1} state="changes_requested" meta="Kinjal Patel · 2 d ago" position={{ at: 3, total: 6 }} prev={{ id: "s-2", name: "Instagram story" }} next={{ id: "s-4", name: "Lobby TV" }} />
+    <div className="mx-auto max-w-[1440px] px-4 pt-4 md:px-6 md:pt-6">
+      <AssetStage versionId="v-1" sides={[{ side: "front", src: "/preview/flyer.webp", isGif: false, width: 1080, height: 1350 }]} safe={{ top: 90, right: 60, bottom: 110, left: 60 }} print={{ bleedIn: 0.125, safeIn: 0.25, widthIn: 5, heightIn: 6.25 }} comments={F.COMMENTS} members={F.MEMBERS} canComment canModerate
+        versions={[{ id: "v-1", number: 1, decision: "changes_requested", canManage: true, hasBack: false }]} currentVersionId="v-1" eventId="e-1" slotId="s-3" upload={{ accept: ["image/png", "image/jpeg", "image/webp"], isPrint: false, nextNumber: 2 }} readOnly={false}
+        decision={<ReviewActions versionId="v-1" label="WhatsApp flyer v1" eventTitle="Diwali Annakut Darshan" decision="changes_requested" canApprove isOwnUpload={false} hasBack={false} />} />
+    </div>
   </div>);
 
   if (screen === "settings" || screen === "requests" || screen === "formats") return shell(<>

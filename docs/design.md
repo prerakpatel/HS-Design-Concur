@@ -59,8 +59,14 @@ collections swapped for the library.
 | Calendar popover | `Calendar` + `Popover` (react-day-picker) |
 | Approve sheet, @mention picker, comments sheet | `Drawer` (vaul) on mobile; `Dialog` / `Command` on desktop |
 
-## Preview frames (Asset page)
+## Asset page
 
-The IG Post preview shows the measured safe areas (top and bottom 168 px of 1350) as translucent
-red bands with a dashed edge, the tiled 45° DRAFT watermark, and a `DRAFT · v2 · date` caption
-pill. The same treatment applies per format using the insets in the catalog (PRD §9.1).
+The artwork sits on a quiet `bg-canvas` panel with no frame; front and back stack vertically. Two
+corner clusters: version chips + Upload (designers) top-left, Comment + Guides (everyone) top-right;
+Enlarge appears on hover. The uploader and time live in the sticky, edge-to-edge header, not on the
+image. Approvers get a Decision card beside the comments (a fixed bottom bar on phones).
+
+**Guides** read like a print proof: the safe zone is a translucent mint band with a hairline inner
+edge; print formats add a dashed pink cut (trim) line with crop ticks outside the corners. Insets
+come from the catalog (PRD §9.1). The DRAFT watermark is a single giant outlined word across the
+diagonal at 22 % opacity.

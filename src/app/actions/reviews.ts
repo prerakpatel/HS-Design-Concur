@@ -79,7 +79,7 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
   return { ok: true };
 }
 
-/** addressed: anyone on the event. unaddress: undo an unconfirmed "addressed". confirmed / reopen: approvers. */
+/** addressed ("done") and reopen: anyone on the event. confirmed: approvers. */
 export async function setCommentFlag(commentId: string, flag: "addressed" | "unaddress" | "confirmed" | "reopen") {
   const { supabase, user } = await requireActiveUser();
   const now = new Date().toISOString();
@@ -89,7 +89,7 @@ export async function setCommentFlag(commentId: string, flag: "addressed" | "una
   if (flag === "unaddress") {
     const { data: c } = await supabase.from("comments").select("confirmed_at").eq("id", commentId).maybeSingle();
     if (c?.confirmed_at && !canApprove(user)) throw new Error("This comment was confirmed by an approver; ask them to reopen it");
-  } else if (flag !== "addressed" && !canApprove(user)) throw new Error("Only approvers can confirm or reopen a comment");
+  } else if (flag === "confirmed" && !canApprove(user)) throw new Error("Only approvers can confirm a comment");
   const { data } = await supabase.from("comments").update(patch).eq("id", commentId).select("versions(slots(id,event_id))").single();
   const s = (data?.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;
   if (s) revalidatePath(`/events/${s.event_id}/slots/${s.id}`);

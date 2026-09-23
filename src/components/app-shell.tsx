@@ -2,6 +2,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileNav, MobileTopBar } from "@/components/mobile-nav";
+import { MainFrame } from "@/components/main-frame";
 import type { Organisation } from "@/lib/types";
 
 export interface ShellProps { org: Organisation; orgs: Organisation[]; user: { name: string; role: string; initials: string }; slots: { used: number; max: number }; sidebarOpen?: boolean }
@@ -14,7 +15,7 @@ export function AppShell({ org, orgs, user, slots, sidebarOpen = true, children,
       <AppSidebar org={org} orgs={orgs} user={user} slots={slots} />
       <SidebarInset className="min-h-dvh bg-background">
         <MobileTopBar org={org} orgs={orgs} initials={user.initials} />
-        <main className={wide ? "w-full" : "mx-auto w-full max-w-[1120px] px-5 pb-28 pt-4 md:px-10 md:pb-16 md:pt-8"}>{children}</main>
+        {wide ? <main className="w-full">{children}</main> : <MainFrame>{children}</MainFrame>}
         <MobileNav />
       </SidebarInset>
     </SidebarProvider>
