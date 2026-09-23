@@ -8,7 +8,7 @@ on Windows) inside the project folder.
 
 ```
 your laptop  ──git push──▶  GitHub (prerakpatel/HS-Design-Concur)  ──automatic──▶  Vercel
-  npm run dev                  main branch = production                     https://design-and-concur.vercel.app
+  npm run dev                  main branch = production                     https://hsdesign.vercel.app
   http://localhost:3000        other branches = preview deployments        https://<branch>-....vercel.app
 ```
 
