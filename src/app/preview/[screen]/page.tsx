@@ -65,7 +65,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     </div>
   </div>);
 
-  if (screen === "profile") return shell(<><PageHeader title="Profile" /><ProfileView user={{ name: F.ME.name, email: "prerak@harisumiran.org", role: F.ME.role, initials: F.ME.initials }} orgs={F.ORGS} currentOrgId={org.id} /></>);
+  if (screen === "profile") return shell(<><PageHeader title="Profile" /><ProfileView user={{ name: F.ME.name, email: "prerak@harisumiran.org", roles: F.ME.role.split(" · "), initials: F.ME.initials }} orgs={F.ORGS} currentOrgId={org.id} /></>);
 
   if (screen === "settings" || screen === "requests" || screen === "formats") return shell(<>
     <PageHeader title="Settings" subtitle="People, access, the format catalog and notifications" />

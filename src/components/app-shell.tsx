@@ -11,7 +11,7 @@ export interface ShellProps { org: Organisation; orgs: Organisation[]; user: { n
 export function AppShell({ org, orgs, user, slots, sidebarOpen = true, children, wide }: ShellProps & { children: React.ReactNode; wide?: boolean }) {
   return (
     <TooltipProvider delayDuration={200}>
-    <SidebarProvider defaultOpen={sidebarOpen}>
+    <SidebarProvider defaultOpen={sidebarOpen} style={{ "--sidebar-width-icon": "6.5rem" } as React.CSSProperties}>
       <AppSidebar org={org} orgs={orgs} user={user} slots={slots} />
       <SidebarInset className="min-h-dvh bg-background">
         {wide ? <main className="w-full">{children}</main> : <MainFrame>{children}</MainFrame>}

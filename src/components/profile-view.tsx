@@ -8,7 +8,7 @@ import { signOut } from "@/app/actions/auth";
 import type { Organisation } from "@/lib/types";
 
 // icons: account_circle chevron_right check settings notifications logout
-export interface ProfileUser { name: string; email: string; role: string; initials: string; avatar?: string | null }
+export interface ProfileUser { name: string; email: string; roles: string[]; initials: string; avatar?: string | null }
 
 /**
  * The "you" screen: who you are, which organisation you are working in, and the doors to Settings, notifications
@@ -21,7 +21,7 @@ export function ProfileView({ user, orgs, currentOrgId }: { user: ProfileUser; o
     <div className="mx-auto max-w-[560px] space-y-8">
       <div className="flex items-center gap-4">
         <UserAvatar initials={user.initials} src={user.avatar} size={40} className="size-16 text-lg" />
-        <div className="min-w-0"><p className="truncate text-lg font-semibold leading-6">{user.name}</p><p className="truncate text-sm text-muted-foreground">{user.email}</p><p className="mt-0.5 text-sm text-muted-foreground">{user.role}</p></div>
+        <div className="min-w-0"><p className="truncate text-lg font-semibold leading-6">{user.name}</p><p className="truncate text-sm text-muted-foreground">{user.email}</p><ul className="mt-1.5 flex flex-wrap gap-1.5">{user.roles.map((r) => <li key={r} className="rounded-full bg-subtle px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-border">{r}</li>)}</ul></div>
       </div>
 
       <section>

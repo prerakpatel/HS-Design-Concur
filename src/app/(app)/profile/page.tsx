@@ -6,11 +6,11 @@ export const metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
   const { user, org, orgs } = await requireActiveUser();
-  const role = [user.role === "core_admin" ? "Core Admin" : "Member", user.is_approver || user.role === "core_admin" ? "Approver" : null, ...user.function_tags.map((t) => t[0].toUpperCase() + t.slice(1))].filter(Boolean).join(" · ");
+  const roles = [user.role === "core_admin" ? "Core Admin" : "Member", user.is_approver || user.role === "core_admin" ? "Approver" : null, ...user.function_tags.map((t) => t[0].toUpperCase() + t.slice(1))].filter((r): r is string => !!r);
   return (
     <>
       <PageHeader title="Profile" />
-      <ProfileView user={{ name: user.name ?? user.email, email: user.email, role, initials: initials(user.name, user.email), avatar: user.avatar_url }} orgs={orgs} currentOrgId={org.id} />
+      <ProfileView user={{ name: user.name ?? user.email, email: user.email, roles, initials: initials(user.name, user.email), avatar: user.avatar_url }} orgs={orgs} currentOrgId={org.id} />
     </>
   );
 }

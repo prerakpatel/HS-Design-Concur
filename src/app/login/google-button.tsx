@@ -10,7 +10,8 @@ export function GoogleButton({ next }: { next?: string }) {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next ?? "/events")}` },
+      // prompt=select_account: Google shows the account chooser every time instead of silently reusing the last account.
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next ?? "/events")}`, queryParams: { prompt: "select_account" } },
     });
   }
   return (

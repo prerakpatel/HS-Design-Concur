@@ -29,6 +29,7 @@ export const ICON_NAMES = [
   "history",
   "hourglass_top",
   "how_to_reg",
+  "info",
   "inventory_2",
   "ios_share",
   "keyboard_double_arrow_left",
@@ -48,5 +49,6 @@ export const ICON_NAMES = [
   "sync",
   "unfold_more",
   "upload",
+  "visibility",
   "zoom_out_map"
 ] as const;

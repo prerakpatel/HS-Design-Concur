@@ -8,6 +8,7 @@ import { StateBadge, type BadgeState } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
 import { Icon } from "@/components/material-icon";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SectionHeader } from "@/components/page-header";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { approveMany } from "@/app/actions/reviews";
@@ -41,7 +42,23 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
 
   return (
     <section>
-      <SectionHeader title="Formats" meta={meta} action={<span className="flex items-center gap-1">{naCount > 0 && !selecting && <Button variant="ghost" size="sm" onClick={() => setShowNa((v) => !v)}>{showNa ? "Hide N/A" : `Show N/A (${naCount})`}</Button>}{canBulk && (selecting ? <Button variant="ghost" size="sm" onClick={stop}>Cancel</Button> : <Button variant="secondary" size="sm" onClick={() => setSelecting(true)}><Icon name="checklist" className="!text-[18px]" />Select</Button>)}</span>} />
+      <SectionHeader title="Formats" meta={meta} action={selecting ? <Button variant="ghost" size="sm" onClick={stop}>Cancel</Button> : (
+        <>
+          <span className="hidden items-center gap-1 sm:flex">
+            {naCount > 0 && <Button variant="ghost" size="sm" onClick={() => setShowNa((v) => !v)}>{showNa ? "Hide N/A" : `Show N/A (${naCount})`}</Button>}
+            {canBulk && <Button variant="secondary" size="sm" onClick={() => setSelecting(true)}><Icon name="checklist" className="!text-[18px]" />Select</Button>}
+          </span>
+          {(naCount > 0 || canBulk) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger aria-label="Format options" className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground sm:hidden"><Icon name="more_vert" /></DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-xl p-1.5">
+                {naCount > 0 && <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => setShowNa((v) => !v)}><Icon name="visibility" />{showNa ? "Hide N/A formats" : `Show N/A formats (${naCount})`}</DropdownMenuItem>}
+                {canBulk && <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => setSelecting(true)}><Icon name="checklist" />Select to approve</DropdownMenuItem>}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </>
+      )} />
       {selecting && <p className="mb-3 text-sm text-muted-foreground">Pick the in-review formats to approve together. Ones you uploaded yourself are left out.</p>}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">
         {visible.map((c) => {
