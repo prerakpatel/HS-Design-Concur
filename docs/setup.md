@@ -50,7 +50,7 @@ tool or the Supabase CLI. Never edit an applied migration.
 ## Branding
 
 Settings → Organisations lets a Core Admin upload each organisation's logo (PNG or SVG, square works best,
-under 1 MB). It replaces the coloured initial in the sidebar, the phone top bar, the org switcher and the
+under 1 MB). It replaces the coloured initial in the sidebar, the phone Profile tab, the org switcher and the
 sign-in page. Logos live in the public `branding` bucket; the sign-in page reads names and logos through the
 `org_branding` view, which exposes only those columns. The sign-in illustration is `public/brand/design-concur-hero.webp`.
 
@@ -67,7 +67,7 @@ due-date reminders:
 | Draft untouched 30 days | Draft is deleted; creator is told. |
 | 1 November | Designers and Core Admins are reminded to refresh `src/config/devices.ts`. |
 
-Run it by hand (needs `CRON_SECRET` from Vercel → Settings → Environment variables):
+Run it by hand: a signed-in Core Admin can simply open https://hsdesign.vercel.app/api/jobs/daily in the browser. Or with the cron secret:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" https://hsdesign.vercel.app/api/jobs/daily

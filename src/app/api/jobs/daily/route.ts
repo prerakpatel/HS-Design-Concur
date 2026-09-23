@@ -4,6 +4,8 @@ import { sendEmail, appUrl, emailConfigured } from "@/lib/email";
 import { notificationText, notificationHref } from "@/lib/labels";
 import { subjectFor, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
+import { refreshStalePreviews } from "@/lib/uploads/refresh-preview";
+import { getActiveUser } from "@/lib/auth";
 
 export const maxDuration = 60;
 
@@ -13,10 +15,14 @@ export const maxDuration = 60;
  * 2. Retention (PRD §8): archive + purge a week after the event date, hard-delete after the restore window,
  *    draft warning / sweep, yearly device-preset reminder. See src/lib/retention.ts.
  * 3. Daily digest email for users whose email_pref is "digest", then instant emails for job-created kinds.
+ * 4. Re-stamp up to 20 previews that still carry an older DRAFT mark.
+ * Vercel Cron calls it with the CRON_SECRET bearer; a signed-in Core Admin may also open the URL to run it now.
  */
 export async function GET(req: Request) {
   const auth = req.headers.get("authorization");
-  if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) return NextResponse.json({ error: "unauthorised" }, { status: 401 });
+  const byCron = !!process.env.CRON_SECRET && auth === `Bearer ${process.env.CRON_SECRET}`;
+  const byAdmin = !byCron && (await getActiveUser().catch(() => null))?.user.role === "core_admin";
+  if (!byCron && !byAdmin) return NextResponse.json({ error: "unauthorised" }, { status: 401 });
   const db = createServiceClient();
   const today = new Date().toLocaleDateString("en-CA", { timeZone: process.env.APP_TIMEZONE ?? "America/New_York" });
   const in3 = new Date(Date.now() + 3 * 86400_000).toLocaleDateString("en-CA", { timeZone: process.env.APP_TIMEZONE ?? "America/New_York" });
@@ -55,5 +61,7 @@ export async function GET(req: Request) {
       if ("ok" in r) await db.from("notifications").update({ emailed_at: new Date().toISOString() }).eq("id", n.id);
     }
   }
+  // 4. Old watermark previews
+  report.previews = await refreshStalePreviews(db, 20);
   return NextResponse.json({ ok: true, today, ...report });
 }

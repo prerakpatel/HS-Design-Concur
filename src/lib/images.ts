@@ -46,46 +46,20 @@ async function stampDraft(previewBase: Buffer): Promise<Buffer> {
   return sharp(previewBase).composite([{ input: await draftMark(pm.width ?? PREVIEW_MAX, pm.height ?? PREVIEW_MAX), top: 0, left: 0, blend: "over" }]).webp({ quality: 80 }).toBuffer();
 }
 
-/** The watermarked preview for an already-optimised file (used to re-stamp previews made by an older mark). */
-export async function makePreview(optimised: Buffer): Promise<Rendition> {
-  const previewBase = await sharp(optimised, { failOn: "none", limitInputPixels: 80_000_000 }).resize({ width: PREVIEW_MAX, height: PREVIEW_MAX, fit: "inside", withoutEnlargement: true }).toBuffer();
-  return { buf: await stampDraft(previewBase), mime: "image/webp", ext: "webp" };
-}
-
 /** Post-event reference image (PRD §7.2): long edge 800px, WebP q60. */
 export async function makeReference(input: Buffer): Promise<Rendition> {
   const buf = await sharp(input, { failOn: "none", pages: 1 }).resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true }).webp({ quality: 60 }).toBuffer();
   return { buf, mime: "image/webp", ext: "webp" };
 }
 
-/**
- * A guide colour that will not clash with the artwork: the complement of the image's dominant hue at full
- * saturation (neon), falling back to cyan for near-grey images. Used for safe-area lines and fills.
- */
-export async function guideColor(input: Buffer): Promise<string> {
-  try {
-    const { dominant } = await sharp(input, { failOn: "none", pages: 1 }).stats();
-    const r = dominant.r / 255, g = dominant.g / 255, b = dominant.b / 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
-    let h = 0;
-    if (d > 0) { h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4; h = (h * 60 + 360) % 360; }
-    const sat = max === 0 ? 0 : d / max;
-    const hue = sat < 0.15 ? 190 : (h + 180) % 360;
-    return hslToHex(hue, 100, 52);
-  } catch { return "#00E5FF"; }
+/** The watermarked preview for an already-optimised file (used to re-stamp previews made by an older mark). */
+export async function makePreview(optimised: Buffer): Promise<Rendition> {
+  const previewBase = await sharp(optimised, { failOn: "none", limitInputPixels: 80_000_000 }).resize({ width: PREVIEW_MAX, height: PREVIEW_MAX, fit: "inside", withoutEnlargement: true }).toBuffer();
+  return { buf: await stampDraft(previewBase), mime: "image/webp", ext: "webp" };
 }
-
-function hslToHex(h: number, s: number, l: number) {
-  const S = s / 100, L = l / 100;
-  const k = (n: number) => (n + h / 30) % 12;
-  const a = S * Math.min(L, 1 - L);
-  const f = (n: number) => L - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-  return "#" + [f(0), f(8), f(4)].map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("").toUpperCase();
-}
-
 const MARK_ALPHA = 0.15;
 let fontReady = false;
-/** One giant "DRAFT" across the diagonal: white fill with a dark edge so it reads on light and dark art, faded to 22%. */
+/** One giant "DRAFT" across the diagonal: flat dark, faded to 15%. */
 async function draftMark(w: number, h: number): Promise<Buffer> {
   if (!fontReady) { GlobalFonts.registerFromPath(path.join(process.cwd(), "src/assets/Inter-ExtraBold.ttf"), "DCMark"); fontReady = true; }
   const c = createCanvas(w, h); const ctx = c.getContext("2d");

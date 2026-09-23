@@ -64,6 +64,7 @@ export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs
             {!collapsed && <><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium leading-5">{user.name}</span><span className="block truncate text-xs text-muted-foreground">{user.role}</span></span><Icon name="more_horiz" className="shrink-0 text-muted-foreground" /></>}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side={collapsed ? "right" : "top"} className="w-[240px] rounded-xl p-1.5">
+            <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" asChild><Link href="/profile"><Icon name="account_circle" />Profile</Link></DropdownMenuItem>
             <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" asChild><Link href="/settings"><Icon name="settings" />Settings</Link></DropdownMenuItem>
             <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" asChild><Link href="/inbox"><Icon name="notifications" />Notifications</Link></DropdownMenuItem>
             <DropdownMenuSeparator />

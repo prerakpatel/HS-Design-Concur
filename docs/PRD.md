@@ -334,7 +334,7 @@ weight 400, filled only for active nav and the Approved badge.
 ### 12.3 Layout
 - ≥ 1024 px: 240 px sidebar (org switcher, Events, Inbox, Archive, Settings) + content ≤ 1200 px.
 - 640–1023 px: icon rail.
-- < 640 px: bottom tab bar; **media is edge-to-edge**: the Event page shows format slots as a
+- < 640 px: bottom tab bar (Events, Inbox, Archive, Profile; Profile holds the org switcher, Settings and sign-out); **media is edge-to-edge**: the Event page shows format slots as a
   2-column full-bleed media grid with 2 px gutters and overlaid state badges, the Asset page
   preview fills the viewport width, Archive reference strips run edge to edge, and lists use
   hairline dividers instead of boxed cards. The Asset page has a slide-up comment sheet and a

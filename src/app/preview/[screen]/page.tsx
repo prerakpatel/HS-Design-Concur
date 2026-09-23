@@ -17,11 +17,12 @@ import { AssetHeader } from "@/components/asset/asset-header";
 import { ReviewActions } from "@/components/asset/review-actions";
 import { relativeTime } from "@/lib/labels";
 import { PushToggle } from "@/components/push-toggle";
+import { ProfileView } from "@/components/profile-view";
 import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
 
 export const dynamic = "force-dynamic";
-const SCREENS = ["events", "event", "slot", "settings", "requests", "formats", "inbox", "wizard-new", "wizard-basics", "wizard-brief", "wizard-formats", "wizard-assign", "wizard-review"] as const;
+const SCREENS = ["events", "event", "slot", "profile", "settings", "requests", "formats", "inbox", "wizard-new", "wizard-basics", "wizard-brief", "wizard-formats", "wizard-assign", "wizard-review"] as const;
 
 /** Design preview harness. Renders real components with fixture data so screens can be reviewed without a database. */
 export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
@@ -63,6 +64,8 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
         decisionBar={<ReviewActions versionId="v-1" label="WhatsApp flyer v1" eventTitle="Diwali Annakut Darshan" decision="changes_requested" canApprove isOwnUpload={false} hasBack={false} />} />
     </div>
   </div>);
+
+  if (screen === "profile") return shell(<><PageHeader title="Profile" /><ProfileView user={{ name: F.ME.name, email: "prerak@harisumiran.org", role: F.ME.role, initials: F.ME.initials }} orgs={F.ORGS} currentOrgId={org.id} /></>);
 
   if (screen === "settings" || screen === "requests" || screen === "formats") return shell(<>
     <PageHeader title="Settings" subtitle="People, access, the format catalog and notifications" />

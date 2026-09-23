@@ -1,5 +1,5 @@
 import { revalidatePath } from "next/cache";
-import { processUpload, guideColor } from "@/lib/images";
+import { processUpload } from "@/lib/images";
 import { rasterisePdf } from "@/lib/pdf";
 import { BUCKET } from "@/lib/storage";
 import { notify } from "@/lib/notify";
@@ -71,8 +71,7 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
       const optimised_path = await put("optimised", processed.optimised);
       const preview_path = processed.preview ? await put("preview", processed.preview) : null;
       const thumb_path = await put("thumb", processed.thumb);
-      const guide_color = await guideColor(processed.thumb.buf);
-      await supabase.from("version_sides").upsert({ version_id: versionId, side: s, mime: processed.optimised.mime, width: processed.width, height: processed.height, bytes: processed.optimised.buf.length, optimised_path, preview_path, thumb_path, guide_color, mark_version: MARK_VERSION }, { onConflict: "version_id,side" });
+      await supabase.from("version_sides").upsert({ version_id: versionId, side: s, mime: processed.optimised.mime, width: processed.width, height: processed.height, bytes: processed.optimised.buf.length, optimised_path, preview_path, thumb_path, mark_version: MARK_VERSION }, { onConflict: "version_id,side" });
     }
   } catch (e) { return { error: (e as Error).message }; }
   await supabase.storage.from(BUCKET).remove([tmpPath]);
