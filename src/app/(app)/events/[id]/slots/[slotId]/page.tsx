@@ -69,7 +69,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
 
   return (
     <div className={"pb-8" + (decision ? " max-md:pb-24" : "")}>
-      <AssetHeader eventId={id} eventTitle={event.title} formatName={fmt.name} version={current?.number ?? null} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null} />
+      <AssetHeader eventId={id} eventTitle={event.title} formatName={fmt.name} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null} />
       <div className="mx-auto max-w-[1440px] space-y-5 px-4 pt-4 md:px-6 md:pt-6">
       {!slot.requested ? (
         <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">This format is marked N/A for this event. Change it from Edit event → Formats if it is needed.</p>
