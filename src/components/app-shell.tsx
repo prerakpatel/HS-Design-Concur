@@ -15,7 +15,7 @@ export function AppShell({ org, orgs, user, slots, sidebarOpen = true, children,
       <AppSidebar org={org} orgs={orgs} user={user} slots={slots} />
       <SidebarInset className="min-h-dvh bg-background">
         {wide ? <main className="w-full">{children}</main> : <MainFrame>{children}</MainFrame>}
-        <MobileNav />
+        <MobileNav user={{ initials: user.initials, avatar: user.avatar }} />
       </SidebarInset>
     </SidebarProvider>
     </TooltipProvider>
