@@ -8,6 +8,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { Textarea } from "@/components/ui/textarea";
 import { approveVersion, requestChanges, reopenVersion, downloadLink } from "@/app/actions/reviews";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 /** Approve (notify / download), request changes, reopen. Downloads are named year_event_format_vN and saved, not opened. */
 export function ReviewActions({ versionId, label, eventTitle, decision, canApprove, isOwnUpload, hasBack, layout = "row" }: {
@@ -61,10 +62,10 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
         {approved ? (
           <>{downloadButtons}<Button variant="outline" onClick={() => setMode("reopen")}>Reopen for changes</Button></>
         ) : (
-          <>
+          <div className={cn(wrap, layout === "fill" && "flex-col-reverse")}>
             <Button disabled={isOwnUpload || pending} onClick={() => setMode("approve")}>Approve…</Button>
             <Button variant="outline" onClick={() => setMode("changes")} disabled={isOwnUpload}><span className={layout === "row" ? "sm:hidden" : "hidden"}>Changes</span><span className={layout === "row" ? "hidden sm:inline" : ""}>Request changes</span></Button>
-          </>
+          </div>
         )}
         {isOwnUpload && !approved && <p className="w-full text-xs text-muted-foreground">You uploaded this version, so someone else has to approve it.</p>}
       </div>

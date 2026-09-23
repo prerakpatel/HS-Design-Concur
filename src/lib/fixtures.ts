@@ -18,9 +18,9 @@ export const SLOTS = { used: 4, max: 10 };
 const ago = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
 
 export const EVENTS: EventListItem[] = [
-  { id: "e-1", title: "Diwali Annakut Darshan", venue: "Harisumiran Mandir, Edison", event_date: "2026-11-08", status: "active", approved: 2, total: 6, people: ["MS", "KP"], needsYou: true },
-  { id: "e-2", title: "Sharad Purnima Utsav", venue: "Main Hall", event_date: "2026-10-06", status: "active", approved: 5, total: 5, people: ["MS"] },
-  { id: "e-3", title: "Youth Shibir 2026", venue: "Community Center, Piscataway", event_date: "2026-12-19", status: "active", approved: 0, total: 4, people: ["KP", "RD"] },
+  { id: "e-1", title: "Diwali Annakut Darshan", venue: "Harisumiran Mandir, Edison", event_date: "2026-11-08", status: "active", approved: 2, total: 6, people: [{ initials: "MS" }, { initials: "KP" }], needsYou: true },
+  { id: "e-2", title: "Sharad Purnima Utsav", venue: "Main Hall", event_date: "2026-10-06", status: "active", approved: 5, total: 5, people: [{ initials: "MS" }] },
+  { id: "e-3", title: "Youth Shibir 2026", venue: "Community Center, Piscataway", event_date: "2026-12-19", status: "active", approved: 0, total: 4, people: [{ initials: "KP" }, { initials: "RD" }] },
   { id: "e-4", title: "New Year Mahotsav", venue: null, event_date: "2027-01-01", status: "draft", approved: 0, total: 0, people: [] },
 ];
 
@@ -58,7 +58,7 @@ export const PENDING: PendingUser[] = [
 ];
 
 export const COMMENTS: CommentView[] = [
-  { id: "c-1", mine: true, body: "Logo is too close to the bottom edge, move it inside the safe area.", created_at: ago(26), pin_x: 0.5, pin_y: 0.93, pin_side: "front", addressed_at: null, confirmed_at: null, author: { name: "Prerak Patel", initials: "PP", role: "Core Admin" } },
+  { id: "c-1", mine: true, body: "Logo is too close to the bottom edge, move it inside the safe area.", created_at: ago(26), pin_x: 0.5, pin_y: 0.93, pin_side: "front", addressed_at: null, confirmed_at: null, author: { name: "Prerak Patel", initials: "PP", avatar: "/preview/avatar.svg", role: "Core Admin" } },
   { id: "c-2", body: "@mihir can we try the Gujarati headline in the brand red?", created_at: ago(20), pin_x: null, pin_y: null, pin_side: "front", addressed_at: ago(4), confirmed_at: null, author: { name: "Rina Desai", initials: "RD", role: "Approver" } },
 ];
 const fmt = (o: Partial<Format> & Pick<Format, "key" | "name">): Format => ({ id: "f-" + o.key, width: null, height: null, unit: "px", dpi: null, class: "digital", frame: "flat", safe_top: 0, safe_right: 0, safe_bottom: 0, safe_left: 0, bleed_in: null, safe_margin_in: null, allow_custom_size: false, allowed_mimes: ["image/png", "image/jpeg", "image/webp", "image/gif"], notes: null, active: true, sort: 0, ...o });

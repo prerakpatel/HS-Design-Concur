@@ -4,7 +4,7 @@ import { StateBadge, type BadgeState } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
 import { Icon } from "@/components/material-icon";
 
-export interface EventListItem { id: string; title: string; venue: string | null; event_date: string | null; status: "draft" | "active" | "archived"; approved: number; total: number; people: string[]; needsYou?: boolean }
+export interface EventListItem { id: string; title: string; venue: string | null; event_date: string | null; status: "draft" | "active" | "archived"; approved: number; total: number; people: { initials: string; avatar?: string | null }[]; needsYou?: boolean }
 
 function badgeFor(e: EventListItem): { state: BadgeState; label?: string } {
   if (e.status === "draft") return { state: "draft" };
@@ -42,7 +42,7 @@ export function EventList({ items, emptyTitle = "No events yet", emptyBody }: { 
                 <p className="text-sm text-muted-foreground">{e.approved} of {e.total} approved</p>
                 <div className="mt-2 h-1.5 rounded-full bg-muted-strong"><div className="h-full rounded-full bg-success" style={{ width: e.total ? `${(e.approved / e.total) * 100}%` : 0 }} /></div>
               </div>
-              <div className="hidden w-[92px] items-center gap-1 md:flex">{e.people.slice(0, 3).map((p, i) => <UserAvatar key={i} initials={p} size={28} />)}</div>
+              <div className="hidden w-[92px] items-center gap-1 md:flex">{e.people.slice(0, 3).map((p, i) => <UserAvatar key={i} initials={p.initials} src={p.avatar} size={28} />)}</div>
               <div className="hidden w-[120px] md:block"><StateBadge state={b.state} label={b.label} /></div>
               <Icon name="chevron_right" className="shrink-0 text-muted-foreground" />
             </Link>

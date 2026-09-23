@@ -29,8 +29,7 @@ export async function processUpload(input: Buffer, mime: string): Promise<Proces
     : await base.clone().jpeg({ quality: 85, mozjpeg: true }).toBuffer();
 
   const previewBase = await base.clone().resize({ width: PREVIEW_MAX, height: PREVIEW_MAX, fit: "inside", withoutEnlargement: true }).toBuffer();
-  const pm = await sharp(previewBase).metadata();
-  const preview = await sharp(previewBase).composite([{ input: await draftMark(pm.width ?? PREVIEW_MAX, pm.height ?? PREVIEW_MAX), top: 0, left: 0, blend: "over" }]).webp({ quality: 80 }).toBuffer();
+  const preview = await stampDraft(previewBase);
   const thumb = await sharp(previewBase).resize({ width: THUMB_MAX, height: THUMB_MAX, fit: "inside", withoutEnlargement: true }).webp({ quality: 75 }).toBuffer();
 
   return {
@@ -40,6 +39,17 @@ export async function processUpload(input: Buffer, mime: string): Promise<Proces
     width: meta.width ?? 0,
     height: meta.height ?? 0,
   };
+}
+
+async function stampDraft(previewBase: Buffer): Promise<Buffer> {
+  const pm = await sharp(previewBase).metadata();
+  return sharp(previewBase).composite([{ input: await draftMark(pm.width ?? PREVIEW_MAX, pm.height ?? PREVIEW_MAX), top: 0, left: 0, blend: "over" }]).webp({ quality: 80 }).toBuffer();
+}
+
+/** The watermarked preview for an already-optimised file (used to re-stamp previews made by an older mark). */
+export async function makePreview(optimised: Buffer): Promise<Rendition> {
+  const previewBase = await sharp(optimised, { failOn: "none", limitInputPixels: 80_000_000 }).resize({ width: PREVIEW_MAX, height: PREVIEW_MAX, fit: "inside", withoutEnlargement: true }).toBuffer();
+  return { buf: await stampDraft(previewBase), mime: "image/webp", ext: "webp" };
 }
 
 /** Post-event reference image (PRD §7.2): long edge 800px, WebP q60. */

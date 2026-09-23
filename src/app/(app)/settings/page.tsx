@@ -42,9 +42,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <PageHeader title="Settings" subtitle={isAdmin ? "People, access, the format catalog and notifications" : "Format catalog · Designers can edit"} />
       <nav className="mb-8 flex gap-6 overflow-x-auto border-b border-border text-sm font-medium">{tabs.map(([k, l]) => <Link key={k} href={`/settings?tab=${k}`} className={"-mb-px shrink-0 border-b-2 pb-3 " + (tab === k ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{l}</Link>)}</nav>
 
-      {tab === "users" && <UsersList currentUserId={user.id} orgs={orgOptions} users={active.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), role: u.role, is_approver: u.is_approver, function_tags: u.function_tags, orgIds: orgsOf.get(u.id) ?? [], email_pref: u.email_pref }))} />}
+      {tab === "users" && <UsersList currentUserId={user.id} orgs={orgOptions} users={active.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, role: u.role, is_approver: u.is_approver, function_tags: u.function_tags, orgIds: orgsOf.get(u.id) ?? [], email_pref: u.email_pref }))} />}
 
-      {tab === "requests" && <AccessRequests action={decideAccess} orgs={orgOptions} defaultOrgId={org.id} pending={pending.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), requested_at: askedAt.get(u.id) ?? u.created_at }))} />}
+      {tab === "requests" && <AccessRequests action={decideAccess} orgs={orgOptions} defaultOrgId={org.id} pending={pending.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, requested_at: askedAt.get(u.id) ?? u.created_at }))} />}
 
       {tab === "formats" && (
         <FormatsList formats={formats ?? []} />

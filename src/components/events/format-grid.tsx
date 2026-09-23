@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { approveMany } from "@/app/actions/reviews";
 import { cn } from "@/lib/utils";
 
-export interface FormatCardData { slotId: string; name: string; size: string; state: BadgeState; requested: boolean; version: number | null; versionId: string | null; uploadedByMe?: boolean; thumb: string | null; due: string | null; assignee: { name: string; initials: string } | null; isPrimary?: boolean }
+export interface FormatCardData { slotId: string; name: string; size: string; state: BadgeState; requested: boolean; version: number | null; versionId: string | null; uploadedByMe?: boolean; thumb: string | null; due: string | null; assignee: { name: string; initials: string; avatar?: string | null } | null; isPrimary?: boolean }
 
 /**
  * Format cards: media-first, badge and version overlaid, 2 columns on phones, 3 on desktop.
@@ -60,7 +60,7 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
               <div className="space-y-1.5 p-3.5">
                 <p className="truncate text-sm font-medium leading-5">{c.name}</p>
                 <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm text-muted-foreground"><span>{c.size}</span>{c.due && <span className="ml-auto text-xs">Due {format(new Date(c.due + "T00:00:00"), "d MMM")}</span>}</p>
-                {c.assignee && <p className="flex items-center gap-2 pt-1 text-sm text-muted-foreground"><UserAvatar initials={c.assignee.initials} size={24} /><span className="truncate">{c.assignee.name}</span></p>}
+                {c.assignee && <p className="flex items-center gap-2 pt-1 text-sm text-muted-foreground"><UserAvatar initials={c.assignee.initials} src={c.assignee.avatar} size={24} /><span className="truncate">{c.assignee.name}</span></p>}
               </div>
             </>
           );

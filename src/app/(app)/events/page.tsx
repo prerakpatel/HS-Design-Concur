@@ -14,14 +14,14 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const { data: events } = await supabase.from("events").select("*").eq("org_id", org.id).is("deleted_at", null).neq("status", "archived").order("event_date", { ascending: true, nullsFirst: false }).returns<EventRow[]>();
   const { count: used } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "active").is("deleted_at", null);
   const ids = (events ?? []).map((e) => e.id);
-  const { data: slots } = ids.length ? await supabase.from("slots").select("event_id,state,requested,assignee:assignee_id(name,email)").in("event_id", ids) : { data: [] as { event_id: string; state: string; requested: boolean; assignee: { name: string | null; email: string } | null }[] };
-  const agg = new Map<string, { total: number; approved: number; people: string[]; needsYou: boolean }>();
+  const { data: slots } = ids.length ? await supabase.from("slots").select("event_id,state,requested,assignee:assignee_id(name,email,avatar_url)").in("event_id", ids) : { data: [] as { event_id: string; state: string; requested: boolean; assignee: { name: string | null; email: string; avatar_url: string | null } | null }[] };
+  const agg = new Map<string, { total: number; approved: number; people: { initials: string; avatar: string | null }[]; needsYou: boolean }>();
   const canApprove = user.is_approver || user.role === "core_admin";
   for (const s of slots ?? []) {
     if (!s.requested) continue;
     const a = agg.get(s.event_id) ?? { total: 0, approved: 0, people: [], needsYou: false };
     a.total++; if (s.state === "approved") a.approved++; if (s.state === "in_review" && canApprove) a.needsYou = true;
-    const who = s.assignee as unknown as { name: string | null; email: string } | null; if (who) { const ini = initials(who.name, who.email); if (!a.people.includes(ini)) a.people.push(ini); }
+    const who = s.assignee as unknown as { name: string | null; email: string; avatar_url: string | null } | null; if (who) { const ini = initials(who.name, who.email); if (!a.people.some((p) => p.initials === ini)) a.people.push({ initials: ini, avatar: who.avatar_url }); }
     agg.set(s.event_id, a);
   }
   const today = new Date().toLocaleDateString("en-CA");

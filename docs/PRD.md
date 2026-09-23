@@ -187,6 +187,7 @@ All versions are kept until the event purge; with files this small no pruning is
 ### 7.3 Watermark
 - One giant "DRAFT" along the diagonal, white with a dark outline so it reads on any background,
   faded to 22 % opacity. Version, uploader and time show in the page header, not on the image.
+- Previews stamped with an older mark are re-rendered on first view (`version_sides.mark_version`).
 - **GIFs are not baked.** The viewer draws the same watermark as a CSS overlay over the
   animated GIF. Protection is by access control, not by the file.
 - Approved = the `preview` is no longer served; the `optimised` file is.
@@ -230,7 +231,8 @@ against Supabase's 1 GB free storage.
 | 11 | print_10x7 | Print 10 × 7 in | 10.5 × 7.5 in @ 300 dpi | print | bleed 0.25 in, safe 0.25 in | print |
 | 12 | led_backwall | LED backwall | custom W × H per request | LED (decorative seams) | none | digital |
 
-Print sizes follow the existing Figma templates: the file is trim + bleed on each side. The viewer
+Print sizes follow the existing Figma templates: the file is trim + 0.125 in bleed on each side (a 7 × 5 in
+card is a 7.25 × 5.25 in file). The viewer
 draws the trim as a dashed cut line with crop ticks and the safe margin as a translucent mint band.
 
 ### 9.2 Catalog editing

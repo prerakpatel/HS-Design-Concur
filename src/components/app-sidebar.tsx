@@ -20,7 +20,7 @@ const NAV = [
 ];
 
 /** Desktop sidebar. Fixed to the viewport; collapses to a 64px icon rail (button at the bottom, the edge, or ⌘/Ctrl+B). */
-export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs: Organisation[]; user: { name: string; role: string; initials: string }; slots: { used: number; max: number } }) {
+export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs: Organisation[]; user: { name: string; role: string; initials: string; avatar?: string | null }; slots: { used: number; max: number } }) {
   const pathname = usePathname();
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
@@ -61,7 +61,7 @@ export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger title={collapsed ? user.name : undefined} className={cn("flex h-12 w-full items-center gap-3 rounded-xl text-left outline-none hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring", collapsed ? "justify-center" : "px-2")}>
-            <UserAvatar initials={user.initials} size={36} />
+            <UserAvatar initials={user.initials} src={user.avatar} size={36} />
             {!collapsed && <><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium leading-5">{user.name}</span><span className="block truncate text-xs text-muted-foreground">{user.role}</span></span><Icon name="more_horiz" className="shrink-0 text-muted-foreground" /></>}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side={collapsed ? "right" : "top"} className="w-[240px] rounded-xl p-1.5">
