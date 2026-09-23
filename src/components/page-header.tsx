@@ -23,9 +23,10 @@ export function PageHeader({ title, subtitle, actions, back }: { title: string; 
 
 export function SectionHeader({ title, meta, action }: { title: string; meta?: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="mb-4 flex items-end justify-between gap-4">
-      <div className="flex items-baseline gap-3"><h2 className="text-lg font-semibold leading-7 tracking-[-0.01em]">{title}</h2>{meta && <span className="text-sm text-muted-foreground">{meta}</span>}</div>
-      {action}
+    <div className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+      {/* Title and meta stay together; on narrow screens the meta drops under the title and the actions wrap to their own row. */}
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5"><h2 className="text-lg font-semibold leading-7 tracking-[-0.01em]">{title}</h2>{meta && <span className="text-sm text-muted-foreground">{meta}</span>}</div>
+      {action && <div className="ml-auto flex shrink-0 items-center">{action}</div>}
     </div>
   );
 }
