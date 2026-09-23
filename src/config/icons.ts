@@ -15,7 +15,6 @@ export const ICON_NAMES = [
   "chat_bubble",
   "check",
   "check_circle",
-  "checklist",
   "chevron_left",
   "chevron_right",
   "close",
@@ -34,9 +33,8 @@ export const ICON_NAMES = [
   "ios_share",
   "keyboard_double_arrow_left",
   "keyboard_double_arrow_right",
-  "left_panel_close",
-  "left_panel_open",
   "logout",
+  "menu",
   "more_vert",
   "notifications",
   "notifications_active",
@@ -49,6 +47,5 @@ export const ICON_NAMES = [
   "sync",
   "unfold_more",
   "upload",
-  "visibility",
   "zoom_out_map"
 ] as const;

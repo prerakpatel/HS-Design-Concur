@@ -8,7 +8,6 @@ import { StateBadge, type BadgeState } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
 import { Icon } from "@/components/material-icon";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SectionHeader } from "@/components/page-header";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { approveMany } from "@/app/actions/reviews";
@@ -21,8 +20,8 @@ export interface FormatCardData { slotId: string; name: string; size: string; st
  * Approvers get a Select mode to approve several in-review formats at once (PRD §6.2, no Approve All).
  */
 export function FormatGrid({ eventId, cards, canApprove = false, meta }: { eventId: string; cards: FormatCardData[]; canApprove?: boolean; meta?: string }) {
-  const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
+  const selecting = picked.length > 0;
   const [confirm, setConfirm] = useState(false);
   const [showNa, setShowNa] = useState(false);
   const naCount = cards.filter((c) => !c.requested).length;
@@ -32,7 +31,7 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
   const eligible = cards.filter((c) => c.requested && c.state === "in_review" && c.versionId && !c.uploadedByMe);
   const canBulk = canApprove && eligible.length > 0;
   const chosen = eligible.filter((c) => picked.includes(c.slotId));
-  const stop = () => { setSelecting(false); setPicked([]); setConfirm(false); };
+  const stop = () => { setPicked([]); setConfirm(false); };
   const approve = () => start(async () => {
     const r = await approveMany(chosen.map((c) => c.versionId!));
     if (r.approved) toast.success(`Approved ${r.approved} format${r.approved === 1 ? "" : "s"}`);
@@ -42,55 +41,45 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
 
   return (
     <section>
-      <SectionHeader title="Formats" meta={meta} action={selecting ? <Button variant="ghost" size="sm" onClick={stop}>Cancel</Button> : (
-        <>
-          <span className="hidden items-center gap-1 sm:flex">
-            {naCount > 0 && <Button variant="ghost" size="sm" onClick={() => setShowNa((v) => !v)}>{showNa ? "Hide N/A" : `Show N/A (${naCount})`}</Button>}
-            {canBulk && <Button variant="secondary" size="sm" onClick={() => setSelecting(true)}><Icon name="checklist" className="!text-[18px]" />Select</Button>}
-          </span>
-          {(naCount > 0 || canBulk) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger aria-label="Format options" className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground sm:hidden"><Icon name="more_vert" /></DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 rounded-xl p-1.5">
-                {naCount > 0 && <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => setShowNa((v) => !v)}><Icon name="visibility" />{showNa ? "Hide N/A formats" : `Show N/A formats (${naCount})`}</DropdownMenuItem>}
-                {canBulk && <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => setSelecting(true)}><Icon name="checklist" />Select to approve</DropdownMenuItem>}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </>
-      )} />
-      {selecting && <p className="mb-3 text-sm text-muted-foreground">Pick the in-review formats to approve together. Ones you uploaded yourself are left out.</p>}
+      <SectionHeader title="Formats" meta={meta} action={naCount > 0 && <Button variant="ghost" size="sm" onClick={() => setShowNa((v) => !v)}>{showNa ? "Hide N/A" : `Show N/A (${naCount})`}</Button>} />
+      {/* Bulk approve: approvers get a checkbox on each in-review card (hover on desktop, always on touch). Ticking one brings up the action bar. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">
         {visible.map((c) => {
-          const selectable = selecting && eligible.some((e) => e.slotId === c.slotId);
+          const selectable = canBulk && eligible.some((e) => e.slotId === c.slotId);
           const on = picked.includes(c.slotId);
-          const body = (
-            <>
-              <div className={"relative aspect-[5/4] " + (c.thumb ? "bg-canvas" : "bg-muted")}>
-                {c.thumb && <img src={c.thumb} alt="" className="absolute inset-0 size-full object-cover" />}
-                {!c.thumb && c.requested && <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><Icon name="add_photo_alternate" size={24} /></div>}
-                <div className="absolute bottom-3 left-3"><StateBadge state={c.requested ? c.state : "na"} /></div>
-                {c.version != null && <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium shadow-sm">v{c.version}</span>}
-                {c.isPrimary && <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-xs font-medium text-brand-foreground shadow-sm">Primary</span>}
-                {selectable && <span className={cn("absolute left-3 top-3 flex size-7 items-center justify-center rounded-full border-2 shadow-sm transition-colors", on ? "border-primary bg-primary text-primary-foreground" : "border-white bg-white/80")}>{on && <Icon name="check" className="!text-[18px]" />}</span>}
-              </div>
-              <div className="space-y-1.5 p-3.5">
-                <p className="truncate text-sm font-medium leading-5">{c.name}</p>
-                <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm text-muted-foreground"><span>{c.size}</span>{c.due && <span className="ml-auto text-xs">Due {format(new Date(c.due + "T00:00:00"), "d MMM")}</span>}</p>
-                {c.assignee && <p className="flex items-center gap-2 pt-1 text-sm text-muted-foreground"><UserAvatar initials={c.assignee.initials} src={c.assignee.avatar} size={24} /><span className="truncate">{c.assignee.name}</span></p>}
-              </div>
-            </>
+          const toggle = () => setPicked((p) => on ? p.filter((x) => x !== c.slotId) : [...p, c.slotId]);
+          return (
+            <div key={c.slotId} className={cn("group relative", selecting && !selectable && "opacity-55")}>
+              <Link href={`/events/${eventId}/slots/${c.slotId}`} className={cn("block w-full overflow-hidden rounded-2xl border bg-card text-left transition", on ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-foreground/25 hover:shadow-sm", !c.requested && "opacity-55")}>
+                <div className={"relative aspect-[5/4] " + (c.thumb ? "bg-canvas" : "bg-muted")}>
+                  {c.thumb && <img src={c.thumb} alt="" className="absolute inset-0 size-full object-cover" />}
+                  {!c.thumb && c.requested && <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><Icon name="add_photo_alternate" size={24} /></div>}
+                  <div className="absolute bottom-3 left-3"><StateBadge state={c.requested ? c.state : "na"} /></div>
+                  {c.version != null && <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium shadow-sm">v{c.version}</span>}
+                  {c.isPrimary && <span className={cn("absolute top-3 rounded-full bg-brand px-2.5 py-1 text-xs font-medium text-brand-foreground shadow-sm", selectable ? "left-12" : "left-3")}>Primary</span>}
+                </div>
+                <div className="space-y-1.5 p-3.5">
+                  <p className="truncate text-sm font-medium leading-5">{c.name}</p>
+                  <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm text-muted-foreground"><span>{c.size}</span>{c.due && <span className="ml-auto text-xs">Due {format(new Date(c.due + "T00:00:00"), "d MMM")}</span>}</p>
+                  {c.assignee && <p className="flex items-center gap-2 pt-1 text-sm text-muted-foreground"><UserAvatar initials={c.assignee.initials} src={c.assignee.avatar} size={24} /><span className="truncate">{c.assignee.name}</span></p>}
+                </div>
+              </Link>
+              {selectable && (
+                <button type="button" role="checkbox" aria-checked={on} aria-label={`Select ${c.name}`} onClick={toggle}
+                  className={cn("absolute left-3 top-3 z-10 flex size-7 items-center justify-center rounded-full border-2 shadow-sm transition-[opacity,colors] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    on ? "border-primary bg-primary text-primary-foreground" : "border-white bg-white/85 text-transparent hover:bg-white",
+                    on || selecting ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100")}>
+                  <Icon name="check" className="!text-[18px]" />
+                </button>
+              )}
+            </div>
           );
-          const cls = cn("group block w-full overflow-hidden rounded-2xl border bg-card text-left transition", on ? "border-primary ring-2 ring-primary/20" : "border-border", !selecting && "hover:border-foreground/25 hover:shadow-sm", (!c.requested || (selecting && !selectable)) && "opacity-55");
-          return selecting
-            ? <button key={c.slotId} type="button" disabled={!selectable} onClick={() => setPicked((p) => on ? p.filter((x) => x !== c.slotId) : [...p, c.slotId])} className={cls} aria-pressed={on}>{body}</button>
-            : <Link key={c.slotId} href={`/events/${eventId}/slots/${c.slotId}`} className={cls}>{body}</Link>;
         })}
       </div>
 
       {selecting && (
         <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+76px)] z-30 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl border border-border bg-card/95 p-2 pl-4 shadow-lg backdrop-blur md:bottom-6">
-          <span className="text-sm font-medium">{chosen.length} of {eligible.length} selected</span>
+          <span className="text-sm font-medium">{chosen.length} selected</span>
           <div className="flex gap-2"><Button variant="ghost" onClick={stop}>Cancel</Button><Button disabled={chosen.length === 0 || pending} onClick={() => setConfirm(true)}>Approve {chosen.length || ""}</Button></div>
         </div>
       )}
