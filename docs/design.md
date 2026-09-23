@@ -61,10 +61,19 @@ collections swapped for the library.
 
 ## Asset page
 
-The artwork sits on a quiet `bg-canvas` panel with no frame; front and back stack vertically. Two
-corner clusters: version chips + Upload (designers) top-left, Comment + Guides (everyone) top-right;
-Enlarge appears on hover. The uploader and time live in the sticky, edge-to-edge header, not on the
-image. Approvers get a Decision card beside the comments (a fixed bottom bar on phones).
+The artwork sits directly on the page, no frame or panel; front and back stack vertically with a caption
+under each. A plain toolbar above it: version pills, Upload and a ⋯ (Replace / Add back side / Delete the
+current version) on the left for designers; Comment and Guides on the right for everyone. All are the same
+outline pill; on phones they collapse to icons. Enlarge appears on hover.
+
+The sticky, edge-to-edge header only says where you are (back, format name + version, n of N) and is
+left-aligned so it never shifts with the label. A status card beside the artwork carries the state badge,
+version, uploader + time and the open-comment count; approvers get Approve / Request changes stacked
+inside it on desktop and in a fixed bottom bar on phones.
+
+Comments show the author's avatar; a pinned comment carries a small pin token (📍 n) in its meta line
+that matches the numbered bubble on the design. Enter is a new line everywhere; ⌘/Ctrl + Enter posts, as
+does the check / arrow button.
 
 **Guides** read like a print proof: the safe zone is a translucent mint band with a hairline inner
 edge; print formats add a dashed pink cut (trim) line with crop ticks outside the corners. Insets

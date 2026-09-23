@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireActiveUser, initials } from "@/lib/auth";
 import { signedUrl } from "@/lib/storage";
-import { relativeTime } from "@/lib/labels";
 import { orderSlots } from "@/lib/slot-order";
 import { UploadPanel } from "@/components/asset/upload-panel";
 import { AssetHeader } from "@/components/asset/asset-header";
@@ -58,16 +57,16 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const scaledSides = sides.map((s) => ({ ...s, width: nativeW || s.width, height: nativeH || s.height }));
   const state = !slot.requested ? "na" : slot.state;
   const who = uploader ? (uploader.name ?? uploader.email) : null;
-  const meta = current ? [purged ? "Reference" : null, who, relativeTime(current.created_at)].filter(Boolean).join(" · ") : null;
   const canUpload = user.role === "core_admin" || slot.assignee_id === user.id || user.function_tags.includes("designer");
   const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved } : null;
 
   const chips = vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, canManage: x.uploaded_by === user.id || user.role === "core_admin", hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }));
-  const decision = actionProps ? <ReviewActions {...actionProps} label={`${fmt.name} v${current?.number ?? ""}`} eventTitle={event.title} /> : null;
+  const decision = actionProps ? <ReviewActions {...actionProps} label={`${fmt.name} v${current?.number ?? ""}`} eventTitle={event.title} layout="fill" /> : null;
+  const decisionRow = actionProps ? <ReviewActions {...actionProps} label={`${fmt.name} v${current?.number ?? ""}`} eventTitle={event.title} /> : null;
 
   return (
     <div className={"pb-8" + (decision ? " max-md:pb-24" : "")}>
-      <AssetHeader eventId={id} eventTitle={event.title} formatName={fmt.name} version={current?.number ?? null} state={state as "requested"} meta={meta} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null} />
+      <AssetHeader eventId={id} eventTitle={event.title} formatName={fmt.name} version={current?.number ?? null} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null} />
       <div className="mx-auto max-w-[1440px] space-y-5 px-4 pt-4 md:px-6 md:pt-6">
       {!slot.requested ? (
         <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">This format is marked N/A for this event. Change it from Edit event → Formats if it is needed.</p>
@@ -82,7 +81,8 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
         <>
           {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{sides[0]?.src ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept."}</p>}
           <AssetStage versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} comments={cviews} members={mlist} canComment={!readOnly} canModerate={user.role === "core_admin"}
-            versions={chips} currentVersionId={current?.id ?? null} eventId={id} slotId={slotId} upload={canUpload && !readOnly ? { accept: fmt.allowed_mimes, isPrint, nextNumber: (vlist[0]?.number ?? 0) + 1 } : null} decision={decision} readOnly={readOnly} />
+            versions={chips} currentVersionId={current?.id ?? null} eventId={id} slotId={slotId} upload={canUpload && !readOnly ? { accept: fmt.allowed_mimes, isPrint, nextNumber: (vlist[0]?.number ?? 0) + 1 } : null}
+            status={{ state: state as "requested", version: current?.number ?? null, uploader: purged ? (who ? `${who} (reference)` : "Reference") : who, uploadedAt: current?.created_at ?? null }} decision={decision} decisionBar={decisionRow} readOnly={readOnly} />
         </>
       )}
       </div>
