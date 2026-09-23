@@ -11,6 +11,7 @@ for (const f of files) {
   const s = readFileSync(f, "utf8");
   for (const m of s.matchAll(/<Icon\s[^>]*?name="([a-z0-9_]+)"/g)) names.add(m[1]);
   for (const m of s.matchAll(/\bicon:\s*"([a-z0-9_]+)"/g)) names.add(m[1]);
+  for (const m of s.matchAll(/\/\/ icons:([a-z0-9_ ]+)/g)) for (const n of m[1].trim().split(/\s+/)) names.add(n);
   for (const m of s.matchAll(/"[a-z_.]+":\s*"([a-z0-9_]+)"/g)) if (/ICONS|Record<string, string>/.test(s)) names.add(m[1]);
 }
 const sorted = [...names].filter((n) => n.length > 1).sort();

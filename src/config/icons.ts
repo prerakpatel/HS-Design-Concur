@@ -2,10 +2,11 @@
 /** Material Symbols glyphs used by the app, requested as a font subset in the root layout. */
 export const ICON_NAMES = [
   "add",
-  "add_location_alt",
+  "add_comment",
   "add_photo_alternate",
   "alternate_email",
   "arrow_back",
+  "arrow_upward",
   "assignment_ind",
   "auto_delete",
   "block",
@@ -41,5 +42,5 @@ export const ICON_NAMES = [
   "sync",
   "unfold_more",
   "upload",
-  "zoom_in"
+  "zoom_out_map"
 ] as const;

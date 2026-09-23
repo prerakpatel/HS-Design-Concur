@@ -4,7 +4,7 @@ import type { ActivityItem } from "@/components/events/event-detail";
 import type { FormatCardData } from "@/components/events/format-grid";
 import type { EditableUser } from "@/components/settings/user-editor";
 import type { PendingUser } from "@/components/settings/access-requests";
-import type { CommentView, Member } from "@/components/asset/asset-workspace";
+import type { CommentView, Member } from "@/components/asset/asset-stage";
 import type { FormatRow, AssignRow, Person } from "@/components/wizard/steps";
 import type { Format } from "@/lib/types";
 

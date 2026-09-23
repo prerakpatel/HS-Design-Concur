@@ -13,8 +13,8 @@ import { AccessRequests } from "@/components/settings/access-requests";
 import { FormatsList } from "@/components/settings/format-editor";
 import { WizardShell } from "@/components/wizard/wizard-shell";
 import { BasicsForm, BriefForm, FormatsForm, AssignForm, ReviewPanel } from "@/components/wizard/steps";
-import { AssetWorkspace } from "@/components/asset/asset-workspace";
-import { AssetHeader, StatusPanel } from "@/components/asset/asset-header";
+import { AssetStage } from "@/components/asset/asset-stage";
+import { AssetHeader } from "@/components/asset/asset-header";
 import { AssetFooter } from "@/components/asset/asset-footer";
 import { relativeTime } from "@/lib/labels";
 import { noop, noopForm, noopUser } from "@/app/preview/actions";
@@ -55,8 +55,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
 
   if (screen === "slot") return shell(<div className="space-y-5 pb-20 md:space-y-6 md:pb-16">
     <AssetHeader eventId="e-1" eventTitle="Diwali Annakut Darshan" formatName="WhatsApp flyer" version={1} state="changes_requested" position={{ at: 3, total: 6 }} prev={{ id: "s-2", name: "Instagram story" }} next={{ id: "s-4", name: "Lobby TV" }} />
-    <AssetWorkspace versionId="v-1" sides={[{ side: "front", src: "/preview/flyer.webp", isGif: false, width: 1080, height: 1350, guideColor: "#00E5FF" }]} safe={{ top: 90, right: 60, bottom: 110, left: 60 }} print={null} caption="DRAFT · v1 · 20 Sep 2026" comments={F.COMMENTS} members={F.MEMBERS} canApprove canComment canModerate
-      aside={<StatusPanel state="changes_requested" isPrimary meta="1080 × 1350 px · digital" uploader="Kinjal Patel" uploadedAt="2 d ago" notes="Gujarati headline" />} />
+    <AssetStage versionId="v-1" sides={[{ side: "front", src: "/preview/flyer.webp", isGif: false, width: 1080, height: 1350, guideColor: "#00E5FF" }]} safe={{ top: 90, right: 60, bottom: 110, left: 60 }} print={null} caption="DRAFT · v1 · Kinjal Patel · 2 d ago" comments={F.COMMENTS} members={F.MEMBERS} canApprove canComment canModerate />
     <AssetFooter eventId="e-1" slotId="s-3" currentId="v-1" isPrint={false} accept={["image/png", "image/jpeg", "image/webp"]} readOnly={false} versions={[{ id: "v-1", number: 1, decision: "changes_requested", canManage: true, hasBack: false }]} upload={{ nextNumber: 2 }} actions={{ versionId: "v-1", label: "WhatsApp flyer v1", eventTitle: "Diwali Annakut Darshan", decision: "changes_requested", canApprove: true, isOwnUpload: false, hasBack: false }} />
   </div>);
 
