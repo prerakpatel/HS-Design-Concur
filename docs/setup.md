@@ -70,7 +70,7 @@ due-date reminders:
 Run it by hand (needs `CRON_SECRET` from Vercel → Settings → Environment variables):
 
 ```bash
-curl -H "Authorization: Bearer $CRON_SECRET" https://design-and-concur.vercel.app/api/jobs/daily
+curl -H "Authorization: Bearer $CRON_SECRET" https://hsdesign.vercel.app/api/jobs/daily
 ```
 
 The JSON reply lists what it did (`retention.archived`, `filesRemoved`, `errors`, …).

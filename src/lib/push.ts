@@ -12,7 +12,7 @@ export function pushConfigured() { return !!(process.env.VAPID_PUBLIC_KEY && pro
  */
 export async function sendPush(userIds: string[], msg: PushMessage) {
   if (!pushConfigured() || userIds.length === 0) return { sent: 0 };
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://design-and-concur.vercel.app", process.env.VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://hsdesign.vercel.app", process.env.VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
   const svc = createServiceClient();
   const { data: subs } = await svc.from("push_subscriptions").select("id,endpoint,p256dh,auth").in("user_id", userIds);
   const gone: string[] = []; const ok: string[] = [];

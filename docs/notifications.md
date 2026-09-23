@@ -6,7 +6,7 @@ In-app notifications always work. Email and Google Chat need two one-time setups
 
 1. In Google Chat, open the space where the design team talks (or create one, e.g. *Design & Concur*).
 2. Click the space name at the top → **Apps & integrations** → **Webhooks** → **Add webhook**.
-3. Name: `Design & Concur`. Avatar URL (optional): `https://design-and-concur.vercel.app/watermark-tile.png`. **Save**.
+3. Name: `Design & Concur`. Avatar URL (optional): `https://hsdesign.vercel.app/watermark-tile.png`. **Save**.
 4. Copy the webhook URL (starts with `https://chat.googleapis.com/v1/spaces/…`).
 5. In the app: **Settings → Notifications** → paste it under the organisation → tick **Google Chat notifications** → **Save** → **Send test message**. A message should appear in the space.
 

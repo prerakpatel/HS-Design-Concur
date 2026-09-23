@@ -2,7 +2,7 @@
 const API = "https://api.resend.com/emails";
 
 export function appUrl(path = "/") {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://design-and-concur.vercel.app";
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://hsdesign.vercel.app";
   return base.replace(/\/$/, "") + path;
 }
 
