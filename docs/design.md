@@ -62,9 +62,10 @@ collections swapped for the library.
 ## Brand marks
 
 `public/brand/`: `logo-full.png` (horizontal lock-up, sign-in on wide screens' docs), `logo-stacked.png` (sign-in),
-`logo-mark.png` (the hands, awaiting page), `harisumiran.svg` / `harisumiran-mark.svg` (the parent brand; the mark
-sits above Design & Concur on sign-in because the app is one of the Harisumiran family). App icons combine the
-Harisumiran mark over the hands on the cream tile; the favicon is the Harisumiran mark on a rounded cream tile.
+`logo-mark.png` (the hands, awaiting page), `harisumiran.svg` / `harisumiran-mark.svg` (the parent brand recoloured
+to the single cocoa of the wordmark; the full logo sits above Design & Concur on sign-in because the app is one of
+the Harisumiran family). App icons are the hands alone on the cream tile: one icon, one idea. The favicon is the
+Harisumiran mark on a rounded cream tile.
 The installed app is named "Design Seva".
 
 ## Asset page
