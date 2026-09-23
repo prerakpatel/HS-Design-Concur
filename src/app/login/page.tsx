@@ -16,7 +16,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </div>
       <section className="relative -mt-6 flex flex-1 flex-col justify-center rounded-t-3xl bg-card px-7 pb-[max(env(safe-area-inset-bottom),28px)] pt-9 md:mt-0 md:w-[440px] md:flex-none md:rounded-none md:px-14 md:py-16 lg:w-[520px] lg:px-20">
         <div className="mx-auto w-full max-w-[340px]">
-          <img src="/brand/logo-stacked.png" alt="Design & Concur" width={828} height={897} className="mx-auto h-auto w-[170px] md:w-[210px]" />
+          <img src="/brand/harisumiran-mark.svg" alt="Harisumiran" className="mx-auto h-11 w-auto md:h-12" />
+          <img src="/brand/logo-stacked.png" alt="Design & Concur" width={828} height={897} className="mx-auto mt-7 h-auto w-[160px] md:w-[200px]" />
           <p className="mt-6 text-center text-[15px] leading-6 text-muted-foreground">For Harisumiran and Atmiya Care Charities design seva.</p>
           <div className="mt-8"><GoogleButton next={next} /></div>
           {error && <p className="mt-3 text-center text-sm text-destructive-text">Sign-in did not complete. Try again.</p>}

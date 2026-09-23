@@ -1,10 +1,10 @@
 import type { MetadataRoute } from "next";
 
-/** Installable as a home-screen app. Push notifications are a separate piece of work (service worker + Web Push). */
+/** Installable as a home-screen app, shown as "Design Seva". Push notifications are a separate piece of work (service worker + Web Push). */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Design & Concur",
-    short_name: "Design & Concur",
+    name: "Design Seva",
+    short_name: "Design Seva",
     description: "Event asset request, review and approval for Harisumiran and Atmiya Care Charities.",
     start_url: "/events",
     display: "standalone",

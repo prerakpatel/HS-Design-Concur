@@ -59,6 +59,14 @@ collections swapped for the library.
 | Calendar popover | `Calendar` + `Popover` (react-day-picker) |
 | Approve sheet, @mention picker, comments sheet | `Drawer` (vaul) on mobile; `Dialog` / `Command` on desktop |
 
+## Brand marks
+
+`public/brand/`: `logo-full.png` (horizontal lock-up, sign-in on wide screens' docs), `logo-stacked.png` (sign-in),
+`logo-mark.png` (the hands, awaiting page), `harisumiran.svg` / `harisumiran-mark.svg` (the parent brand; the mark
+sits above Design & Concur on sign-in because the app is one of the Harisumiran family). App icons combine the
+Harisumiran mark over the hands on the cream tile; the favicon is the Harisumiran mark on a rounded cream tile.
+The installed app is named "Design Seva".
+
 ## Asset page
 
 The artwork sits directly on the page, no frame or panel; front and back stack vertically with a caption
