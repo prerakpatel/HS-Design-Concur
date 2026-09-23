@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarRail, useSidebar } from "@/components/ui/sidebar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/material-icon";
 import { UserAvatar } from "@/components/user-avatar";
 import { OrgMark } from "@/components/org-mark";
@@ -16,7 +16,6 @@ const NAV = [
   { href: "/events", label: "Events", icon: "event" },
   { href: "/inbox", label: "Inbox", icon: "notifications" },
   { href: "/archive", label: "Archive", icon: "inventory_2" },
-  { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
 /** Desktop sidebar. Fixed to the viewport; collapses to a 64px icon rail (button at the bottom, the edge, or ⌘/Ctrl+B). */
@@ -65,7 +64,9 @@ export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs
             {!collapsed && <><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium leading-5">{user.name}</span><span className="block truncate text-xs text-muted-foreground">{user.role}</span></span><Icon name="more_horiz" className="shrink-0 text-muted-foreground" /></>}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side={collapsed ? "right" : "top"} className="w-[240px] rounded-xl p-1.5">
-            <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" asChild><Link href="/inbox"><Icon name="mail" />Email preferences</Link></DropdownMenuItem>
+            <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" asChild><Link href="/settings"><Icon name="settings" />Settings</Link></DropdownMenuItem>
+            <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" asChild><Link href="/inbox"><Icon name="notifications" />Notifications</Link></DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => signOut()}><Icon name="logout" />Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

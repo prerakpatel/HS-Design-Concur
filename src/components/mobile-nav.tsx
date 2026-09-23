@@ -6,13 +6,13 @@ import { Icon } from "@/components/material-icon";
 import { UserAvatar } from "@/components/user-avatar";
 import { OrgMark } from "@/components/org-mark";
 import { setCurrentOrg } from "@/app/actions/org";
+import { signOut } from "@/app/actions/auth";
 import type { Organisation } from "@/lib/types";
 
 const TABS = [
   { href: "/events", label: "Events", icon: "event" },
   { href: "/inbox", label: "Inbox", icon: "notifications" },
   { href: "/archive", label: "Archive", icon: "inventory_2" },
-  { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
 const isTaskScreen = (path: string) => /\/events\/[^/]+\/slots\/|\/preview\/slot$/.test(path);
@@ -49,7 +49,13 @@ export function MobileTopBar({ org, orgs, initials, avatar }: { org: Organisatio
           {orgs.map((o) => <DropdownMenuItem key={o.id} className="h-10 rounded-lg px-3 text-sm" onSelect={() => setCurrentOrg(o.slug)}><OrgMark org={o} size={24} />{o.name}{o.id === org.id && <Icon name="check" className="ml-auto text-muted-foreground" />}</DropdownMenuItem>)}
         </DropdownMenuContent>
       </DropdownMenu>
-      <UserAvatar initials={initials} src={avatar} size={32} />
+      <DropdownMenu>
+        <DropdownMenuTrigger aria-label="Account" className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"><UserAvatar initials={initials} src={avatar} size={32} /></DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56 rounded-xl p-1.5">
+          <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" asChild><Link href="/settings"><Icon name="settings" />Settings</Link></DropdownMenuItem>
+          <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => signOut()}><Icon name="logout" />Sign out</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </header>
   );
 }

@@ -33,7 +33,6 @@ export const ICON_NAMES = [
   "keyboard_double_arrow_left",
   "keyboard_double_arrow_right",
   "logout",
-  "mail",
   "more_horiz",
   "notifications",
   "notifications_active",
