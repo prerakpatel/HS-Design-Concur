@@ -35,17 +35,3 @@ export function AssetHeader({ eventId, eventTitle, formatName, version, state, p
     </>
   );
 }
-
-/** Status panel: what this is and who made it. Doing lives in the footer bar. */
-export function StatusPanel({ state, isPrimary, meta, uploader, uploadedAt, notes }: { state: BadgeState; isPrimary: boolean; meta: string; uploader: string | null; uploadedAt: string | null; notes: string | null }) {
-  return (
-    <div className="space-y-3 rounded-2xl border border-border p-4">
-      <div className="flex flex-wrap items-center gap-2"><StateBadge state={state} />{isPrimary && <StateBadge state="needs_you" label="Primary" />}</div>
-      <div className="space-y-0.5 text-sm">
-        {uploader && <p className="font-medium">{uploader}{uploadedAt ? <span className="font-normal text-muted-foreground"> · {uploadedAt}</span> : null}</p>}
-        <p className="text-muted-foreground">{meta}</p>
-        {notes && <p className="text-muted-foreground">Note: {notes}</p>}
-      </div>
-    </div>
-  );
-}

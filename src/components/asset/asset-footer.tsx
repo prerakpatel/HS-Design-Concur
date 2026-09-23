@@ -18,10 +18,13 @@ export interface VersionChip { id: string; number: number; decision: string; can
  */
 export function AssetFooter({ eventId, slotId, versions, currentId, isPrint, accept, upload, actions, readOnly }: {
   eventId: string; slotId: string; versions: VersionChip[]; currentId: string | null; isPrint: boolean; accept: string[];
-  upload: { nextNumber: number } | null;
+  upload: { nextNumber: number } | null; // null when this person cannot upload
   actions: { versionId: string; label: string; eventTitle: string; decision: string; canApprove: boolean; isOwnUpload: boolean; hasBack: boolean } | null;
   readOnly: boolean;
 }) {
+  const showVersions = versions.length > 1 || versions.some((v) => v.canManage);
+  const hasLeft = (upload && !readOnly) || (showVersions && !readOnly);
+  const hasRight = !!actions && !readOnly && (actions.canApprove || actions.decision === "approved");
   const [pending, start] = useTransition();
   const router = useRouter();
   const remove = (v: VersionChip) => start(async () => {
@@ -29,11 +32,12 @@ export function AssetFooter({ eventId, slotId, versions, currentId, isPrint, acc
     try { await deleteVersion(v.id); toast.success(`Version ${v.number} deleted`); router.replace(`/events/${eventId}/slots/${slotId}`); router.refresh(); }
     catch (e) { toast.error((e as Error).message); }
   });
+  if (!hasLeft && !hasRight) return null;
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur md:left-[var(--sidebar-width,0px)]">
       <div className="mx-auto flex max-w-[1120px] flex-wrap items-center gap-2 px-4 pb-[max(env(safe-area-inset-bottom),10px)] pt-2.5 md:px-10 md:py-3">
         <div className="flex items-center gap-1.5">
-          {versions.length > 0 && (
+          {showVersions && !readOnly && (
             <div className="inline-flex items-center rounded-full bg-muted p-1">
               {[...versions].sort((a, b) => a.number - b.number).map((v) => (
                 <div key={v.id} className={cn("flex items-center rounded-full text-sm font-medium", currentId === v.id ? "bg-card shadow-sm" : "text-muted-foreground")}>

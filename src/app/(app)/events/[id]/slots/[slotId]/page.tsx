@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import { requireActiveUser, initials } from "@/lib/auth";
 import { signedUrl } from "@/lib/storage";
-import { formatSize, relativeTime } from "@/lib/labels";
+import { relativeTime } from "@/lib/labels";
 import { orderSlots } from "@/lib/slot-order";
 import { UploadPanel } from "@/components/asset/upload-panel";
-import { AssetHeader, StatusPanel } from "@/components/asset/asset-header";
+import { AssetHeader } from "@/components/asset/asset-header";
 import { AssetFooter } from "@/components/asset/asset-footer";
-import { AssetWorkspace, type CommentView, type Member, type SideView } from "@/components/asset/asset-workspace";
+import { AssetStage, type CommentView, type Member, type SideView } from "@/components/asset/asset-stage";
 import type { AppUser, EventRow, Format, Slot } from "@/lib/types";
 
 const FALLBACK_GUIDE = "#00E5FF";
@@ -59,7 +59,9 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const nativeH = fmt.allow_custom_size ? (slot.custom_h ?? front?.height ?? 0) : fmt.unit === "px" ? Number(fmt.height) : (front?.height ?? 0);
   const scaledSides = sides.map((s) => ({ ...s, width: nativeW || s.width, height: nativeH || s.height }));
   const state = !slot.requested ? "na" : slot.state;
-  const caption = current ? (purged ? `Reference · v${current.number}${approved ? " · approved" : ""}` : approved ? `Approved · v${current.number}` : `DRAFT · v${current.number} · ${new Date(current.created_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}`) : "";
+  const who = uploader ? (uploader.name ?? uploader.email) : null;
+  const caption = current ? [purged ? "Reference" : approved ? "Approved" : "DRAFT", `v${current.number}`, who, relativeTime(current.created_at)].filter(Boolean).join(" · ") : "";
+  const canUpload = user.role === "core_admin" || slot.assignee_id === user.id || user.function_tags.includes("designer");
   const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved } : null;
 
   return (
@@ -73,19 +75,18 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
       ) : (
         <>
           {!event.brief_locked_at && <p className="text-xs text-muted-foreground">Uploading the first design locks the brief.</p>}
-          <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={isPrint} nextNumber={1} variant="dropzone" />
+          {canUpload ? <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={isPrint} nextNumber={1} variant="dropzone" /> : <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nothing uploaded yet. The assigned designer will add the first version.</p>}
         </>
       ) : (
         <>
           {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{sides[0]?.src ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept."}</p>}
-          <AssetWorkspace versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} caption={caption} comments={cviews} members={mlist} canApprove={canApprove && !readOnly} canComment={!readOnly} canModerate={user.role === "core_admin"}
-            aside={<StatusPanel state={state as "requested"} isPrimary={slot.is_primary} meta={`${formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} · ${fmt.class}`} uploader={uploader ? (uploader.name ?? uploader.email) : null} uploadedAt={current ? relativeTime(current.created_at) : null} notes={slot.notes} />} />
+          <AssetStage versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} caption={caption} comments={cviews} members={mlist} canApprove={canApprove && !readOnly} canComment={!readOnly} canModerate={user.role === "core_admin"} />
         </>
       )}
       {slot.requested && vlist.length > 0 && (
         <AssetFooter eventId={id} slotId={slotId} currentId={current?.id ?? null} isPrint={isPrint} accept={fmt.allowed_mimes} readOnly={readOnly}
           versions={vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, canManage: x.uploaded_by === user.id || user.role === "core_admin", hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }))}
-          upload={{ nextNumber: (vlist[0]?.number ?? 0) + 1 }}
+          upload={canUpload ? { nextNumber: (vlist[0]?.number ?? 0) + 1 } : null}
           actions={actionProps ? { ...actionProps, label: `${fmt.name} v${current?.number ?? ""}`, eventTitle: event.title } : null} />
       )}
     </div>
