@@ -16,7 +16,7 @@ import { addComment, setCommentFlag, editComment, deleteComment, deleteVersion }
 import { relativeTime } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-// icons: add_comment grid_on zoom_out_map check close arrow_upward more_horiz upload sync flip delete replay edit chat_bubble
+// icons: add_comment grid_on zoom_out_map check close arrow_upward more_vert upload sync flip delete replay edit chat_bubble
 export type Side = "front" | "back";
 export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number }
 export interface CommentView { id: string; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
@@ -99,7 +99,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           {upload && !readOnly && <UploadPanel slotId={slotId} accept={upload.accept} isPrint={upload.isPrint} nextNumber={upload.nextNumber} variant="pill" label="Upload" compactOnPhone className={iconPill} />}
           {manage && current && (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={`More for v${current.number}`}><Icon name="more_horiz" /></Button></DropdownMenuTrigger>
+              <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={`More for v${current.number}`}><Icon name="more_vert" /></Button></DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56 rounded-xl p-1.5">
                 <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => requestUpload({ side: "front", replaceVersionId: current.id })}><Icon name="sync" />Replace v{current.number}</DropdownMenuItem>
                 {upload?.isPrint && !current.hasBack && <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => requestUpload({ side: "back", replaceVersionId: null })}><Icon name="flip" />Add back side</DropdownMenuItem>}
@@ -184,7 +184,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                       </p>
                       {canComment && editing?.id !== c.id && (
                         <DropdownMenu>
-                          <DropdownMenuTrigger aria-label="Comment options" className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-60 hover:bg-muted hover:opacity-100 group-hover/c:opacity-100"><Icon name="more_horiz" className="!text-[18px]" /></DropdownMenuTrigger>
+                          <DropdownMenuTrigger aria-label="Comment options" className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-60 hover:bg-muted hover:opacity-100 group-hover/c:opacity-100"><Icon name="more_vert" className="!text-[18px]" /></DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44 rounded-xl p-1.5">
                             {done ? <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "reopen")}><Icon name="replay" />Reopen</DropdownMenuItem> : <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "addressed")}><Icon name="check" />Mark as done</DropdownMenuItem>}
                             {(c.mine || canModerate) && <>

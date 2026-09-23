@@ -1,4 +1,5 @@
 "use client";
+// icons: left_panel_open left_panel_close
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -25,9 +26,9 @@ export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs
   const collapsed = state === "collapsed";
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className={cn("p-3", collapsed ? "items-center" : "flex-row items-center gap-1")}>
+      <SidebarHeader className="p-3">
         <DropdownMenu>
-          <DropdownMenuTrigger title={collapsed ? `${org.name} · switch organisation` : undefined} className={cn("flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", collapsed ? "justify-center hover:bg-sidebar-accent" : "border border-border bg-card pl-2 pr-2.5 hover:bg-muted")}>
+          <DropdownMenuTrigger title={collapsed ? `${org.name} · switch organisation` : undefined} className={cn("flex h-12 w-full items-center gap-2.5 rounded-xl text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", collapsed ? "justify-center hover:bg-sidebar-accent" : "border border-border bg-card pl-2 pr-2.5 hover:bg-muted")}>
             <OrgMark org={org} size={32} />
             {!collapsed && <><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium leading-5">{org.name}</span><span className="block text-xs text-muted-foreground">Design &amp; Concur</span></span><Icon name="unfold_more" className="shrink-0 text-muted-foreground" /></>}
           </DropdownMenuTrigger>
@@ -40,11 +41,6 @@ export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        {/* Collapse / expand: a small chevron that shows itself on hover, plus the drag rail on the edge and ⌘B. */}
-        <button type="button" onClick={toggleSidebar} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={`${collapsed ? "Expand" : "Collapse"} · ⌘B`}
-          className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-opacity hover:bg-sidebar-accent hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring", collapsed ? "mt-1" : "opacity-0 group-hover:opacity-100")}>
-          <Icon name={collapsed ? "keyboard_double_arrow_right" : "keyboard_double_arrow_left"} size={20} />
-        </button>
       </SidebarHeader>
       <SidebarContent className="px-3">
         <SidebarMenu className="gap-1">
@@ -66,7 +62,7 @@ export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs
         <DropdownMenu>
           <DropdownMenuTrigger title={collapsed ? user.name : undefined} className={cn("flex h-12 w-full items-center gap-3 rounded-xl text-left outline-none hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring", collapsed ? "justify-center" : "px-2")}>
             <UserAvatar initials={user.initials} src={user.avatar} size={36} />
-            {!collapsed && <><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium leading-5">{user.name}</span><span className="block truncate text-xs text-muted-foreground">{user.role}</span></span><Icon name="more_horiz" className="shrink-0 text-muted-foreground" /></>}
+            {!collapsed && <><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium leading-5">{user.name}</span><span className="block truncate text-xs text-muted-foreground">{user.role}</span></span><Icon name="more_vert" className="shrink-0 text-muted-foreground" /></>}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side={collapsed ? "right" : "top"} className="w-[240px] rounded-xl p-1.5">
             <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" asChild><Link href="/profile"><Icon name="account_circle" />Profile</Link></DropdownMenuItem>
@@ -76,6 +72,11 @@ export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs
             <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => signOut()}><Icon name="logout" />Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        {/* Collapse / expand: a faint panel glyph under the account row. The edge rail and ⌘B do the same. */}
+        <button type="button" onClick={toggleSidebar} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={`${collapsed ? "Expand" : "Collapse"} · ⌘B`}
+          className={cn("flex size-8 items-center justify-center rounded-lg text-muted-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring", collapsed ? "mx-auto" : "ml-2")}>
+          <Icon name={collapsed ? "left_panel_open" : "left_panel_close"} size={20} />
+        </button>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
