@@ -65,7 +65,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                   {o.logo_path && <label className="flex items-center gap-2 text-sm text-muted-foreground"><input type="checkbox" name="remove_logo" className="size-4 rounded border-border" />Remove the current logo</label>}
                 </div>
                 <ToggleRow name="accepting_signups" label="Accepting new members" hint="Off hides the request button on the sign-in page." on={o.accepting_signups} />
-                <ToggleRow name="email_enabled" label="Email notifications" hint="Each person still picks instant, daily or off." on={o.email_enabled} />
+                {emailConfigured() && <ToggleRow name="email_enabled" label="Email notifications" hint="Each person still picks instant, daily or off." on={o.email_enabled} />}
                 <ToggleRow name="chat_enabled" label="Google Chat notifications" hint="Sent for review, changes requested, approved, reopened." on={o.chat_enabled} />
                 <div className="space-y-2"><Label htmlFor={`hook-${o.id}`}>Google Chat webhook URL</Label><Input id={`hook-${o.id}`} name="chat_webhook_url" defaultValue={o.chat_webhook_url ?? ""} placeholder="https://chat.googleapis.com/v1/spaces/…" /></div>
                 <ToggleRow name="slack_enabled" label="Slack notifications" hint="Same four moments, posted to a Slack channel." on={o.slack_enabled} />
@@ -74,11 +74,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               </form>
             ))}
           </section>
+          {/* Email is on hold until a sender domain exists (see docs/setup.md). */}
+          {emailConfigured() && (
           <section className="rounded-2xl border border-border p-5">
             <SectionHeader title="Email" />
             <p className="max-w-2xl text-sm text-muted-foreground">{emailConfigured() ? `Sending from ${process.env.EMAIL_FROM}. Each person chooses instant, daily digest or off from their Inbox.` : "Not configured yet. Add RESEND_API_KEY and EMAIL_FROM on Vercel (see docs/notifications.md), then redeploy."}</p>
             <div className="mt-4"><TestButton label="Send me a test email" action={async () => { "use server"; await sendTestEmail(); }} /></div>
           </section>
+          )}
         </div>
       )}
     </>
