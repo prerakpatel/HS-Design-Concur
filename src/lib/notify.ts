@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { after } from "next/server";
 import { sendEmail, appUrl } from "@/lib/email";
 import { postChat, chat } from "@/lib/chat";
+import { sendPush } from "@/lib/push";
 import { notificationText, notificationHref, chatText } from "@/lib/labels";
 
 export type NotificationKind =
@@ -9,7 +10,7 @@ export type NotificationKind =
   | "version.changes_requested" | "version.approved" | "version.reopened" | "event.deleted" | "event.published"
   | "draft.expiring" | "draft.swept" | "devices.refresh";
 
-/** Kinds that are also announced in the org's Google Chat space (PRD §10). */
+/** Kinds that are also announced in the org's Google Chat space or Slack channel (PRD §10). */
 const CHAT_KINDS: NotificationKind[] = ["version.uploaded", "version.changes_requested", "version.approved", "version.reopened"];
 
 const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> = {
@@ -32,8 +33,9 @@ const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> 
 export function subjectFor(kind: NotificationKind, payload: Record<string, unknown>) { return (SUBJECT[kind] ?? (() => "Design & Concur"))(payload); }
 
 /**
- * Create in-app notifications and deliver them: instant email to users who want it (org email switch
- * permitting) and a Google Chat post for review-flow kinds when the org has a webhook. Delivery runs
+ * Create in-app notifications and deliver them: a push to every device the person turned on, instant email to
+ * users who want it (org email switch permitting), and a Google Chat / Slack post for review-flow kinds when the
+ * org has a webhook. Delivery runs
  * after the response is sent, so server actions stay fast.
  */
 export async function notify(supabase: SupabaseClient, userIds: Iterable<string>, kind: NotificationKind, payload: Record<string, unknown>, exclude?: string, opts?: { orgId?: string }) {
@@ -44,9 +46,11 @@ export async function notify(supabase: SupabaseClient, userIds: Iterable<string>
 }
 
 async function deliver(supabase: SupabaseClient, ids: string[], kind: NotificationKind, payload: Record<string, unknown>, orgId?: string) {
-  const { data: org } = orgId ? await supabase.from("organisations").select("email_enabled,chat_enabled,chat_webhook_url,short_name").eq("id", orgId).maybeSingle() : { data: null };
+  const { data: org } = orgId ? await supabase.from("organisations").select("email_enabled,chat_enabled,chat_webhook_url,slack_enabled,slack_webhook_url,short_name").eq("id", orgId).maybeSingle() : { data: null };
   const text = notificationText(kind, payload);
   const href = appUrl(notificationHref(payload));
+
+  if (ids.length) { try { await sendPush(ids, { title: SUBJECT[kind](payload), body: text, href, tag: `${kind}:${payload.slotId ?? payload.eventId ?? ""}` }); } catch (e) { console.error("[push]", (e as Error).message); } }
 
   if (ids.length && (org?.email_enabled ?? true)) {
     const { data: users } = await supabase.from("users").select("id,email,name,email_pref").in("id", ids).eq("status", "active").eq("email_pref", "instant");
@@ -57,9 +61,10 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
     for (const r of results) if (r.status === "fulfilled" && "error" in r.value) console.error("[email]", r.value.error);
   }
 
-  if (org?.chat_enabled && org.chat_webhook_url && CHAT_KINDS.includes(kind)) {
-    const r = await postChat(org.chat_webhook_url, `${chat.bold(chatText(kind, payload))}\n${chat.link(href, "Open in Design & Concur")}`);
-    if ("error" in r) console.error("[chat]", r.error);
+  if (CHAT_KINDS.includes(kind)) {
+    const message = `${chat.bold(chatText(kind, payload))}\n${chat.link(href, "Open in Design & Concur")}`;
+    const hooks = [org?.chat_enabled && org.chat_webhook_url, org?.slack_enabled && org.slack_webhook_url].filter((h): h is string => !!h);
+    for (const r of await Promise.all(hooks.map((h) => postChat(h, message)))) if ("error" in r) console.error("[chat]", r.error);
   }
 }
 

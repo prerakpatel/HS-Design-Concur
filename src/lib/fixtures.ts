@@ -10,8 +10,8 @@ import type { Format } from "@/lib/types";
 
 /** Static fixtures for the /preview design harness. Not used by the app. */
 export const ORGS: Organisation[] = [
-  { id: "org-hs", slug: "harisumiran", name: "Harisumiran", short_name: "Harisumiran", accepting_signups: true, email_enabled: true, chat_enabled: false, chat_webhook_url: null, logo_path: null },
-  { id: "org-acc", slug: "acc", name: "Atmiya Care Charities", short_name: "ACC", accepting_signups: true, email_enabled: true, chat_enabled: true, chat_webhook_url: null, logo_path: null },
+  { id: "org-hs", slug: "harisumiran", name: "Harisumiran", short_name: "Harisumiran", accepting_signups: true, email_enabled: true, chat_enabled: false, chat_webhook_url: null, slack_enabled: false, slack_webhook_url: null, logo_path: null },
+  { id: "org-acc", slug: "acc", name: "Atmiya Care Charities", short_name: "ACC", accepting_signups: true, email_enabled: true, chat_enabled: true, chat_webhook_url: null, slack_enabled: false, slack_webhook_url: null, logo_path: null },
 ];
 export const ME = { id: "u-1", name: "Prerak Patel", role: "Core Admin · Approver", initials: "PP" };
 export const SLOTS = { used: 4, max: 10 };

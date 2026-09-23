@@ -75,11 +75,26 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://design-and-concur.vercel.ap
 
 The JSON reply lists what it did (`retention.archived`, `filesRemoved`, `errors`, …).
 
+## Push notifications
+
+Web Push to phones and desktops that turned it on from Inbox → "Notify this device". The browser keeps a
+subscription in `push_subscriptions`; `notify()` sends to every device of each recipient, alongside the in-app
+row. Needs `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and `VAPID_SUBJECT` on Vercel
+(generate a pair once with `npx web-push generate-vapid-keys`; rotating them silently drops every subscription).
+iPhones only receive push from the installed app: Share → Add to Home Screen, then turn it on from there.
+The service worker is `public/sw.js`.
+
+## Slack
+
+Per org, Settings → Organisations: turn on Slack notifications and paste an incoming-webhook URL
+(Slack app → Incoming Webhooks → Add New Webhook to Workspace → pick the channel). Same four moments as Google
+Chat: ready for review, changes requested, approved, reopened. "Test Slack" posts a hello.
+
 ## What works after step 4
 
 - Event wizard (full-screen, outside the app shell, route group `(wizard)`): Basics → Brief (date with weekday, timings as one free-text block, invite text, venue name + address) → Formats (Requested / N/A, notes, custom size) → Assign (assignee, due) → Review → Publish (cap and horizon enforced).
 - Uploads: PNG/JPG/WebP/GIF up to 8 MB go straight to Supabase Storage, then a server action produces the optimised file, a DRAFT-watermarked preview and a thumbnail (`src/lib/images.ts`). Print formats also take a PDF of up to two pages, rasterised at 150 dpi to Front and Back (`src/lib/pdf.ts`); the PDF itself is not kept.
 - Bulk approve: on an event page, approvers use Select to approve several in-review formats together (own uploads excluded).
 - Review: comments with @mentions and pins, addressed/confirm flags, Request changes, Approve and notify / download, Reopen. All approve/reopen actions pass an "Are you sure?" dialog.
-- Settings: approve or deny access requests with org membership, edit role / Approver / tags / orgs, remove users, per-org notification switches and Google Chat webhook URL. Formats tab: Designers and Core Admins add, edit, reorder and deactivate catalog formats; a new format joins every open event as N/A.
+- Settings: approve or deny access requests with org membership, edit role / Approver / tags / orgs, remove users, per-org notification switches and Google Chat / Slack webhook URLs. Formats tab: Designers and Core Admins add, edit, reorder and deactivate catalog formats; a new format joins every open event as N/A.
 - Inbox: in-app notifications with mark-all-read. Email and Google Chat fan-out are next.

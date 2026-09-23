@@ -17,6 +17,7 @@ import { AssetStage } from "@/components/asset/asset-stage";
 import { AssetHeader } from "@/components/asset/asset-header";
 import { ReviewActions } from "@/components/asset/review-actions";
 import { relativeTime } from "@/lib/labels";
+import { PushToggle } from "@/components/push-toggle";
 import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
 
@@ -72,10 +73,13 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
 
   if (screen === "inbox") return shell(<>
     <PageHeader title="Inbox" subtitle="2 unread" actions={<Button variant="secondary">Mark all read</Button>} />
-    <form className="mb-8 flex flex-col gap-3 rounded-2xl bg-subtle p-5 md:flex-row md:items-center md:gap-4">
+    <div className="mb-8 space-y-3">
+    <PushToggle publicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} />
+    <form className="flex flex-col gap-3 rounded-2xl bg-subtle p-5 md:flex-row md:items-center md:gap-4">
       <div className="min-w-0 flex-1"><p className="text-sm font-medium">Email me</p><p className="text-sm text-muted-foreground">Approvals, mentions, assignments and due dates. Everything always shows here too.</p></div>
       <div className="flex gap-2"><SelectField name="email_pref" defaultValue="instant" className="w-52"><option value="instant">as things happen</option><option value="digest">once a day</option><option value="off">never</option></SelectField><Button type="button" variant="secondary" size="lg">Save</Button></div>
     </form>
+    </div>
     <ul className="divide-y divide-border">{F.INBOX.map(([icon, text, at, read], i) => <li key={i}><Link href="#" className="-mx-3 flex items-center gap-4 rounded-xl px-3 py-3.5 hover:bg-subtle"><span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted"><Icon name={icon} size={20} /></span><span className="min-w-0 flex-1"><span className={"block text-sm leading-6 " + (read ? "" : "font-medium")}>{text}</span><span className="block text-sm text-muted-foreground">Diwali Annakut Darshan · {relativeTime(at)}</span></span>{!read && <span className="size-2.5 shrink-0 rounded-full bg-brand" />}</Link></li>)}</ul>
   </>);
 

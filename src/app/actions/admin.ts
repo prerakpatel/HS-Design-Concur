@@ -62,6 +62,8 @@ export async function updateOrgSettings(orgId: string, formData: FormData) {
     email_enabled: formData.get("email_enabled") === "on",
     chat_enabled: formData.get("chat_enabled") === "on",
     chat_webhook_url: String(formData.get("chat_webhook_url") ?? "").trim() || null,
+    slack_enabled: formData.get("slack_enabled") === "on",
+    slack_webhook_url: String(formData.get("slack_webhook_url") ?? "").trim() || null,
   };
   const { data: cur } = await supabase.from("organisations").select("slug,logo_path").eq("id", orgId).single();
   const logo = formData.get("logo");
@@ -82,14 +84,14 @@ export async function updateOrgSettings(orgId: string, formData: FormData) {
   revalidatePath("/settings"); revalidatePath("/", "layout");
 }
 
-export async function sendTestChat(orgId: string) {
-  const { supabase, user, org } = await requireCoreAdmin();
-  const { data: o } = await supabase.from("organisations").select("chat_webhook_url,name").eq("id", orgId).maybeSingle();
-  if (!o?.chat_webhook_url) throw new Error("Save a webhook URL first");
+export async function sendTestChat(orgId: string, channel: "chat" | "slack" = "chat") {
+  const { supabase, user } = await requireCoreAdmin();
+  const { data: o } = await supabase.from("organisations").select("chat_webhook_url,slack_webhook_url,name").eq("id", orgId).maybeSingle();
+  const hook = channel === "slack" ? o?.slack_webhook_url : o?.chat_webhook_url;
+  if (!hook) throw new Error("Save a webhook URL first");
   const { postChat, chat } = await import("@/lib/chat"); const { appUrl } = await import("@/lib/email");
-  const r = await postChat(o.chat_webhook_url, `${chat.bold(`Design & Concur is connected to ${o.name}.`)} Test sent by ${user.name ?? user.email}.\n${chat.link(appUrl("/events"), "Open Design & Concur")}`);
+  const r = await postChat(hook, `${chat.bold(`Design & Concur is connected to ${o!.name}.`)} Test sent by ${user.name ?? user.email}.\n${chat.link(appUrl("/events"), "Open Design & Concur")}`);
   if ("error" in r) throw new Error(r.error);
-  void org;
 }
 
 export async function sendTestEmail() {
