@@ -28,11 +28,6 @@ export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className={cn("p-3", collapsed ? "flex-col items-center gap-2" : "flex-row items-center gap-1")}>
-        {/* Collapse / expand: a hamburger left of the org switcher; collapsed, it sits on top of the org mark. The edge rail and ⌘B do the same. */}
-        <button type="button" onClick={toggleSidebar} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={`${collapsed ? "Expand" : "Collapse"} · ⌘B`}
-          className="flex size-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-          <Icon name="menu" size={20} />
-        </button>
         <DropdownMenu>
           <DropdownMenuTrigger title={collapsed ? `${org.name} · switch organisation` : undefined} className={cn("flex h-12 min-w-0 items-center gap-2.5 rounded-xl text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", collapsed ? "" : "flex-1", collapsed ? "justify-center hover:bg-sidebar-accent" : "border border-border bg-card pl-2 pr-2.5 hover:bg-muted")}>
             <OrgMark org={org} size={32} />
@@ -47,6 +42,11 @@ export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+        {/* Collapse / expand: a hamburger right of the org switcher; collapsed, it sits on top of the org mark. The edge rail and ⌘B do the same. */}
+        <button type="button" onClick={toggleSidebar} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={`${collapsed ? "Expand" : "Collapse"} · ⌘B`}
+          className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring", collapsed && "order-first")}>
+          <Icon name="menu" size={20} />
+        </button>
       </SidebarHeader>
       <SidebarContent className="px-3">
         <SidebarMenu className="gap-1">

@@ -56,7 +56,7 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
                   {!c.thumb && c.requested && <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><Icon name="add_photo_alternate" size={24} /></div>}
                   <div className="absolute bottom-3 left-3"><StateBadge state={c.requested ? c.state : "na"} /></div>
                   {c.version != null && <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium shadow-sm">v{c.version}</span>}
-                  {c.isPrimary && <span className={cn("absolute top-3 rounded-full bg-brand px-2.5 py-1 text-xs font-medium text-brand-foreground shadow-sm", selectable ? "left-12" : "left-3")}>Primary</span>}
+                  {c.isPrimary && <span className={cn("absolute top-3 rounded-full bg-brand px-2.5 py-1 text-xs font-medium text-brand-foreground shadow-sm", selectable ? "left-11" : "left-3")}>Primary</span>}
                 </div>
                 <div className="space-y-1.5 p-3.5">
                   <p className="truncate text-sm font-medium leading-5">{c.name}</p>
@@ -66,10 +66,10 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
               </Link>
               {selectable && (
                 <button type="button" role="checkbox" aria-checked={on} aria-label={`Select ${c.name}`} onClick={toggle}
-                  className={cn("absolute left-3 top-3 z-10 flex size-7 items-center justify-center rounded-full border-2 shadow-sm transition-[opacity,colors] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    on ? "border-primary bg-primary text-primary-foreground" : "border-white bg-white/85 text-transparent hover:bg-white",
+                  className={cn("absolute left-3 top-3 z-10 flex size-6 items-center justify-center rounded-full text-white backdrop-blur-sm transition-[opacity,colors] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    on ? "bg-primary ring-2 ring-white" : "bg-black/30 hover:bg-black/45",
                     on || selecting ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100")}>
-                  <Icon name="check" className="!text-[18px]" />
+                  <Icon name="check" className={cn("!text-[16px]", !on && "opacity-80")} />
                 </button>
               )}
             </div>
