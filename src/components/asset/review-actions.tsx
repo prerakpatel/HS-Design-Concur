@@ -10,8 +10,10 @@ import { approveVersion, requestChanges, reopenVersion, downloadLink } from "@/a
 import { useIsMobile } from "@/hooks/use-mobile";
 
 /** Approve (notify / download), request changes, reopen. Downloads are named year_event_format_vN and saved, not opened. */
-export function ReviewActions({ versionId, label, eventTitle, decision, canApprove, isOwnUpload, hasBack }: {
+export function ReviewActions({ versionId, label, eventTitle, decision, canApprove, isOwnUpload, hasBack, layout = "row" }: {
   versionId: string; label: string; eventTitle: string; decision: string; canApprove: boolean; isOwnUpload: boolean; hasBack: boolean;
+  /** `row`: buttons side by side (phone bar). `fill`: stacked, full width (status card). */
+  layout?: "row" | "fill";
 }) {
   const [mode, setMode] = useState<"none" | "approve" | "changes" | "reopen">("none");
   const [text, setText] = useState("");
@@ -34,7 +36,8 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
       {hasBack && <Button variant="secondary" disabled={pending} onClick={() => start(async () => { try { await download("back"); } catch (e) { toast.error((e as Error).message); } })}>Download back</Button>}
     </>
   );
-  if (!canApprove) return approved ? <div className="flex flex-wrap gap-2">{downloadButtons}</div> : null;
+  const wrap = layout === "fill" ? "flex flex-col gap-2 [&>button]:w-full" : "flex flex-wrap gap-2";
+  if (!canApprove) return approved ? <div className={wrap}>{downloadButtons}</div> : null;
 
   const approveBody = (
     <div className="flex flex-col gap-2">
@@ -54,13 +57,13 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className={wrap}>
         {approved ? (
           <>{downloadButtons}<Button variant="outline" onClick={() => setMode("reopen")}>Reopen for changes</Button></>
         ) : (
           <>
             <Button disabled={isOwnUpload || pending} onClick={() => setMode("approve")}>Approve…</Button>
-            <Button variant="outline" onClick={() => setMode("changes")} disabled={isOwnUpload}><span className="sm:hidden">Changes</span><span className="hidden sm:inline">Request changes</span></Button>
+            <Button variant="outline" onClick={() => setMode("changes")} disabled={isOwnUpload}><span className={layout === "row" ? "sm:hidden" : "hidden"}>Changes</span><span className={layout === "row" ? "hidden sm:inline" : ""}>Request changes</span></Button>
           </>
         )}
         {isOwnUpload && !approved && <p className="w-full text-xs text-muted-foreground">You uploaded this version, so someone else has to approve it.</p>}
