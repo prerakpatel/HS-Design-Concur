@@ -48,6 +48,7 @@ export const ICON_NAMES = [
   "rule",
   "schedule",
   "settings",
+  "star",
   "sync",
   "unfold_more",
   "upload",

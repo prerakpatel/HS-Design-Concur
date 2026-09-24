@@ -32,7 +32,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
   const bySlotFormat = new Map((slots ?? []).map((s) => [s.format_id, s]));
   const cards: FormatCardData[] = orderSlots((await Promise.all((formats ?? []).map(async (f) => {
     const slot = bySlotFormat.get(f.id) as (Slot & { assignee: { name: string | null; email: string; avatar_url: string | null } | null; versions: { id: string; number: number; uploaded_by: string; created_at: string; sent_at: string | null; version_sides: { side: string; thumb_path: string | null; reference_path: string | null }[] }[] }) | undefined;
-    if (!slot) return null;
+    if (!slot || (!f.active && !slot.requested)) return null;
     const latest = [...(slot.versions ?? [])].sort((a, b) => b.number - a.number)[0];
     const front = latest?.version_sides?.find((s) => s.side === "front");
     const thumb = await signedUrl(supabase, front?.thumb_path ?? front?.reference_path ?? null);

@@ -5,14 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { SelectField } from "@/components/ui/select-field";
-import { ChoiceChips } from "@/components/ui/choice-chips";
 import { StateBadge } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
 import { DateField } from "@/components/ui/date-field";
 import { WizardFooter, STEPS } from "@/components/wizard/wizard-shell";
 import type { WizardIssue } from "@/lib/wizard-status";
 import { ConfirmButton } from "@/components/confirm-button";
-import { PrintPicker } from "@/components/wizard/print-picker";
+import { FormatsPicker } from "@/components/wizard/formats-picker";
 
 type Action = (formData: FormData) => Promise<void>;
 export const field = "space-y-2";
@@ -59,28 +58,10 @@ export function BriefForm({ eventId, values, action }: { eventId: string; values
 
 export interface FormatRow { slotId: string; name: string; size: string; kind: string; requested: boolean; isPrimary: boolean; notes: string; customSize: boolean; w: number | null; h: number | null }
 export function FormatsForm({ eventId, rows, action }: { eventId: string; rows: FormatRow[]; action: Action }) {
-  const digital = rows.filter((r) => r.kind !== "print"); const print = rows.filter((r) => r.kind === "print");
   return (
     <form action={action}>
-      <p className="mb-4 rounded-xl bg-subtle px-4 py-3 text-sm text-muted-foreground">Everything starts off. Turn on what this event needs and mark one format as <span className="font-medium text-foreground">Primary</span>: the design the others are derived from. It shows first everywhere and is the one kept after the event.</p>
-      <ul className="divide-y divide-border">
-        {print.length > 0 && <PrintPicker rows={print} />}
-        {digital.map((r) => (
-          <li key={r.slotId} className="py-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1 pt-1">
-                <p className="text-sm font-medium">{r.name}</p><p className="mt-0.5 text-sm text-muted-foreground">{r.size} · {r.kind}</p>
-                <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-sm"><input type="radio" name="primary" value={r.slotId} defaultChecked={r.isPrimary} className="size-4 accent-[var(--brand)]" />Primary</label>
-              </div>
-              <ChoiceChips name={`req_${r.slotId}`} size="sm" className="shrink-0 flex-nowrap" defaultValue={r.requested ? "on" : "off"} options={[{ value: "on", label: "On" }, { value: "off", label: "Off" }]} />
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Input name={`notes_${r.slotId}`} defaultValue={r.notes} placeholder="Notes for this format (optional)" className="h-11 min-w-0 basis-full text-sm sm:basis-0 sm:flex-1" />
-              {r.customSize && <><Input name={`w_${r.slotId}`} type="number" defaultValue={r.w ?? ""} placeholder="Width px" aria-label="Width in pixels" className="h-11 w-[calc(50%-4px)] text-sm sm:w-32" /><Input name={`h_${r.slotId}`} type="number" defaultValue={r.h ?? ""} placeholder="Height px" aria-label="Height in pixels" className="h-11 w-[calc(50%-4px)] text-sm sm:w-32" /></>}
-            </div>
-          </li>
-        ))}
-      </ul>
+      <p className="mb-4 rounded-xl bg-subtle px-4 py-3 text-sm text-muted-foreground">Everything starts off. Choose what this event needs and make one format <span className="font-medium text-foreground">Primary</span>: the design the others are derived from. It shows first everywhere and is the one kept after the event.</p>
+      <FormatsPicker rows={rows} />
       <WizardFooter eventId={eventId} step="formats" />
     </form>
   );
