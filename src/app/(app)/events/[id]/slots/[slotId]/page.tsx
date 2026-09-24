@@ -58,10 +58,12 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const nativeW = fmt.allow_custom_size ? (slot.custom_w ?? front?.width ?? 0) : fmt.unit === "px" ? Number(fmt.width) : (front?.width ?? 0);
   const nativeH = fmt.allow_custom_size ? (slot.custom_h ?? front?.height ?? 0) : fmt.unit === "px" ? Number(fmt.height) : (front?.height ?? 0);
   const scaledSides = sides.map((s) => ({ ...s, width: nativeW || s.width, height: nativeH || s.height }));
-  const state = !slot.requested ? "na" : slot.state;
+  const sent = !!current?.sent_at;
+  const state = !slot.requested ? "na" : current && !sent ? "unsent" : slot.state;
   const who = uploader ? (uploader.name ?? uploader.email) : null;
   const canUpload = user.role === "core_admin" || slot.assignee_id === user.id || user.function_tags.includes("designer");
-  const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved } : null;
+  const canSend = !!current && current.decision === "pending" && (current.uploaded_by === user.id || slot.assignee_id === user.id || user.role === "core_admin");
+  const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved, sent, canSend } : null;
 
   const chips = vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, canManage: x.uploaded_by === user.id || user.role === "core_admin", hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }));
   const decision = actionProps ? <ReviewActions {...actionProps} label={`${fmt.name} v${current?.number ?? ""}`} eventTitle={event.title} layout="fill" /> : null;
@@ -86,7 +88,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
           {stalePreviews.length > 0 && <PreviewRefresher sideIds={stalePreviews} />}
           <AssetStage versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} comments={cviews} members={mlist} canComment={!readOnly} canModerate={user.role === "core_admin"}
             versions={chips} currentVersionId={current?.id ?? null} eventId={id} slotId={slotId} upload={canUpload && !readOnly ? { accept: fmt.allowed_mimes, isPrint, nextNumber: (vlist[0]?.number ?? 0) + 1 } : null}
-            status={{ state: state as "requested", version: current?.number ?? null, uploader: purged ? (who ? `${who} (reference)` : "Reference") : who, uploadedAt: current?.created_at ?? null }} decision={decision} decisionBar={decisionRow} readOnly={readOnly} />
+            status={{ state: state as "requested" | "unsent", version: current?.number ?? null, uploader: purged ? (who ? `${who} (reference)` : "Reference") : who, uploadedAt: current?.created_at ?? null }} decision={decision} decisionBar={decisionRow} readOnly={readOnly} />
         </>
       )}
       </div>

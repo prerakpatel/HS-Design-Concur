@@ -99,21 +99,21 @@ Per org, Settings → Organisations: turn on Slack notifications and paste an in
 ## What goes to chat, and who gets pinged
 
 Every post goes to the org's Google Chat space and/or Slack channel; the people it concerns are @mentioned
-(everyone else just reads along). One message per moment; a bulk approval is one message.
+(everyone else just reads along). One message per moment; a bulk approval is one message. Access requests and
+approvals never go to chat: they would show a newcomer's name and email to the whole channel.
 
 | Moment | Who is @mentioned |
 |---|---|
 | Event published (lists format → designer, due dates) | the assigned designers |
 | Format assigned after publishing | the designer |
-| Design uploaded / ready for review | approvers and the event creator |
+| Design sent for review | approvers and the event creator |
+| Still waiting for review after a day (daily until decided) | approvers |
 | Approved | the designer (uploader / assignee) |
 | All formats approved 🎉 | event creator and Publication |
 | Changes requested, reopened (with the note) | the designer |
 | Comment with @name | the people named |
 | Comment without @name | the designer and anyone already in that thread |
 | Due in 3 days / due today | the designer |
-| New access request | Core Admins |
-| Access approved | the new member (a welcome) |
 | Event archived | nobody, channel only |
 
 **How a mention finds someone.** Google Chat: automatic. The Google account a person signs in with is also

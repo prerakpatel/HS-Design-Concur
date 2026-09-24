@@ -27,7 +27,7 @@ export async function decideAccess(userId: string, formData: FormData) {
   if (approve) {
     await setMemberships(supabase, userId, orgIds);
     const { data: who } = await supabase.from("users").select("name,email").eq("id", userId).maybeSingle();
-    await notify(supabase, [userId], "access.approved", { by: user.name ?? user.email, name: who?.name ?? who?.email }, undefined, { orgId: orgIds, mention: [userId] });
+    await notify(supabase, [userId], "access.approved", { by: user.name ?? user.email, name: who?.name ?? who?.email });
   }
   revalidatePath("/settings");
 }

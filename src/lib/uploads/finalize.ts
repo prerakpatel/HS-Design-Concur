@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { processUpload } from "@/lib/images";
 import { rasterisePdf } from "@/lib/pdf";
 import { BUCKET } from "@/lib/storage";
-import { notify } from "@/lib/notify";
+import { recomputeSlotState } from "@/lib/slot-state";
 import type { ActiveContext } from "@/lib/auth";
 import { MARK_VERSION } from "@/config/marks";
 
@@ -47,7 +47,8 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
     const gone = (old ?? []).flatMap((s) => [s.optimised_path, s.preview_path, s.thumb_path]).filter((p): p is string => !!p);
     if (gone.length) await supabase.storage.from(BUCKET).remove(gone);
     if (isPdf || side === "front") await supabase.from("version_sides").delete().eq("version_id", rv.id);
-    await supabase.from("versions").update({ decision: "pending", decided_by: null, decided_at: null, uploaded_by: user.id, created_at: new Date().toISOString() }).eq("id", rv.id);
+    // A replaced file has not been seen by anyone, so it has to be sent for review again.
+    await supabase.from("versions").update({ decision: "pending", decided_by: null, decided_at: null, sent_at: null, uploaded_by: user.id, created_at: new Date().toISOString() }).eq("id", rv.id);
   } else if (latest) {
     const sides = (latest.version_sides as { side: string }[]).map((s) => s.side);
     const recent = Date.now() - new Date(latest.created_at).getTime() < 60 * 60 * 1000;
@@ -76,13 +77,11 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
   } catch (e) { return { error: (e as Error).message }; }
   await supabase.storage.from(BUCKET).remove([tmpPath]);
 
+  // Uploading is private: the slot only moves to In review when the designer sends the version (sendForReview).
   if (firstSide === "front") {
-    if (!replaceVersionId) await supabase.from("versions").update({ decision: "superseded" }).eq("slot_id", slotId).neq("id", versionId).in("decision", ["pending", "changes_requested"]);
-    await supabase.from("slots").update({ state: "in_review", updated_at: new Date().toISOString() }).eq("id", slotId);
     if (!event.brief_locked_at) await supabase.from("events").update({ brief_locked_at: new Date().toISOString() }).eq("id", event.id);
     await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slotId, version_id: versionId, actor_id: user.id, kind: "version.uploaded", payload: { format: fmt.name, number } });
-    const { data: approvers } = await supabase.from("users").select("id,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id).or("is_approver.eq.true,role.eq.core_admin");
-    await notify(supabase, [...(approvers ?? []).map((a) => a.id), event.created_by], "version.uploaded", { eventId: event.id, slotId, versionId, title: event.title, format: fmt.name, number, by: user.name ?? user.email }, user.id, { orgId: org.id });
+    if (replaceVersionId) await recomputeSlotState(supabase, slotId);
   }
   revalidatePath(`/events/${event.id}`);
   revalidatePath(`/events/${event.id}/slots/${slotId}`);

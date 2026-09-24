@@ -13,7 +13,7 @@ import { FormatGrid, type FormatCardData } from "@/components/events/format-grid
 import { orderSlots } from "@/lib/slot-order";
 import type { Brief, EventRow, Format, Slot } from "@/lib/types";
 
-const VERB: Record<string, (p: Record<string, string>) => string> = { "event.created": () => "created the event", "event.published": () => "published the event", "event.deleted": () => "deleted the event", "version.uploaded": (p) => `uploaded ${p.format} v${p.number}`, "version.approved": (p) => `approved ${p.format} v${p.number}`, "version.changes_requested": (p) => `requested changes on ${p.format} v${p.number}`, "version.reopened": (p) => `reopened ${p.format} v${p.number}`, "event.archived": (p) => `archived the event · ${p.filesRemoved ?? 0} files reduced to references`, "event.restored": () => "restored the event" };
+const VERB: Record<string, (p: Record<string, string>) => string> = { "event.created": () => "created the event", "event.published": () => "published the event", "event.deleted": () => "deleted the event", "version.uploaded": (p) => `uploaded ${p.format} v${p.number}`, "version.sent": (p) => `sent ${p.format} v${p.number} for review`, "version.deleted": (p) => `deleted ${p.format} v${p.number}`, "version.approved": (p) => `approved ${p.format} v${p.number}`, "version.changes_requested": (p) => `requested changes on ${p.format} v${p.number}`, "version.reopened": (p) => `reopened ${p.format} v${p.number}`, "event.archived": (p) => `archived the event · ${p.filesRemoved ?? 0} files reduced to references`, "event.restored": () => "restored the event" };
 
 export default async function EventPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ activity?: string }> }) {
   const { id } = await params; const showActivity = (await searchParams).activity === "1";
@@ -22,19 +22,19 @@ export default async function EventPage({ params, searchParams }: { params: Prom
   if (!event || event.org_id !== org.id) notFound();
   const [{ data: brief }, { data: slots }, { data: formats }, { data: activity }, { data: creator }] = await Promise.all([
     supabase.from("briefs").select("*").eq("event_id", id).maybeSingle<Brief>(),
-    supabase.from("slots").select("*,assignee:assignee_id(name,email,avatar_url),versions(id,number,uploaded_by,created_at,version_sides(side,thumb_path,reference_path))").eq("event_id", id),
+    supabase.from("slots").select("*,assignee:assignee_id(name,email,avatar_url),versions(id,number,uploaded_by,created_at,sent_at,version_sides(side,thumb_path,reference_path))").eq("event_id", id),
     supabase.from("formats").select("*").order("sort").returns<Format[]>(),
     supabase.from("activity").select("*,actor:actor_id(name,email,avatar_url)").eq("event_id", id).order("created_at", { ascending: false }).limit(12),
     supabase.from("users").select("name,email").eq("id", event.created_by).maybeSingle(),
   ]);
   const bySlotFormat = new Map((slots ?? []).map((s) => [s.format_id, s]));
   const cards: FormatCardData[] = orderSlots((await Promise.all((formats ?? []).map(async (f) => {
-    const slot = bySlotFormat.get(f.id) as (Slot & { assignee: { name: string | null; email: string; avatar_url: string | null } | null; versions: { id: string; number: number; uploaded_by: string; created_at: string; version_sides: { side: string; thumb_path: string | null; reference_path: string | null }[] }[] }) | undefined;
+    const slot = bySlotFormat.get(f.id) as (Slot & { assignee: { name: string | null; email: string; avatar_url: string | null } | null; versions: { id: string; number: number; uploaded_by: string; created_at: string; sent_at: string | null; version_sides: { side: string; thumb_path: string | null; reference_path: string | null }[] }[] }) | undefined;
     if (!slot) return null;
     const latest = [...(slot.versions ?? [])].sort((a, b) => b.number - a.number)[0];
     const front = latest?.version_sides?.find((s) => s.side === "front");
     const thumb = await signedUrl(supabase, front?.thumb_path ?? front?.reference_path ?? null);
-    return { slotId: slot.id, name: f.name, size: formatSize(f, { w: slot.custom_w, h: slot.custom_h }), state: slot.state, requested: slot.requested, version: latest?.number ?? null, versionId: latest?.id ?? null, uploadedByMe: latest?.uploaded_by === user.id, thumb, due: slot.due_on, assignee: slot.assignee ? { name: slot.assignee.name ?? slot.assignee.email, initials: initials(slot.assignee.name, slot.assignee.email), avatar: slot.assignee.avatar_url } : null, isPrimary: slot.is_primary, sort: f.sort, firstUploadAt: slot.versions?.length ? slot.versions.map((x) => x.created_at).sort()[0] : null };
+    return { slotId: slot.id, name: f.name, size: formatSize(f, { w: slot.custom_w, h: slot.custom_h }), state: latest && !latest.sent_at ? "unsent" : slot.state, requested: slot.requested, version: latest?.number ?? null, versionId: latest?.id ?? null, uploadedByMe: latest?.uploaded_by === user.id, thumb, due: slot.due_on, assignee: slot.assignee ? { name: slot.assignee.name ?? slot.assignee.email, initials: initials(slot.assignee.name, slot.assignee.email), avatar: slot.assignee.avatar_url } : null, isPrimary: slot.is_primary, sort: f.sort, firstUploadAt: slot.versions?.length ? slot.versions.map((x) => x.created_at).sort()[0] : null };
   }))).filter((c): c is NonNullable<typeof c> => !!c).map((c) => ({ ...c, is_primary: c.isPrimary }))).map((c) => { const { sort, firstUploadAt, is_primary, ...rest } = c; void sort; void firstUploadAt; void is_primary; return rest as FormatCardData; });
   const requested = cards.filter((c) => c.requested); const approved = requested.filter((c) => c.state === "approved").length;
   const d = event.event_date ? format(new Date(event.event_date + "T00:00:00"), "EEE d MMM yyyy") : "Date not set";

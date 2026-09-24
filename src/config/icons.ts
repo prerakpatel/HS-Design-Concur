@@ -41,6 +41,7 @@ export const ICON_NAMES = [
   "notifications",
   "notifications_active",
   "notifications_off",
+  "pending_actions",
   "person_add",
   "priority_high",
   "replay",

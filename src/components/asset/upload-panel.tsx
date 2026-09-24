@@ -27,7 +27,7 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
       const res = await fetch("/api/uploads/finalize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slotId, tmpPath: start.path, mime: file.type, side: target.side, replaceVersionId: target.replaceVersionId }) });
       const done = await res.json().catch(() => ({ error: `Processing failed (${res.status})` })) as { error?: string; number?: number };
       if (!res.ok || done.error) throw new Error(done.error ?? `Processing failed (${res.status})`);
-      toast.success(target.replaceVersionId ? `Version ${done.number} replaced · back in review` : target.side === "back" ? "Back side added" : `Version ${done.number} is in review`);
+      toast.success(target.replaceVersionId ? `Version ${done.number} replaced` : target.side === "back" ? "Back side added" : `Version ${done.number} uploaded`, { description: target.side === "back" ? undefined : "Check it, then press Send for review when you're ready." });
       router.refresh();
     } catch (e) { toast.error((e as Error).message); }
     finally { setBusy(null); setTarget({ side: "front", replaceVersionId: null }); if (input.current) input.current.value = ""; }
@@ -40,7 +40,7 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
       <Button onClick={() => openWith({ side: "front", replaceVersionId: null })} disabled={!!busy} size={variant === "dropzone" ? "lg" : "default"} variant={variant === "pill" || variant === "dropzone" ? "default" : "secondary"} className={className} aria-label={compactOnPhone ? (label ?? "Upload") : undefined}>
         <Icon name="upload" /><span className={compactOnPhone && !busy ? "hidden sm:inline" : undefined}>{busy ?? label ?? (nextNumber === 1 ? "Upload design" : "Upload new version")}</span>
       </Button>
-      {variant === "dropzone" && <p className="mt-3 text-xs text-muted-foreground">{accept.map((m) => m.split("/")[1].toUpperCase().replace("JPEG", "JPG")).join(", ")} up to 8 MB. Shown with a DRAFT mark until approved.{isPrint && accept.includes("application/pdf") ? " A two-page PDF fills Front and Back at once." : ""}</p>}
+      {variant === "dropzone" && <p className="mt-3 text-xs text-muted-foreground">{accept.map((m) => m.split("/")[1].toUpperCase().replace("JPEG", "JPG")).join(", ")} up to 8 MB. Shown with a DRAFT mark until approved. Nobody is notified until you send it for review.{isPrint && accept.includes("application/pdf") ? " A two-page PDF fills Front and Back at once." : ""}</p>}
       <UploadBridge openWith={openWith} />
     </div>
   );

@@ -78,7 +78,8 @@ outline pill; on phones they collapse to icons. Enlarge appears on hover.
 The sticky, edge-to-edge header only says where you are (back, format name + version, n of N) and is
 left-aligned so it never shifts with the label. A status card beside the artwork carries the state badge,
 version and uploader + time; approvers get Request changes over Approve inside it on desktop and in a
-fixed bottom bar on phones. The comments panel header shows how many are still open.
+fixed bottom bar on phones. While a version is unsent the badge reads "Not sent yet" and the same spot holds
+the designer's single primary action, Send for review; approvers see a one-line note instead. The comments panel header shows how many are still open.
 
 Comments show the author's Google photo (initials when there is none); a pinned comment carries a small
 grey chat-bubble token with its number in the meta line, matching the bubble on the design. Enter is a new

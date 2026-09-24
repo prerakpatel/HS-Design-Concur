@@ -11,6 +11,6 @@ export interface Brief { event_id: string; description: string | null; time_text
 export interface EventRow { id: string; org_id: string; title: string; event_date: string | null; venue: string | null; status: EventStatus; created_by: string; brief_locked_at: string | null; deleted_at: string | null; archived_at: string | null; purged_at: string | null; last_edited_at: string; created_at: string; }
 export interface Slot { id: string; event_id: string; format_id: string; requested: boolean; custom_w: number | null; custom_h: number | null; notes: string | null; assignee_id: string | null; due_on: string | null; state: SlotState; is_primary: boolean; }
 
-export const SLOT_STATE_LABEL: Record<SlotState | "na" | "draft" | "needs_you", string> = {
-  requested: "Requested", in_review: "In review", changes_requested: "Changes requested", approved: "Approved", na: "N/A", draft: "Draft", needs_you: "Needs you",
+export const SLOT_STATE_LABEL: Record<SlotState | "na" | "draft" | "needs_you" | "unsent", string> = {
+  requested: "Requested", in_review: "In review", changes_requested: "Changes requested", approved: "Approved", na: "N/A", draft: "Draft", needs_you: "Needs you", unsent: "Not sent yet",
 };

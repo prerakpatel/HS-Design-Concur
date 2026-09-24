@@ -133,15 +133,21 @@ Rules:
 ### 6.2 Format slot state machine
 
 ```
-REQUESTED ──upload──► IN_REVIEW ──approve──► APPROVED
-    ▲                    │  ▲                    │
-    │                    ▼  │ upload             │ reopen (approver)
-    └──── N/A ◄──── CHANGES_REQUESTED ◄──────────┘
+REQUESTED ──send──► IN_REVIEW ──approve──► APPROVED
+    ▲                  │  ▲                    │
+    │                  ▼  │ send               │ reopen (approver)
+    └──── N/A ◄──── CHANGES_REQUESTED ◄────────┘
 ```
+
+Uploading is private: it creates the version (optimise, watermark, thumbnail, brief lock) but moves nothing
+and tells nobody, so the designer can check the file, replace it or add the back side. **Send for review**
+is the transition. A slot's state always follows its newest *sent* version.
 
 | Transition | Who | Effect | Notified |
 |---|---|---|---|
-| Upload version | anyone | New version n; optimise, watermark, thumbnail. Slot → In review. | Approvers, Central, requester |
+| Upload version | anyone | New version n (or replaced file). Card and asset page show "Not sent yet". | nobody |
+| Send for review | uploader, assignee, Core Admin | Older pending versions superseded. Slot → In review. | Approvers, requester; chat post with preview |
+| (daily) Waiting for review | system | A sent version undecided for ≥ 1 day → reminder once a day until decided. | Approvers |
 | Request changes | Approver | Slot → Changes requested. Comments required (≥1). | Assignee, Publication |
 | Mark addressed | anyone | Per-comment flag on the new version. | Comment author |
 | Confirm / reopen comment | Approver | Closes or re-flags the comment. | Assignee |
@@ -271,9 +277,10 @@ to `config/devices.ts` and the one-line update command.
 | Google Chat | per org | incoming-webhook URL in Settings › Organisations; **Core Admins can turn it off**; every post @mentions the people it concerns (Google account = Chat identity, linked at sign-in) |
 | Slack | per org | same posts via a Slack incoming webhook; people add their Slack member ID on their Profile to be @mentioned, otherwise they are named in bold |
 
-Events that notify: access requested (Core Admins); access approved; event published (assignees; chat post
-lists format → designer); assigned to you; @mentioned; comment without a mention (designer + thread);
-version uploaded (approvers, creator); changes requested (assignee, uploader, Publication; chat pings the
+Events that notify: access requested (Core Admins; never chat); access approved (never chat); event published
+(assignees; chat post lists format → designer); assigned to you; @mentioned; comment without a mention
+(designer + thread); sent for review (approvers, creator); waiting for review ≥ 1 day (approvers, daily);
+changes requested (assignee, uploader, Publication; chat pings the
 designer); approved / reopened (everyone on the event; chat pings the designer); all formats approved
 (creator, Publication); due in 3 days / due today (assignee); event archived (creator); draft sweep warning
 (creator); yearly device reminder (Designers, Core Admins). A bulk approval is one notification and one

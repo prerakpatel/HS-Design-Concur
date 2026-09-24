@@ -12,6 +12,7 @@ const STYLES: Record<BadgeState, string> = {
   na: "border border-dashed border-border text-muted-foreground",
   draft: "bg-warning-soft text-warning-text",
   needs_you: "bg-brand-soft text-brand-foreground",
+  unsent: "bg-warning-soft text-warning-text",
 };
 
 export function StateBadge({ state, label, className }: { state: BadgeState; label?: string; className?: string }) {

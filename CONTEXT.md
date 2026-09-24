@@ -12,7 +12,7 @@ Use these terms exactly. Avoid the synonyms listed.
 | **Slot** | A format applied to an event. Either *Requested* or *N/A*. Holds versions. | asset request, task |
 | **Harisumiran / ACC** | The two org display names. ACC is the short form of Atmiya Care Charities. | temple, non-profit |
 | **N/A** | Slot state meaning "not being produced for this event". Hidden from pending counts, re-requestable. | skipped, disabled |
-| **Version** | One upload to a slot, numbered v1, v2… Print versions have a Front and optional Back side. | revision, draft, file |
+| **Version** | One upload to a slot, numbered v1, v2… Print versions have a Front and optional Back side. Private until **sent for review**; the slot's state follows its newest sent version. | revision, draft, file |
 | **Optimised file** | The only stored rendition of an upload. Served on approved download. | original |
 | **Preview** | The watermarked rendition shown before approval. | proof |
 | **Reference** | The tiny post-purge image kept for the primary format only. | archive copy |

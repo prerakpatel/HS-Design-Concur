@@ -8,7 +8,7 @@ import { notificationText, notificationHref, chatLines } from "@/lib/labels";
 
 export type NotificationKind =
   | "access.requested" | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "comment.posted"
-  | "version.uploaded" | "version.changes_requested" | "version.approved" | "versions.approved" | "version.reopened"
+  | "version.uploaded" | "review.waiting" | "version.changes_requested" | "version.approved" | "versions.approved" | "version.reopened"
   | "event.all_approved" | "event.deleted" | "event.published" | "event.archived"
   | "draft.expiring" | "draft.swept" | "devices.refresh";
 
@@ -18,8 +18,9 @@ export type NotificationKind =
  * `opts.mention`). Kinds not listed stay in-app / push only.
  */
 const CHAT: Partial<Record<NotificationKind, "mention" | "channel">> = {
-  "access.requested": "mention", "access.approved": "mention", "slot.assigned": "mention", "slot.due": "mention",
-  "comment.mention": "mention", "comment.posted": "mention", "version.uploaded": "mention",
+  // Access moments stay out of chat on purpose: they would show a newcomer's name and email to the whole channel.
+  "slot.assigned": "mention", "slot.due": "mention",
+  "comment.mention": "mention", "comment.posted": "mention", "version.uploaded": "mention", "review.waiting": "mention",
   "version.changes_requested": "mention", "version.approved": "channel", "versions.approved": "mention", "version.reopened": "mention",
   "event.all_approved": "mention", "event.published": "mention", "event.archived": "channel",
 };
@@ -32,6 +33,7 @@ const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> 
   "comment.mention": (p) => `${p.by} mentioned you on ${p.format}`,
   "comment.posted": (p) => `${p.by} commented on ${p.format} · ${p.title}`,
   "version.uploaded": (p) => `Ready for review: ${p.format} v${p.number} · ${p.title}`,
+  "review.waiting": (p) => `Still waiting: ${p.format} v${p.number} · ${p.title}`,
   "version.changes_requested": (p) => `Changes requested: ${p.format} v${p.number} · ${p.title}`,
   "version.approved": (p) => `Approved: ${p.format} v${p.number} · ${p.title}`,
   "versions.approved": (p) => `Approved: ${p.count} designs · ${p.title}`,

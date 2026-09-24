@@ -6,13 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Textarea } from "@/components/ui/textarea";
-import { approveVersion, requestChanges, reopenVersion, downloadLink } from "@/app/actions/reviews";
+import { approveVersion, requestChanges, reopenVersion, downloadLink, sendForReview } from "@/app/actions/reviews";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
-/** Approve (notify / download), request changes, reopen. Downloads are named year_event_format_vN and saved, not opened. */
-export function ReviewActions({ versionId, label, eventTitle, decision, canApprove, isOwnUpload, hasBack, layout = "row" }: {
+/**
+ * The decision row. An unsent version shows Send for review to whoever may send it (uploader, assignee, Core
+ * Admin) and nothing to approvers; a sent one shows approve (notify / download), request changes, reopen.
+ * Downloads are named year_event_format_vN and saved, not opened.
+ */
+export function ReviewActions({ versionId, label, eventTitle, decision, canApprove, isOwnUpload, hasBack, sent = true, canSend = false, layout = "row" }: {
   versionId: string; label: string; eventTitle: string; decision: string; canApprove: boolean; isOwnUpload: boolean; hasBack: boolean;
+  /** Has the designer sent this version to the approvers yet? */
+  sent?: boolean; canSend?: boolean;
   /** `row`: buttons side by side (phone bar). `fill`: stacked, full width (status card). */
   layout?: "row" | "fill";
 }) {
@@ -38,6 +44,15 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
     </>
   );
   const wrap = layout === "fill" ? "flex flex-col gap-2 [&>button]:w-full" : "flex flex-wrap gap-2";
+  if (!sent) {
+    if (!canSend) return <p className="text-sm text-muted-foreground">Not sent for review yet. The designer is still working on it.</p>;
+    return (
+      <div className={wrap}>
+        <Button disabled={pending} onClick={() => run(() => sendForReview(versionId), "Sent for review · approvers notified")}>Send for review</Button>
+        <p className="w-full text-xs text-muted-foreground">Only you can see it is here. Check it, replace it or add the back first; approvers are told when you send.</p>
+      </div>
+    );
+  }
   if (!canApprove) return approved ? <div className={wrap}>{downloadButtons}</div> : null;
 
   const approveBody = (

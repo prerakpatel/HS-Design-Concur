@@ -30,7 +30,7 @@ export async function GET(request: Request) {
 }
 
 /**
- * First sign-in of someone new: tell the Core Admins (in-app, push, chat) exactly once. A pending user cannot
+ * First sign-in of someone new: tell the Core Admins (in-app and push, never chat) exactly once. A pending user cannot
  * write notifications under RLS, so this one system step uses the service client. Never blocks the sign-in.
  */
 async function announceAccessRequest(userId: string, name: string | null, email: string) {
@@ -39,6 +39,6 @@ async function announceAccessRequest(userId: string, name: string | null, email:
     const { data: req } = await db.from("access_requests").select("id").eq("user_id", userId).is("decided_at", null).is("notified_at", null).limit(1).maybeSingle();
     if (!req) return;
     await db.from("access_requests").update({ notified_at: new Date().toISOString() }).eq("id", req.id);
-    await notify(db, await coreAdminIds(db), "access.requested", { name, email, href: "/settings?tab=requests" }, undefined, { orgId: "all" });
+    await notify(db, await coreAdminIds(db), "access.requested", { name, email, href: "/settings?tab=requests" });
   } catch (e) { console.error("[access.requested]", (e as Error).message); }
 }
