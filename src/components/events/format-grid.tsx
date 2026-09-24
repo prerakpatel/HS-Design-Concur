@@ -50,7 +50,7 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
           const toggle = () => setPicked((p) => on ? p.filter((x) => x !== c.slotId) : [...p, c.slotId]);
           return (
             <div key={c.slotId} className={cn("group relative", selecting && !selectable && "opacity-55")}>
-              <Link href={`/events/${eventId}/slots/${c.slotId}`} className={cn("block w-full overflow-hidden rounded-2xl border bg-card text-left transition", on ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-foreground/25 hover:shadow-sm", !c.requested && "opacity-55")}>
+              <Link href={`/events/${eventId}/slots/${c.slotId}`} className={cn("block w-full overflow-hidden rounded-2xl border bg-card text-left transition", "border-border hover:border-foreground/25 hover:shadow-sm", !c.requested && "opacity-55")}>
                 <div className={"relative aspect-[5/4] " + (c.thumb ? "bg-canvas" : "bg-muted")}>
                   {c.thumb && <img src={c.thumb} alt="" className="absolute inset-0 size-full object-cover" />}
                   {!c.thumb && c.requested && <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><Icon name="add_photo_alternate" size={24} /></div>}
@@ -66,8 +66,8 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
               </Link>
               {selectable && (
                 <button type="button" role="checkbox" aria-checked={on} aria-label={`Select ${c.name}`} onClick={toggle}
-                  className={cn("absolute left-2.5 top-2.5 z-10 flex size-7 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    on ? "bg-white text-primary" : "bg-black/25 text-white/90 backdrop-blur-sm hover:bg-black/40 hover:text-white")}>
+                  className={cn("absolute left-2.5 top-2.5 z-10 flex size-6 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    on ? "bg-white text-primary" : "text-white drop-shadow-[0_1px_3px_rgba(0,0,0,.45)] hover:text-white")}>
                   <Icon name="check_circle" size={24} fill={on} />
                 </button>
               )}
