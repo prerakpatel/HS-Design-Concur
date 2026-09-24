@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { after } from "next/server";
 import { sendEmail, appUrl } from "@/lib/email";
-import { postChat, chat, mention, platformOf, type ChatUser } from "@/lib/chat";
+import { postChat, chat, mention, platformOf, type ChatUser, type ChatImage } from "@/lib/chat";
+import { signedUrl } from "@/lib/storage";
 import { sendPush } from "@/lib/push";
 import { notificationText, notificationHref, chatLines } from "@/lib/labels";
 
@@ -97,6 +98,7 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
     const hooks = [...new Set(orgs.flatMap((o) => [o.chat_enabled && o.chat_webhook_url, o.slack_enabled && o.slack_webhook_url]).filter((h): h is string => !!h))];
     if (hooks.length === 0) return;
     const { head, body } = chatLines(kind, payload);
+    const image = await previewImage(supabase, payload, head, href);
     const placeholderIds = [...body.matchAll(/\{@([0-9a-f-]{36})\}/g)].map((m) => m[1]);
     const wanted = [...new Set([...mentions, ...placeholderIds])];
     const people = new Map<string, ChatUser>();
@@ -106,10 +108,26 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
       const at = (id: string) => { const u = people.get(id); return u ? mention(u, platform) : ""; };
       const bodyText = body.replace(/\{@([0-9a-f-]{36})\}/g, (_, id) => at(id) || "someone");
       const who = mentions.filter((id) => !placeholderIds.includes(id)).map(at).filter(Boolean).join(" ");
-      return postChat(hook, [chat.bold(head), bodyText, who, chat.link(href, "Open in Design & Concur")].filter(Boolean).join("\n"));
+      return postChat(hook, [chat.bold(head), bodyText, who, chat.link(href, "Open in Design & Concur")].filter(Boolean).join("\n"), image);
     }));
     for (const r of results) if ("error" in r) console.error("[chat]", r.error);
   }
+}
+
+/** Preview-image link for chat. The chat bucket is private, so a signed link that lasts as long as the post matters. */
+const PREVIEW_LINK_DAYS = 7;
+
+/**
+ * The watermarked front preview of the version a post is about (thumb for GIFs, which have no preview), as a
+ * signed URL both platforms can fetch. Nothing when the post is not about one version.
+ */
+async function previewImage(supabase: SupabaseClient, payload: Record<string, unknown>, alt: string, href: string): Promise<ChatImage | null> {
+  if (typeof payload.versionId !== "string") return null;
+  try {
+    const { data } = await supabase.from("version_sides").select("preview_path,thumb_path").eq("version_id", payload.versionId).eq("side", "front").maybeSingle();
+    const url = await signedUrl(supabase, data?.preview_path ?? data?.thumb_path, PREVIEW_LINK_DAYS * 86400);
+    return url ? { url, alt: alt.replace(/^\S+\s/, ""), href } : null;
+  } catch (e) { console.error("[chat preview]", (e as Error).message); return null; }
 }
 
 /** Everyone "on the event" (PRD §6.2) via the event_participants() SQL helper. */

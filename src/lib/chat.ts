@@ -1,7 +1,18 @@
-/** Google Chat or Slack incoming webhook: both take { text } with the same *bold* and <url|label> markup. Failures are returned, never thrown. */
-export async function postChat(webhookUrl: string, text: string) {
+export interface ChatImage { url: string; alt: string; href: string }
+
+/**
+ * Google Chat or Slack incoming webhook. Both take { text } with the same *bold* and <url|label> markup; with an
+ * `image`, Slack gets a Block Kit section + image and Google Chat a card under the text, both linking to `href`.
+ * Failures are returned, never thrown.
+ */
+export async function postChat(webhookUrl: string, text: string, image?: ChatImage | null) {
+  const body: Record<string, unknown> = { text };
+  if (image) {
+    if (platformOf(webhookUrl) === "slack") body.blocks = [{ type: "section", text: { type: "mrkdwn", text } }, { type: "image", image_url: image.url, alt_text: image.alt.slice(0, 2000) }];
+    else body.cardsV2 = [{ cardId: "preview", card: { sections: [{ widgets: [{ image: { imageUrl: image.url, altText: image.alt, onClick: { openLink: { url: image.href } } } }] }] } }];
+  }
   try {
-    const res = await fetch(webhookUrl, { method: "POST", headers: { "Content-Type": "application/json; charset=UTF-8" }, body: JSON.stringify({ text }) });
+    const res = await fetch(webhookUrl, { method: "POST", headers: { "Content-Type": "application/json; charset=UTF-8" }, body: JSON.stringify(body) });
     if (!res.ok) return { error: `Webhook ${res.status}: ${(await res.text()).slice(0, 200)}` };
     return { ok: true as const };
   } catch (e) { return { error: (e as Error).message }; }

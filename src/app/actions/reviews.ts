@@ -45,7 +45,7 @@ async function announceIfAllApproved({ supabase, user, org, event }: Loaded) {
 export async function approveVersion(versionId: string) {
   const ctx = await approveOne(versionId);
   const { supabase, user, org, version, slot, event, formatName } = ctx;
-  await notify(supabase, await eventParticipants(supabase, event.id), "version.approved", { eventId: event.id, slotId: slot.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id, mention: [version.uploaded_by, slot.assignee_id] });
+  await notify(supabase, await eventParticipants(supabase, event.id), "version.approved", { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id, mention: [version.uploaded_by, slot.assignee_id] });
   await announceIfAllApproved(ctx);
   return { ok: true };
 }
@@ -60,7 +60,7 @@ export async function requestChanges(versionId: string, body: string) {
   await supabase.from("slots").update({ state: "changes_requested", updated_at: now }).eq("id", slot.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.changes_requested", payload: { format: formatName, number: version.number } });
   const pubs = await taggedMemberIds(supabase, org.id, "publication");
-  await notify(supabase, [slot.assignee_id, version.uploaded_by, ...pubs], "version.changes_requested", { eventId: event.id, slotId: slot.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: body.trim().slice(0, 200) }, user.id, { orgId: org.id, mention: [slot.assignee_id, version.uploaded_by] });
+  await notify(supabase, [slot.assignee_id, version.uploaded_by, ...pubs], "version.changes_requested", { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: body.trim().slice(0, 200) }, user.id, { orgId: org.id, mention: [slot.assignee_id, version.uploaded_by] });
   revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`);
   return { ok: true };
 }
@@ -75,7 +75,7 @@ export async function reopenVersion(versionId: string, reason: string) {
   await supabase.from("slots").update({ state: "changes_requested", updated_at: now }).eq("id", slot.id);
   if (reason.trim()) await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: `Reopened: ${reason.trim()}` });
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.reopened", payload: { format: formatName, number: version.number, reason } });
-  await notify(supabase, await eventParticipants(supabase, event.id), "version.reopened", { eventId: event.id, slotId: slot.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: reason.trim().slice(0, 200) }, user.id, { orgId: org.id, mention: [slot.assignee_id, version.uploaded_by] });
+  await notify(supabase, await eventParticipants(supabase, event.id), "version.reopened", { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: reason.trim().slice(0, 200) }, user.id, { orgId: org.id, mention: [slot.assignee_id, version.uploaded_by] });
   revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`);
   return { ok: true };
 }
@@ -93,7 +93,7 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
   }
   const { error } = await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: text, mentions: [...mentions], pin_x: pin?.x ?? null, pin_y: pin?.y ?? null, pin_side: pin?.side ?? "front" });
   if (error) throw new Error(error.message);
-  const payload = { eventId: event.id, slotId: slot.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: text.slice(0, 200) };
+  const payload = { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: text.slice(0, 200) };
   if (mentions.size) await notify(supabase, mentions, "comment.mention", payload, user.id, { orgId: org.id });
   else {
     // No @mention: it is for the designer, the uploader and whoever has already spoken on this version.
@@ -128,7 +128,7 @@ export async function approveMany(versionIds: string[]) {
   }
   if (done.length === 1) {
     const { supabase, user, org, version, slot, event, formatName } = done[0];
-    await notify(supabase, await eventParticipants(supabase, event.id), "version.approved", { eventId: event.id, slotId: slot.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id, mention: [version.uploaded_by, slot.assignee_id] });
+    await notify(supabase, await eventParticipants(supabase, event.id), "version.approved", { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id, mention: [version.uploaded_by, slot.assignee_id] });
   } else if (done.length > 1) {
     // Usually one event; group anyway so a mixed selection still reads correctly.
     const byEvent = new Map<string, Loaded[]>();

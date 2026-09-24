@@ -120,7 +120,9 @@ Every post goes to the org's Google Chat space and/or Slack channel; the people 
 their Chat identity, so `users.gchat_user_id` fills itself in at sign-in (`src/app/auth/callback/route.ts`).
 Slack: each person pastes their Slack member ID on their Profile (Slack profile → ⋮ → Copy member ID), or a
 Core Admin enters it in Settings → Users. Without an ID the post shows the name in bold instead of pinging.
-"Send me a test mention" on the Profile page checks it end to end. Someone who is on Slack only is simply
+"Send me a test mention" on the Profile page checks it end to end. Posts about one version (upload, approval,
+changes, reopen, comments) carry the watermarked front preview as an image: Slack gets a Block Kit image,
+Google Chat a card. The bucket is private, so the image is a signed link that works for 7 days. Someone who is on Slack only is simply
 named in bold in Google Chat, and vice versa. Routing lives in `src/lib/notify.ts`; message wording in
 `chatLines()` in `src/lib/labels.ts`.
 

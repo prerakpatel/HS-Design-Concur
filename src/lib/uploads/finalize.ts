@@ -82,7 +82,7 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
     if (!event.brief_locked_at) await supabase.from("events").update({ brief_locked_at: new Date().toISOString() }).eq("id", event.id);
     await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slotId, version_id: versionId, actor_id: user.id, kind: "version.uploaded", payload: { format: fmt.name, number } });
     const { data: approvers } = await supabase.from("users").select("id,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id).or("is_approver.eq.true,role.eq.core_admin");
-    await notify(supabase, [...(approvers ?? []).map((a) => a.id), event.created_by], "version.uploaded", { eventId: event.id, slotId, title: event.title, format: fmt.name, number, by: user.name ?? user.email }, user.id, { orgId: org.id });
+    await notify(supabase, [...(approvers ?? []).map((a) => a.id), event.created_by], "version.uploaded", { eventId: event.id, slotId, versionId, title: event.title, format: fmt.name, number, by: user.name ?? user.email }, user.id, { orgId: org.id });
   }
   revalidatePath(`/events/${event.id}`);
   revalidatePath(`/events/${event.id}/slots/${slotId}`);
