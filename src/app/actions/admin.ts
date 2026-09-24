@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
+import { normaliseSlackId } from "@/lib/chat";
 import type { FunctionTag } from "@/lib/types";
 import { EVENT_CAP, DELETE_RESTORE_DAYS } from "@/config/limits";
 
@@ -23,7 +24,11 @@ export async function decideAccess(userId: string, formData: FormData) {
   if (approve && orgIds.length === 0) throw new Error("Pick at least one organisation");
   await supabase.from("users").update({ status: approve ? "active" : "removed" }).eq("id", userId);
   await supabase.from("access_requests").update({ decided_by: user.id, decided_at: new Date().toISOString(), decision: approve ? "approved" : "denied" }).eq("user_id", userId).is("decided_at", null);
-  if (approve) { await setMemberships(supabase, userId, orgIds); await notify(supabase, [userId], "access.approved", { by: user.name ?? user.email }); }
+  if (approve) {
+    await setMemberships(supabase, userId, orgIds);
+    const { data: who } = await supabase.from("users").select("name,email").eq("id", userId).maybeSingle();
+    await notify(supabase, [userId], "access.approved", { by: user.name ?? user.email, name: who?.name ?? who?.email }, undefined, { orgId: orgIds, mention: [userId] });
+  }
   revalidatePath("/settings");
 }
 
@@ -38,7 +43,10 @@ export async function updateUser(userId: string, formData: FormData) {
     const { count } = await supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "core_admin").eq("status", "active").neq("id", userId);
     if ((count ?? 0) === 0) throw new Error("There must be at least one Core Admin");
   }
-  await supabase.from("users").update({ role, is_approver, function_tags }).eq("id", userId);
+  const slack_user_id = normaliseSlackId(String(formData.get("slack_user_id") ?? ""));
+  const gchat_user_id = String(formData.get("gchat_user_id") ?? "").trim().replace(/^users\//, "") || null;
+  if (gchat_user_id && !/^\d{6,}$/.test(gchat_user_id)) throw new Error("A Google Chat user ID is a long number");
+  await supabase.from("users").update({ role, is_approver, function_tags, slack_user_id, gchat_user_id }).eq("id", userId);
   await setMemberships(supabase, userId, orgIds);
   revalidatePath("/settings");
 }

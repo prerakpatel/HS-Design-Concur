@@ -7,9 +7,10 @@ import { setCurrentOrg } from "@/app/actions/org";
 import { signOut } from "@/app/actions/auth";
 import type { Organisation } from "@/lib/types";
 import { RoleChips } from "@/components/role-chips";
+import { ChatHandles } from "@/components/chat-handles";
 
 // icons: account_circle chevron_right check settings notifications logout
-export interface ProfileUser { name: string; email: string; roles: string[]; initials: string; avatar?: string | null }
+export interface ProfileUser { name: string; email: string; roles: string[]; initials: string; avatar?: string | null; slackId: string | null; gchatLinked: boolean }
 
 /**
  * The "you" screen: who you are, which organisation you are working in, and the doors to Settings, notifications
@@ -17,6 +18,7 @@ export interface ProfileUser { name: string; email: string; roles: string[]; ini
  * same ground, so the page is just a plain fallback.
  */
 export function ProfileView({ user, orgs, currentOrgId }: { user: ProfileUser; orgs: Organisation[]; currentOrgId: string }) {
+  const currentOrg = orgs.find((o) => o.id === currentOrgId);
   const row = "flex h-14 items-center gap-4 px-4 text-sm";
   return (
     <div className="mx-auto max-w-[560px] space-y-8">
@@ -40,6 +42,8 @@ export function ProfileView({ user, orgs, currentOrgId }: { user: ProfileUser; o
         </ul>
         {orgs.length > 1 && <p className="mt-2 px-1 text-xs text-muted-foreground">Events, formats and people are per organisation. Switch here to see the other one.</p>}
       </section>
+
+      <ChatHandles slackId={user.slackId} gchatLinked={user.gchatLinked} orgName={currentOrg?.short_name ?? "the team"} />
 
       <section>
         <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border">

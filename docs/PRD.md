@@ -268,13 +268,16 @@ to `config/devices.ts` and the one-line update command.
 |---|---|---|
 | In-app inbox | always on | bell with unread count |
 | Email | per user | user can switch to a daily digest or off; **Core Admins can turn email off org-wide** in Settings |
-| Google Chat | per org | incoming-webhook URL in Settings › Notifications; **Core Admins can turn it off**; posts on: sent for review, changes requested, approved, reopened |
-| Slack | v1.1 | same event set |
+| Google Chat | per org | incoming-webhook URL in Settings › Organisations; **Core Admins can turn it off**; every post @mentions the people it concerns (Google account = Chat identity, linked at sign-in) |
+| Slack | per org | same posts via a Slack incoming webhook; people add their Slack member ID on their Profile to be @mentioned, otherwise they are named in bold |
 
-Events that notify: access approved; assigned to you; @mentioned; version uploaded (approvers);
-changes requested (assignee, Publication); approved / reopened (everyone on the event); due
-in 3 days / due today (assignee); draft sweep warning (creator); event deleted (everyone on
-the event); yearly device reminder (Designers, Core Admins).
+Events that notify: access requested (Core Admins); access approved; event published (assignees; chat post
+lists format → designer); assigned to you; @mentioned; comment without a mention (designer + thread);
+version uploaded (approvers, creator); changes requested (assignee, uploader, Publication; chat pings the
+designer); approved / reopened (everyone on the event; chat pings the designer); all formats approved
+(creator, Publication); due in 3 days / due today (assignee); event archived (creator); draft sweep warning
+(creator); yearly device reminder (Designers, Core Admins). A bulk approval is one notification and one
+chat post.
 
 ---
 

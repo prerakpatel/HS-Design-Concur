@@ -4,7 +4,7 @@ import { BUCKET } from "@/lib/storage";
 import { PURGE_AFTER_DAYS, DELETE_RESTORE_DAYS, DRAFT_SWEEP_DAYS, DRAFT_WARN_DAYS } from "@/config/limits";
 import { DEVICE_REFRESH_DAY } from "@/config/devices";
 
-export interface RetentionReport { archived: number; deletedForGood: number; draftsWarned: number; draftsSwept: number; deviceReminders: number; filesRemoved: number; errors: string[] }
+export interface RetentionReport { archived: number; archivedEvents: { id: string; org_id: string; title: string; created_by: string }[]; deletedForGood: number; draftsWarned: number; draftsSwept: number; deviceReminders: number; filesRemoved: number; errors: string[] }
 
 interface SideRow { id: string; side: string; optimised_path: string | null; preview_path: string | null; thumb_path: string | null; reference_path: string | null }
 interface VersionRow { id: string; number: number; decision: string; purged_at: string | null; created_at: string; version_sides: SideRow[] }
@@ -22,18 +22,18 @@ const daysAgoDate = (days: number, tz: string) => new Date(Date.now() - days * 8
  * Each step is independent; a failure is reported and the others still run.
  */
 export async function runRetention(db: SupabaseClient, opts: { tz: string; today: string }): Promise<RetentionReport> {
-  const r: RetentionReport = { archived: 0, deletedForGood: 0, draftsWarned: 0, draftsSwept: 0, deviceReminders: 0, filesRemoved: 0, errors: [] };
+  const r: RetentionReport = { archived: 0, archivedEvents: [], deletedForGood: 0, draftsWarned: 0, draftsSwept: 0, deviceReminders: 0, filesRemoved: 0, errors: [] };
   const step = async (name: string, fn: () => Promise<void>) => { try { await fn(); } catch (e) { r.errors.push(`${name}: ${(e as Error).message}`); } };
 
   await step("archive", async () => {
-    const { data: events, error } = await db.from("events").select("id,org_id,title").is("deleted_at", null).is("purged_at", null).neq("status", "draft").lte("event_date", daysAgoDate(PURGE_AFTER_DAYS, opts.tz));
+    const { data: events, error } = await db.from("events").select("id,org_id,title,created_by").is("deleted_at", null).is("purged_at", null).neq("status", "draft").lte("event_date", daysAgoDate(PURGE_AFTER_DAYS, opts.tz));
     if (error) throw new Error(error.message);
     for (const ev of events ?? []) {
       const removed = await purgeEventFiles(db, ev.id, ev.org_id, true);
       const now = new Date().toISOString();
       await db.from("events").update({ status: "archived", archived_at: now, purged_at: now }).eq("id", ev.id);
       await db.from("activity").insert({ org_id: ev.org_id, event_id: ev.id, kind: "event.archived", payload: { title: ev.title, filesRemoved: removed } });
-      r.archived++; r.filesRemoved += removed;
+      r.archived++; r.filesRemoved += removed; r.archivedEvents.push(ev);
     }
   });
 

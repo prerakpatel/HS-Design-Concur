@@ -1,6 +1,6 @@
 # Notifications: email and Google Chat (no coding)
 
-In-app notifications always work. Email and Google Chat need two one-time setups.
+In-app notifications and push always work. Email and Google Chat need two one-time setups; Slack is the same as Google Chat with a Slack webhook (Settings → Organisations).
 
 ## A · Google Chat (10 minutes, per space)
 
@@ -10,7 +10,7 @@ In-app notifications always work. Email and Google Chat need two one-time setups
 4. Copy the webhook URL (starts with `https://chat.googleapis.com/v1/spaces/…`).
 5. In the app: **Settings → Notifications** → paste it under the organisation → tick **Google Chat notifications** → **Save** → **Send test message**. A message should appear in the space.
 
-Repeat for the ACC space if it has its own. What gets posted: sent for review, changes requested, approved, reopened (PRD §10). Mentions and assignments stay personal (in-app / email).
+Repeat for the ACC space if it has its own. What gets posted: new events, assignments, uploads, decisions, comments, due reminders and access requests, with the people concerned @mentioned (full table in [setup.md](setup.md#what-goes-to-chat-and-who-gets-pinged)). Google Chat mentions work automatically from the Google sign-in; for Slack each person pastes their member ID on their Profile.
 
 ## B · Email (20 minutes, once)
 

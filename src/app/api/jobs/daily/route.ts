@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendEmail, appUrl, emailConfigured } from "@/lib/email";
 import { notificationText, notificationHref } from "@/lib/labels";
-import { subjectFor, type NotificationKind } from "@/lib/notify";
+import { notify, subjectFor, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
 import { refreshStalePreviews } from "@/lib/uploads/refresh-preview";
 import { getActiveUser } from "@/lib/auth";
@@ -11,7 +11,7 @@ export const maxDuration = 60;
 
 /**
  * Daily job (Vercel Cron, 13:00 UTC ≈ morning in New York). Runs, in order:
- * 1. Due-date reminders: slots due today or in 3 days → in-app notification (+ instant email via digest below).
+ * 1. Due-date reminders: slots due today or in 3 days → in-app, push and a chat @mention for the designer.
  * 2. Retention (PRD §8): archive + purge a week after the event date, hard-delete after the restore window,
  *    draft warning / sweep, yearly device-preset reminder. See src/lib/retention.ts.
  * 3. Daily digest email for users whose email_pref is "digest", then instant emails for job-created kinds.
@@ -30,18 +30,20 @@ export async function GET(req: Request) {
   const report: Record<string, unknown> = { reminders: 0, digests: 0 };
 
   // 1. Due-date reminders
-  const { data: due } = await db.from("slots").select("id,due_on,assignee_id,event_id,formats(name),events(title,status)").eq("requested", true).neq("state", "approved").not("assignee_id", "is", null).in("due_on", [today, in3]);
+  const { data: due } = await db.from("slots").select("id,due_on,assignee_id,event_id,formats(name),events(title,status,org_id)").eq("requested", true).neq("state", "approved").not("assignee_id", "is", null).in("due_on", [today, in3]);
   for (const s of due ?? []) {
-    const ev = s.events as unknown as { title: string; status: string }; if (ev.status !== "active") continue;
-    const payload = { eventId: s.event_id, slotId: s.id, title: ev.title, format: (s.formats as unknown as { name: string }).name, when: s.due_on === today ? "today" : "3d" };
+    const ev = s.events as unknown as { title: string; status: string; org_id: string }; if (ev.status !== "active") continue;
+    const payload = { eventId: s.event_id, slotId: s.id, title: ev.title, format: (s.formats as unknown as { name: string }).name, when: s.due_on === today ? "today" : "3d", due: s.due_on, assignee: s.assignee_id };
     const { data: dup } = await db.from("notifications").select("id").eq("user_id", s.assignee_id).eq("kind", "slot.due").contains("payload", { slotId: s.id, when: payload.when }).limit(1);
     if (dup?.length) continue;
-    await db.from("notifications").insert({ user_id: s.assignee_id, kind: "slot.due", payload });
+    await notify(db, [s.assignee_id], "slot.due", payload, undefined, { orgId: ev.org_id });
     report.reminders = (report.reminders as number) + 1;
   }
 
-  // 2. Retention
-  report.retention = await runRetention(db, { tz, today });
+  // 2. Retention (+ tell the creator and the chat that an event was archived)
+  const retention = await runRetention(db, { tz, today });
+  for (const ev of retention.archivedEvents) await notify(db, [ev.created_by], "event.archived", { eventId: ev.id, title: ev.title }, undefined, { orgId: ev.org_id });
+  report.retention = { ...retention, archivedEvents: retention.archivedEvents.map((e) => e.title) };
 
   // 3. Daily digest
   if (emailConfigured()) {

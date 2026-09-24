@@ -10,9 +10,10 @@ import { UserAvatar } from "@/components/user-avatar";
 import { StateBadge } from "@/components/state-badge";
 import { Icon } from "@/components/material-icon";
 import { ConfirmButton } from "@/components/confirm-button";
+import { Input } from "@/components/ui/input";
 import { updateUser, removeUser } from "@/app/actions/admin";
 
-export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; is_approver: boolean; function_tags: string[]; orgIds: string[]; email_pref?: "instant" | "digest" | "off" }
+export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; is_approver: boolean; function_tags: string[]; orgIds: string[]; email_pref?: "instant" | "digest" | "off"; slack_user_id?: string | null; gchat_user_id?: string | null }
 export interface OrgOption { id: string; label: string }
 const TAGS = [{ value: "central", label: "Central" }, { value: "publication", label: "Publication" }, { value: "designer", label: "Designer" }];
 const tagLabel = (t: string) => TAGS.find((x) => x.value === t)?.label ?? t;
@@ -76,6 +77,12 @@ function UserPanel({ user, orgs, isSelf, onClose }: { user: EditableUser | null;
               </Field>
               <Field label="Organisations" hint="Decides which events they can see.">
                 <ChoiceChips name="org" multiple defaultValue={user.orgIds} options={orgs.map((o) => ({ value: o.id, label: o.label }))} />
+              </Field>
+              <Field label="Chat mentions" hint="So Slack and Google Chat posts can ping them. Slack: their profile → ⋮ → Copy member ID. Google Chat fills itself in when they sign in.">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-1.5 text-sm"><span className="text-muted-foreground">Slack member ID</span><Input name="slack_user_id" defaultValue={user.slack_user_id ?? ""} placeholder="U0123ABCD" autoCapitalize="characters" spellCheck={false} className="font-mono uppercase" /></label>
+                  <label className="space-y-1.5 text-sm"><span className="text-muted-foreground">Google Chat user ID</span><Input name="gchat_user_id" defaultValue={user.gchat_user_id ?? ""} placeholder={user.gchat_user_id ? "" : "Set on their next sign-in"} inputMode="numeric" className="font-mono" /></label>
+                </div>
               </Field>
             </div>
             <div className="flex items-center justify-between gap-3 border-t border-border px-6 py-4">

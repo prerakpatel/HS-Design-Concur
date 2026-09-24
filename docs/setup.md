@@ -94,8 +94,35 @@ The service worker is `public/sw.js`.
 ## Slack
 
 Per org, Settings → Organisations: turn on Slack notifications and paste an incoming-webhook URL
-(Slack app → Incoming Webhooks → Add New Webhook to Workspace → pick the channel). Same four moments as Google
-Chat: ready for review, changes requested, approved, reopened. "Test Slack" posts a hello.
+(Slack app → Incoming Webhooks → Add New Webhook to Workspace → pick the channel). "Test Slack" posts a hello.
+
+## What goes to chat, and who gets pinged
+
+Every post goes to the org's Google Chat space and/or Slack channel; the people it concerns are @mentioned
+(everyone else just reads along). One message per moment; a bulk approval is one message.
+
+| Moment | Who is @mentioned |
+|---|---|
+| Event published (lists format → designer, due dates) | the assigned designers |
+| Format assigned after publishing | the designer |
+| Design uploaded / ready for review | approvers and the event creator |
+| Approved | the designer (uploader / assignee) |
+| All formats approved 🎉 | event creator and Publication |
+| Changes requested, reopened (with the note) | the designer |
+| Comment with @name | the people named |
+| Comment without @name | the designer and anyone already in that thread |
+| Due in 3 days / due today | the designer |
+| New access request | Core Admins |
+| Access approved | the new member (a welcome) |
+| Event archived | nobody, channel only |
+
+**How a mention finds someone.** Google Chat: automatic. The Google account a person signs in with is also
+their Chat identity, so `users.gchat_user_id` fills itself in at sign-in (`src/app/auth/callback/route.ts`).
+Slack: each person pastes their Slack member ID on their Profile (Slack profile → ⋮ → Copy member ID), or a
+Core Admin enters it in Settings → Users. Without an ID the post shows the name in bold instead of pinging.
+"Send me a test mention" on the Profile page checks it end to end. Someone who is on Slack only is simply
+named in bold in Google Chat, and vice versa. Routing lives in `src/lib/notify.ts`; message wording in
+`chatLines()` in `src/lib/labels.ts`.
 
 ## What works after step 4
 
@@ -104,4 +131,4 @@ Chat: ready for review, changes requested, approved, reopened. "Test Slack" post
 - Bulk approve: on an event page, approvers use Select to approve several in-review formats together (own uploads excluded).
 - Review: comments with @mentions and pins, addressed/confirm flags, Request changes, Approve and notify / download, Reopen. All approve/reopen actions pass an "Are you sure?" dialog.
 - Settings: approve or deny access requests with org membership, edit role / Approver / tags / orgs, remove users, per-org notification switches and Google Chat / Slack webhook URLs. Formats tab: Designers and Core Admins add, edit, reorder and deactivate catalog formats; a new format joins every open event as N/A.
-- Inbox: in-app notifications with mark-all-read. Email and Google Chat fan-out are next.
+- Inbox: in-app notifications with mark-all-read; push, Google Chat and Slack fan-out with @mentions.

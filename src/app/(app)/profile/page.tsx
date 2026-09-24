@@ -12,7 +12,7 @@ export default async function ProfilePage() {
   return (
     <>
       <PageHeader title="Profile" />
-      <ProfileView user={{ name: user.name ?? user.email, email: user.email, roles, initials: initials(user.name, user.email), avatar: user.avatar_url }} orgs={orgs} currentOrgId={org.id} />
+      <ProfileView user={{ name: user.name ?? user.email, email: user.email, roles, initials: initials(user.name, user.email), avatar: user.avatar_url, slackId: user.slack_user_id, gchatLinked: !!user.gchat_user_id }} orgs={orgs} currentOrgId={org.id} />
     </>
   );
 }

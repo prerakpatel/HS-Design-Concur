@@ -92,17 +92,22 @@ export async function saveFormats(eventId: string, formData: FormData) {
 }
 
 export async function saveAssign(eventId: string, formData: FormData) {
-  const { supabase, user, event } = await ownEvent(eventId);
+  const { supabase, user, org, event } = await ownEvent(eventId);
   const { data: slots } = await supabase.from("slots").select("id,assignee_id,format_id,formats(name)").eq("event_id", event.id).eq("requested", true);
-  const newlyAssigned: { userId: string; name: string }[] = [];
+  // One notification per person, listing every format they were just given.
+  const newlyAssigned = new Map<string, { formats: string[]; due: string | null }>();
   for (const s of slots ?? []) {
     const assignee = String(formData.get(`assignee_${s.id}`) ?? "") || null;
     const due = String(formData.get(`due_${s.id}`) ?? "") || null;
     await supabase.from("slots").update({ assignee_id: assignee, due_on: due, updated_at: new Date().toISOString() }).eq("id", s.id);
     const fmt = s.formats as unknown as { name: string } | null;
-    if (assignee && assignee !== s.assignee_id) newlyAssigned.push({ userId: assignee, name: fmt?.name ?? "a format" });
+    if (assignee && assignee !== s.assignee_id) {
+      const cur = newlyAssigned.get(assignee) ?? { formats: [], due: null };
+      cur.formats.push(fmt?.name ?? "a format"); if (due && (!cur.due || due < cur.due)) cur.due = due;
+      newlyAssigned.set(assignee, cur);
+    }
   }
-  if (event.status === "active") for (const a of newlyAssigned) await notify(supabase, [a.userId], "slot.assigned", { eventId: event.id, title: event.title, format: a.name }, user.id);
+  if (event.status === "active") for (const [userId, a] of newlyAssigned) await notify(supabase, [userId], "slot.assigned", { eventId: event.id, title: event.title, format: a.formats.join(", "), assignee: userId, due: a.due, by: user.name ?? user.email }, user.id, { orgId: org.id });
   await supabase.from("events").update({ last_edited_at: new Date().toISOString() }).eq("id", event.id);
   revalidatePath(`/events/${event.id}`);
   goto(event.id, formData, "review");
@@ -123,8 +128,11 @@ export async function publishEvent(eventId: string) {
   }
   await supabase.from("events").update({ status: "active", published_at: new Date().toISOString() }).eq("id", event.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, actor_id: user.id, kind: "event.published", payload: { title: event.title } });
-  const { data: slots } = await supabase.from("slots").select("assignee_id").eq("event_id", event.id).eq("requested", true).not("assignee_id", "is", null);
-  await notify(supabase, (slots ?? []).map((s) => s.assignee_id as string), "event.published", { eventId: event.id, title: event.title }, user.id);
+  // Designers hear about it in-app; the chat post lists who is on which format so the whole team sees the plan.
+  const { data: slots } = await supabase.from("slots").select("assignee_id,due_on,formats(name,sort)").eq("event_id", event.id).eq("requested", true);
+  const assignments = [...(slots ?? [])].sort((a, b) => ((a.formats as unknown as { sort: number })?.sort ?? 0) - ((b.formats as unknown as { sort: number })?.sort ?? 0))
+    .map((s) => ({ format: (s.formats as unknown as { name: string })?.name ?? "Format", userId: s.assignee_id as string | null, due: s.due_on as string | null }));
+  await notify(supabase, assignments.map((a) => a.userId), "event.published", { eventId: event.id, title: event.title, by: user.name ?? user.email, date: event.event_date, venue: event.venue, assignments }, user.id, { orgId: org.id });
   revalidatePath("/events");
   redirect(`/events/${event.id}`);
 }

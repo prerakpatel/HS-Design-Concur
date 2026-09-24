@@ -42,7 +42,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <PageHeader title="Settings" subtitle={isAdmin ? "People, access, the format catalog and notifications" : "Format catalog · Designers can edit"} />
       <nav className="mb-8 flex gap-6 overflow-x-auto border-b border-border text-sm font-medium">{tabs.map(([k, l]) => <Link key={k} href={`/settings?tab=${k}`} className={"-mb-px shrink-0 border-b-2 pb-3 " + (tab === k ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{l}</Link>)}</nav>
 
-      {tab === "users" && <UsersList currentUserId={user.id} orgs={orgOptions} users={active.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, role: u.role, is_approver: u.is_approver, function_tags: u.function_tags, orgIds: orgsOf.get(u.id) ?? [], email_pref: u.email_pref }))} />}
+      {tab === "users" && <UsersList currentUserId={user.id} orgs={orgOptions} users={active.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, role: u.role, is_approver: u.is_approver, function_tags: u.function_tags, orgIds: orgsOf.get(u.id) ?? [], email_pref: u.email_pref, slack_user_id: u.slack_user_id, gchat_user_id: u.gchat_user_id }))} />}
 
       {tab === "requests" && <AccessRequests action={decideAccess} orgs={orgOptions} defaultOrgId={org.id} pending={pending.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, requested_at: askedAt.get(u.id) ?? u.created_at }))} />}
 
@@ -66,9 +66,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 </div>
                 <ToggleRow name="accepting_signups" label="Accepting new members" hint="Off hides the request button on the sign-in page." on={o.accepting_signups} />
                 {emailConfigured() && <ToggleRow name="email_enabled" label="Email notifications" hint="Each person still picks instant, daily or off." on={o.email_enabled} />}
-                <ToggleRow name="chat_enabled" label="Google Chat notifications" hint="Sent for review, changes requested, approved, reopened." on={o.chat_enabled} />
+                <ToggleRow name="chat_enabled" label="Google Chat notifications" hint="New events, assignments, uploads, decisions, comments and due reminders, with the people concerned @mentioned." on={o.chat_enabled} />
                 <div className="space-y-2"><Label htmlFor={`hook-${o.id}`}>Google Chat webhook URL</Label><Input id={`hook-${o.id}`} name="chat_webhook_url" defaultValue={o.chat_webhook_url ?? ""} placeholder="https://chat.googleapis.com/v1/spaces/…" /></div>
-                <ToggleRow name="slack_enabled" label="Slack notifications" hint="Same four moments, posted to a Slack channel." on={o.slack_enabled} />
+                <ToggleRow name="slack_enabled" label="Slack notifications" hint="The same posts in a Slack channel. People add their Slack member ID on their Profile to be @mentioned." on={o.slack_enabled} />
                 <div className="space-y-2"><Label htmlFor={`slack-${o.id}`}>Slack webhook URL</Label><Input id={`slack-${o.id}`} name="slack_webhook_url" defaultValue={o.slack_webhook_url ?? ""} placeholder="https://hooks.slack.com/services/…" /></div>
                 <div className="flex flex-wrap gap-2 pt-1"><Button type="submit">Save</Button><TestButton label="Test Google Chat" action={async () => { "use server"; await sendTestChat(o.id, "chat"); }} /><TestButton label="Test Slack" action={async () => { "use server"; await sendTestChat(o.id, "slack"); }} /></div>
               </form>
