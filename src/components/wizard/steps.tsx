@@ -8,7 +8,7 @@ import { SelectField } from "@/components/ui/select-field";
 import { StateBadge } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
 import { DateField } from "@/components/ui/date-field";
-import { WizardFooter, STEPS } from "@/components/wizard/wizard-shell";
+import { WizardFooter, STEPS, wizardBar } from "@/components/wizard/wizard-shell";
 import type { WizardIssue } from "@/lib/wizard-status";
 import { ConfirmButton } from "@/components/confirm-button";
 import { FormatsPicker } from "@/components/wizard/formats-picker";
@@ -16,42 +16,36 @@ import { FormatsPicker } from "@/components/wizard/formats-picker";
 type Action = (formData: FormData) => Promise<void>;
 export const field = "space-y-2";
 
-export function BasicsForm({ eventId, orgName, values, action, notice }: { eventId: string | null; orgName: string; notice?: React.ReactNode; values: { title: string; event_date: string; venue: string }; action: Action }) {
-  return (
-    <form action={action} className="mx-auto max-w-[520px] space-y-6">
-      <p className="text-center text-sm text-muted-foreground">Creating for <span className="font-medium text-foreground">{orgName}</span></p>
-      {notice}
-      <div className={field}><Label htmlFor="title">Event title</Label><Input id="title" name="title" required defaultValue={values.title} placeholder="Sharad Purnima" /></div>
-      <div className={field}><Label htmlFor="event_date">Event date</Label><Input id="event_date" name="event_date" type="date" defaultValue={values.event_date} /><p className="text-sm text-muted-foreground">Multi-day festivals use the last day. Timings for each session go in the brief.</p></div>
-      <div className={field}><Label htmlFor="venue">Venue</Label><Input id="venue" name="venue" defaultValue={values.venue} placeholder="Main Hall" /></div>
-      <WizardFooter eventId={eventId} step="basics" />
-    </form>
-  );
-}
-
-export interface BriefValues { event_date: string; time_text: string; description: string; venue_name: string; venue_address: string; notes: string }
-/** The brief is exactly what goes on the designs: when, the invite text, where. */
-export function BriefForm({ eventId, values, action }: { eventId: string; values: BriefValues; action: Action }) {
+export interface EventValues { title: string; event_date: string; time_text: string; description: string; venue_name: string; venue_address: string; notes: string }
+/**
+ * Step 1: everything about the event on one screen: the basics and the words that go on the design. After the
+ * first upload the design words are locked (PRD §6.1) and shown read-only; title, date and venue stay editable.
+ */
+export function EventForm({ eventId, orgName, values, action, notice, locked }: { eventId: string | null; orgName: string; notice?: React.ReactNode; values: EventValues; action: Action; locked?: boolean }) {
   const group = "space-y-5 rounded-2xl border border-border p-5";
   const legend = "text-xs font-medium uppercase tracking-wide text-muted-foreground";
   return (
     <form action={action} className="space-y-6">
+      {!eventId && <p className="text-center text-sm text-muted-foreground">Creating for <span className="font-medium text-foreground">{orgName}</span></p>}
+      {notice}
+      {locked && <p className="rounded-xl bg-subtle px-4 py-3 text-sm text-muted-foreground">A design has been uploaded, so the words on it are locked. Title, date and venue name can still change; anything else goes through comments.</p>}
       <section className={group}>
-        <p className={legend}>When</p>
-        <div className={field}><Label htmlFor="event_date">Date</Label><DateField id="event_date" name="event_date" defaultValue={values.event_date} /></div>
-        <div className={field}><Label htmlFor="time_text">Timings</Label><Textarea id="time_text" name="time_text" rows={3} defaultValue={values.time_text} placeholder={"10:30 AM EST onwards\nFollowed by Aarti and Mahaprasad"} /><p className="text-sm text-muted-foreground">All the times and timing notes, written as they should appear on the design. One line each.</p></div>
-      </section>
-      <section className={group}>
-        <p className={legend}>Invite text</p>
-        <div className={field}><Label htmlFor="description" className="sr-only">Invite text</Label><Textarea id="description" name="description" rows={7} defaultValue={values.description} placeholder="The words that go on the invite: who is invited, what the occasion is, what to highlight…" /></div>
+        <p className={legend}>Event</p>
+        <div className={field}><Label htmlFor="title">Event title</Label><Input id="title" name="title" required defaultValue={values.title} placeholder="e.g. Sharad Purnima" /></div>
+        <div className={field}><Label htmlFor="event_date">Date</Label><DateField id="event_date" name="event_date" defaultValue={values.event_date} /><p className="text-sm text-muted-foreground">Multi-day festivals use the last day.</p></div>
+        <div className={field}><Label htmlFor="time_text">Timings</Label><Textarea id="time_text" name="time_text" rows={3} defaultValue={values.time_text} disabled={locked} placeholder={"e.g. 10:30 AM EST onwards\nFollowed by Aarti and Mahaprasad"} /><p className="text-sm text-muted-foreground">Written as they should appear on the design, one line each.</p></div>
       </section>
       <section className={group}>
         <p className={legend}>Where</p>
-        <div className={field}><Label htmlFor="venue_name">Venue name</Label><Input id="venue_name" name="venue_name" defaultValue={values.venue_name} placeholder="Harisumiran Mandir" /></div>
-        <div className={field}><Label htmlFor="venue_address">Address</Label><Textarea id="venue_address" name="venue_address" rows={2} defaultValue={values.venue_address} placeholder="1 Temple Way, Edison, NJ 08817" /></div>
+        <div className={field}><Label htmlFor="venue_name">Venue name</Label><Input id="venue_name" name="venue_name" defaultValue={values.venue_name} /></div>
+        <div className={field}><Label htmlFor="venue_address">Address</Label><Textarea id="venue_address" name="venue_address" rows={2} defaultValue={values.venue_address} disabled={locked} /></div>
       </section>
-      <div className={field}><Label htmlFor="notes">Anything else for the designers <span className="font-normal text-muted-foreground">(optional)</span></Label><Textarea id="notes" name="notes" rows={2} defaultValue={values.notes} placeholder="Sponsor line, language, colours to avoid…" /></div>
-      <WizardFooter eventId={eventId} step="brief" />
+      <section className={group}>
+        <p className={legend}>Invite text</p>
+        <div className={field}><Label htmlFor="description" className="sr-only">Invite text</Label><Textarea id="description" name="description" rows={7} defaultValue={values.description} disabled={locked} placeholder="e.g. The words that go on the invite: who is invited, what the occasion is, what to highlight…" /></div>
+      </section>
+      <div className={field}><Label htmlFor="notes">Anything else for the designers <span className="font-normal text-muted-foreground">(optional)</span></Label><Textarea id="notes" name="notes" rows={2} defaultValue={values.notes} disabled={locked} placeholder="e.g. Sponsor line, language, colours to avoid…" /></div>
+      <WizardFooter eventId={eventId} step="event" />
     </form>
   );
 }
@@ -110,15 +104,15 @@ export function ReviewPanel({ eventId, summary, slots, issues, isDraft, canDelet
         </ul>
       )}
       <dl className="grid grid-cols-1 gap-5 rounded-2xl bg-subtle p-6 text-sm md:grid-cols-2">
-        <div><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Event {edit("basics")}</dt><dd className="mt-1 font-medium">{summary.title}</dd></div>
-        <div><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">When · where {edit("brief")}</dt><dd className="mt-1">{summary.when} · {summary.venue}</dd></div>
-        <div className="md:col-span-2"><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Invite text {edit("brief")}</dt><dd className="mt-1 whitespace-pre-wrap leading-6">{summary.brief ?? <Link href={`/events/${eventId}/edit/brief`} className="text-warning-text underline-offset-4 hover:underline">Missing · add it in Brief</Link>}</dd></div>
+        <div><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Event {edit("event")}</dt><dd className="mt-1 font-medium">{summary.title}</dd></div>
+        <div><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">When · where {edit("event")}</dt><dd className="mt-1">{summary.when} · {summary.venue}</dd></div>
+        <div className="md:col-span-2"><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Invite text {edit("event")}</dt><dd className="mt-1 whitespace-pre-wrap leading-6">{summary.brief ?? <Link href={`/events/${eventId}/edit/event`} className="text-warning-text underline-offset-4 hover:underline">Missing · add it in Brief</Link>}</dd></div>
       </dl>
       <div className="flex items-center justify-between px-1"><p className="text-sm font-medium">Formats and designers</p><span className="flex gap-3">{edit("formats", "Edit formats")}{edit("assign", "Edit designers")}</span></div>
       <ul className="divide-y divide-border rounded-2xl border border-border">
         {slots.map((s, i) => <li key={i} className="flex items-center gap-4 px-5 py-4 text-sm"><span className="min-w-0 flex-1 truncate font-medium">{s.name}</span>{s.assignee ? <span className="flex items-center gap-2 text-muted-foreground"><UserAvatar initials={s.assignee.initials} size={24} /><span className="hidden sm:inline">{s.assignee.name}</span></span> : <span className="text-muted-foreground">Unassigned</span>}<span className="w-20 text-right text-sm text-muted-foreground">{s.due ? format(new Date(s.due + "T00:00:00"), "d MMM") : ""}</span></li>)}
       </ul>
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-border bg-card/95 px-5 py-4 backdrop-blur md:left-[220px] md:px-8">
+      <div className={wizardBar + " gap-3"}>
         {canDelete ? <ConfirmButton variant="ghost" action={remove} label={isDraft ? "Delete draft" : "Delete event"} title={`Delete “${summary.title}”?`} description="Core Admins can restore it for 7 days. Its files are removed after that." confirmLabel="Delete" /> : <span />}
         <div className="flex gap-2">
           <Button asChild variant="secondary" size="lg"><Link href={`/events/${eventId}`}>Save and exit</Link></Button>

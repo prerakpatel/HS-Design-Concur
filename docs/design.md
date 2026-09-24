@@ -17,7 +17,7 @@ list rows instead of boxed cards. Mobile media is edge-to-edge. Full token table
 |---|---|
 | 📕 Cover | Title, description, page index |
 | 🧩 Components | Button (Primary, Brand, Secondary, Outline, Ghost, Destructive × sm/md/lg), Badge (Requested, In review, Changes requested, Approved, N/A, Draft, Needs you), NavItem (Active), IconButton (Ghost, Outline), Input, Avatar (24/32/40 with initials), FormatCard, EventRow, Sidebar, WizardTopBar |
-| 🖥 Desktop (1440 × 900) | 01 Sign in · 02 Awaiting access · 03 Events · 04a New event · Basics (calendar popover) · 04b New event · Formats (Requested / N/A) · 05 Event page · 06 Asset page · 07 Inbox · 08 Archive · 09 Settings · Users |
+| 🖥 Desktop (1440 × 900) | 01 Sign in · 02 Awaiting access · 03 Events · 04a New event · Event (calendar popover) · 04b New event · Formats (Need this / Skip) · 05 Event page · 06 Asset page · 07 Inbox · 08 Archive · 09 Settings · Users |
 | 📱 Mobile (393 × 852) | M01–M09 mirror the desktop set. M05 shows formats as a full-bleed 2-column media grid; M06 shows the preview at viewport width with a floating toolbar, comments sheet and sticky action bar; M06b is the Approve sheet; M06c is the edge-to-edge @mention picker; M08 runs reference strips edge to edge |
 
 ## Tokens

@@ -108,17 +108,17 @@ See `CONTEXT.md` for the glossary.
 ## 6. Workflow
 
 ### 6.1 Event creation wizard
-Anyone can start an event. The wizard is modelled on a stepped, one-question-per-screen flow
-with a left rail of step icons, "Step n of 5" in the header, **Back**, **Next**, and
-**Save and exit** at every step. A saved draft can be resumed by anyone in the org.
+Anyone can start an event. The wizard is a stepped flow with a left rail of steps, "Step n of 4" in the
+header, **Back**, **Next**, and **Save and exit** at every step. A saved draft can be resumed by anyone in
+the org. *(v1.2: Basics and Brief were one screen's worth of questions split in two, and asked for the date
+and venue twice; they are now a single Event step.)*
 
 | Step | Screen | Fields |
 |---|---|---|
-| 1 | Basics | Org (pre-filled from current view), title, **event date** (calendar picker, no free text), venue |
-| 2 | Brief | Description (rich text), timing lines (one by default, "+ add timing": label, date via calendar picker, start, end), notes |
-| 3 | Formats | Every catalog row listed; each toggled **Requested** or **N/A**. Per-row "notes for this format". |
-| 4 | Assign | Per requested slot: assignee (defaults to users tagged Designer), optional due date (calendar picker) |
-| 5 | Review | Summary; **Create event** |
+| 1 | Event | Title, **event date** (calendar picker), timings (as they appear on the design), venue name and address (prefilled with the temple: "Harisumiran NJ", 2 Lincoln Ave, Lake Hiawatha, NJ 07034; editable), invite text, notes for the designers. Saving creates the draft. After the first upload the design words are locked; title, date and venue name stay editable. |
+| 2 | Formats | Every active catalog format, all off; each **Need this** or **Skip**. A needed format shows a Primary switch and an "+ Add note" link. Print is one row whose size is a dropdown. |
+| 3 | Designers | Per needed format: assignee (Designers listed first), optional due date |
+| 4 | Review | Summary; **Publish event** |
 
 Rules:
 - A draft event is not counted toward the cap (§8) and is swept 30 days after its last edit,

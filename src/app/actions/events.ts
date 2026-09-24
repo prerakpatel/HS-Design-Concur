@@ -5,8 +5,8 @@ import { requireActiveUser } from "@/lib/auth";
 import { EVENT_CAP, MONTHS_AHEAD } from "@/config/limits";
 import { notify } from "@/lib/notify";
 
-export type WizardStep = "basics" | "brief" | "formats" | "assign" | "review";
-const ORDER: WizardStep[] = ["basics", "brief", "formats", "assign", "review"];
+export type WizardStep = "event" | "formats" | "assign" | "review";
+const ORDER: WizardStep[] = ["event", "formats", "assign", "review"];
 export async function nextStep(step: WizardStep): Promise<WizardStep> { return ORDER[Math.min(ORDER.indexOf(step) + 1, ORDER.length - 1)]; }
 
 function horizonOk(eventDate: string | null) {
@@ -29,47 +29,43 @@ function goto(eventId: string, formData: FormData, fallback: WizardStep) {
   redirect(exit ? `/events/${eventId}` : `/events/${eventId}/edit/${next}`);
 }
 
-/** Wizard step 1. Creates a draft event; drafts do not count toward the cap. */
+/** Everything the Event step collects: title, date, timings, venue, invite text, designer notes. */
+function readEventForm(formData: FormData) {
+  const str = (k: string) => String(formData.get(k) ?? "").trim() || null;
+  const title = String(formData.get("title") ?? "").trim();
+  const eventDate = str("event_date");
+  if (!title) throw new Error("Title is required");
+  if (!horizonOk(eventDate)) throw new Error(`Events can be at most ${MONTHS_AHEAD} months out`);
+  return { title, eventDate, venue_name: str("venue_name"), venue_address: str("venue_address"), time_text: str("time_text"), description: str("description"), notes: str("notes") };
+}
+
+/** Wizard step 1 (Event). Creates the draft with its brief in one go; drafts do not count toward the cap. */
 export async function createDraftEvent(formData: FormData) {
   const { supabase, user, org } = await requireActiveUser();
-  const title = String(formData.get("title") ?? "").trim();
-  const eventDate = String(formData.get("event_date") ?? "") || null;
-  const venue = String(formData.get("venue") ?? "").trim() || null;
-  if (!title) throw new Error("Title is required");
-  if (!horizonOk(eventDate)) throw new Error(`Events can be at most ${MONTHS_AHEAD} months out`);
-  const { data, error } = await supabase.from("events").insert({ org_id: org.id, title, event_date: eventDate, venue, created_by: user.id, status: "draft" }).select("id").single();
+  const f = readEventForm(formData);
+  const { data, error } = await supabase.from("events").insert({ org_id: org.id, title: f.title, event_date: f.eventDate, venue: f.venue_name, created_by: user.id, status: "draft" }).select("id").single();
   if (error) throw new Error(error.message);
-  await supabase.from("briefs").insert({ event_id: data.id, venue_name: venue });
+  await supabase.from("briefs").insert({ event_id: data.id, description: f.description, time_text: f.time_text, venue_name: f.venue_name, venue_address: f.venue_address, notes: f.notes });
   const { data: formats } = await supabase.from("formats").select("id").eq("active", true);
   // Every catalog format gets a slot, all off; the Formats step turns on the ones this event needs.
-  if (formats?.length) await supabase.from("slots").insert(formats.map((f) => ({ event_id: data.id, format_id: f.id, requested: false })));
-  await supabase.from("activity").insert({ org_id: org.id, event_id: data.id, actor_id: user.id, kind: "event.created", payload: { title } });
+  if (formats?.length) await supabase.from("slots").insert(formats.map((fm) => ({ event_id: data.id, format_id: fm.id, requested: false })));
+  await supabase.from("activity").insert({ org_id: org.id, event_id: data.id, actor_id: user.id, kind: "event.created", payload: { title: f.title } });
   revalidatePath("/events");
-  goto(data.id, formData, "brief");
+  goto(data.id, formData, "formats");
 }
 
-export async function updateBasics(eventId: string, formData: FormData) {
+/**
+ * Event step on an existing event. Once a design has been uploaded the brief is locked (PRD §6.1): title, date and
+ * venue name may still change, the words on the design may not.
+ */
+export async function saveEvent(eventId: string, formData: FormData) {
   const { supabase, event } = await ownEvent(eventId);
-  const title = String(formData.get("title") ?? "").trim();
-  const eventDate = String(formData.get("event_date") ?? "") || null;
-  const venue = String(formData.get("venue") ?? "").trim() || null;
-  if (!title) throw new Error("Title is required");
-  if (!horizonOk(eventDate)) throw new Error(`Events can be at most ${MONTHS_AHEAD} months out`);
-  await supabase.from("events").update({ title, event_date: eventDate, venue, last_edited_at: new Date().toISOString() }).eq("id", event.id);
-  revalidatePath(`/events/${event.id}`);
-  goto(event.id, formData, "brief");
-}
-
-export async function saveBrief(eventId: string, formData: FormData) {
-  const { supabase, event } = await ownEvent(eventId);
-  if (event.brief_locked_at) throw new Error("The brief is locked once a design has been uploaded. Use comments for changes.");
-  const str = (k: string) => String(formData.get(k) ?? "").trim() || null;
-  const eventDate = str("event_date");
-  if (!horizonOk(eventDate)) throw new Error(`Events can be at most ${MONTHS_AHEAD} months out`);
-  const venue_name = str("venue_name");
-  const { error } = await supabase.from("briefs").upsert({ event_id: event.id, description: str("description"), time_text: str("time_text"), venue_name, venue_address: str("venue_address"), notes: str("notes") });
+  const f = readEventForm(formData);
+  const locked = !!event.brief_locked_at;
+  await supabase.from("events").update({ title: f.title, event_date: f.eventDate, venue: f.venue_name, last_edited_at: new Date().toISOString() }).eq("id", event.id);
+  const briefPatch = locked ? { venue_name: f.venue_name } : { description: f.description, time_text: f.time_text, venue_name: f.venue_name, venue_address: f.venue_address, notes: f.notes };
+  const { error } = await supabase.from("briefs").upsert({ event_id: event.id, ...briefPatch });
   if (error) throw new Error(error.message);
-  await supabase.from("events").update({ event_date: eventDate, venue: venue_name, last_edited_at: new Date().toISOString() }).eq("id", event.id);
   revalidatePath(`/events/${event.id}`);
   goto(event.id, formData, "formats");
 }

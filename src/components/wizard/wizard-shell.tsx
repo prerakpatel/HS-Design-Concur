@@ -8,7 +8,7 @@ export type StepStatus = "done" | "incomplete";
 export type StepStatuses = Partial<Record<WizardStep, StepStatus>>;
 
 export const STEPS: { key: WizardStep; label: string }[] = [
-  { key: "basics", label: "Basics" }, { key: "brief", label: "Brief" }, { key: "formats", label: "Formats" }, { key: "assign", label: "Assign" }, { key: "review", label: "Review" },
+  { key: "event", label: "Event" }, { key: "formats", label: "Formats" }, { key: "assign", label: "Designers" }, { key: "review", label: "Review" },
 ];
 
 /** Focused full-screen flow (no app sidebar or tab bar), like a host-onboarding wizard. `eventId` is null before the draft exists. */
@@ -55,12 +55,15 @@ export function WizardShell({ eventId, step, title, subtitle, children, wide, st
   );
 }
 
+/** The fixed action bar: solid and slightly shaded so it reads as a bar, no backdrop blur (iOS Safari paints that late). */
+export const wizardBar = "fixed inset-x-0 bottom-0 z-30 flex items-center justify-between border-t border-border bg-subtle px-5 pt-3 pb-[max(env(safe-area-inset-bottom),12px)] shadow-[0_-6px_20px_rgba(0,0,0,0.06)] md:left-[220px] md:px-8 md:py-4";
+
 export function WizardFooter({ eventId, step, nextLabel = "Next" }: { eventId: string | null; step: WizardStep; nextLabel?: string }) {
   const idx = STEPS.findIndex((s) => s.key === step);
   const prev = idx > 0 ? STEPS[idx - 1].key : null;
   const next = STEPS[Math.min(idx + 1, STEPS.length - 1)].key;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between border-t border-border bg-card/95 px-5 py-4 backdrop-blur md:left-[220px] md:px-8">
+    <div className={wizardBar}>
       <input type="hidden" name="next" value={next} />
       {prev && eventId ? <Button asChild variant="ghost" size="lg"><Link href={`/events/${eventId}/edit/${prev}`}>Back</Link></Button> : <span />}
       <div className="flex gap-2">

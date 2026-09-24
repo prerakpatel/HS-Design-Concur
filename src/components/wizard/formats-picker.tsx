@@ -3,10 +3,11 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select-field";
 import { Icon } from "@/components/material-icon";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import type { FormatRow } from "@/components/wizard/steps";
 
-// icons: check star
+// icons: check
 /**
  * The Formats step body. One quiet row per digital format: name and size, Need this / Skip, and, once needed,
  * a Primary toggle and an "Add note" link that opens the note field. Print sits last as a single row whose size is
@@ -34,7 +35,7 @@ export function FormatsPicker({ rows }: { rows: FormatRow[] }) {
       {rows.map((r) => <input key={r.slotId} type="hidden" name={`req_${r.slotId}`} value={requested(r.slotId) ? "on" : "off"} />)}
       <ul className="space-y-2">
         {digital.map((r) => (
-          <li key={r.slotId} className={cn("rounded-2xl px-4 py-3.5 transition-colors", on.has(r.slotId) ? "bg-subtle" : "")}>
+          <li key={r.slotId} className={cn("rounded-2xl px-4 py-3.5 transition-colors", primary === r.slotId ? "bg-brand-soft/70" : on.has(r.slotId) ? "bg-subtle" : "")}>
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1"><p className="text-sm font-medium">{r.name}</p><p className="mt-0.5 text-sm text-muted-foreground">{r.size}</p></div>
               <NeedChips label={r.name} isOn={on.has(r.slotId)} onChange={(v) => need(r.slotId, v)} />
@@ -43,7 +44,7 @@ export function FormatsPicker({ rows }: { rows: FormatRow[] }) {
           </li>
         ))}
         {print.length > 0 && (
-          <li className={cn("rounded-2xl px-4 py-3.5 transition-colors", printOn ? "bg-subtle" : "")}>
+          <li className={cn("rounded-2xl px-4 py-3.5 transition-colors", printOn && print.some((r) => r.slotId === primary) ? "bg-brand-soft/70" : printOn ? "bg-subtle" : "")}>
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1"><p className="text-sm font-medium">Print</p><p className="mt-0.5 text-sm text-muted-foreground">{printOn ? "Sizes include the 0.125 in bleed." : "Invitation card or flyer."}</p></div>
               <NeedChips label="Print" isOn={printOn} onChange={(v) => { setPrintOn(v); if (!v && print.some((r) => r.slotId === primary)) setPrimary(""); }} />
@@ -87,19 +88,19 @@ function NeedChips({ label, isOn, onChange }: { label: string; isOn: boolean; on
   );
 }
 
-/** Under a needed format: the Primary toggle and a link that opens the note field. */
+/** Under a needed format: the Primary switch on the left, the note link on the right; the note field below when opened. */
 function RowExtras({ row, primary, onPrimary, noteOpen, onOpenNote }: { row: FormatRow; primary: string; onPrimary: (id: string) => void; noteOpen: boolean; onOpenNote: (id: string) => void }) {
   const isPrimary = primary === row.slotId;
   return (
-    <div className="mt-2.5 space-y-2.5">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
-        <button type="button" onClick={() => onPrimary(row.slotId)} aria-pressed={isPrimary}
-          className={cn("inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[13px] font-medium transition-colors", isPrimary ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:bg-subtle hover:text-foreground")}>
-          <Icon name="star" className="!text-[16px]" fill={isPrimary} />{isPrimary ? "Primary" : "Make primary"}
-        </button>
+    <div className="mt-3 space-y-2.5">
+      <div className="flex items-center justify-between gap-4">
+        <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] font-medium">
+          <Switch size="sm" checked={isPrimary} onCheckedChange={() => onPrimary(row.slotId)} aria-label={`Make ${row.name} the primary format`} className="data-checked:bg-brand" />
+          <span className={isPrimary ? "text-brand-foreground" : "text-muted-foreground"}>Primary</span>
+        </label>
         {!noteOpen && <button type="button" onClick={() => onOpenNote(row.slotId)} className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">+ Add note</button>}
       </div>
-      {noteOpen && <Input name={`notes_${row.slotId}`} defaultValue={row.notes} autoFocus={!row.notes} placeholder="Note for the designer (optional)" className="h-11 text-sm" />}
+      {noteOpen && <Input name={`notes_${row.slotId}`} defaultValue={row.notes} autoFocus={!row.notes} placeholder="Note for the designer (optional)" className="h-11 bg-card text-sm" />}
     </div>
   );
 }
