@@ -1,6 +1,6 @@
 # Notifications: email and Google Chat (no coding)
 
-In-app notifications and push always work. Email and Google Chat need two one-time setups; Slack is the same as Google Chat with a Slack webhook (Settings → Organisations).
+In-app notifications and push always work. Email and Google Chat need two one-time setups; Slack is the same as Google Chat with a Slack webhook (Settings → Organizations).
 
 ## A · Google Chat (10 minutes, per space)
 
@@ -8,7 +8,7 @@ In-app notifications and push always work. Email and Google Chat need two one-ti
 2. Click the space name at the top → **Apps & integrations** → **Webhooks** → **Add webhook**.
 3. Name: `Design & Concur`. Avatar URL (optional): `https://hsdesign.vercel.app/watermark-tile.png`. **Save**.
 4. Copy the webhook URL (starts with `https://chat.googleapis.com/v1/spaces/…`).
-5. In the app: **Settings → Notifications** → paste it under the organisation → tick **Google Chat notifications** → **Save** → **Send test message**. A message should appear in the space.
+5. In the app: **Settings → Notifications** → paste it under the organization → tick **Google Chat notifications** → **Save** → **Send test message**. A message should appear in the space.
 
 Repeat for the ACC space if it has its own. What gets posted: new events, assignments, uploads, decisions, comments, due reminders and access requests, with the people concerned @mentioned (full table in [setup.md](setup.md#what-goes-to-chat-and-who-gets-pinged)). Google Chat mentions work automatically from the Google sign-in; for Slack each person pastes their member ID on their Profile.
 
@@ -16,7 +16,7 @@ Repeat for the ACC space if it has its own. What gets posted: new events, assign
 
 Email is sent through Resend (free tier: 3,000 emails a month, plenty for a team this size).
 
-1. Create an account at https://resend.com with a shared organisation login, not a personal one.
+1. Create an account at https://resend.com with a shared organization login, not a personal one.
 2. **Domains → Add domain** → enter the domain the emails should come from. Pick one you are happy to see in people's inboxes; a sub-domain such as `notify.<domain>` keeps the main domain's mail untouched. Resend shows 3 DNS records (SPF, DKIM, MX). Whoever manages that domain's DNS adds them; Resend shows **Verified** when they propagate, usually within an hour.
    - Skipping this step means Resend will only deliver to the account owner's own address, which is fine for a first test.
 3. **API keys → Create API key** → name `vercel`, permission **Sending access** → copy the key (starts with `re_`).
@@ -28,7 +28,7 @@ Email is sent through Resend (free tier: 3,000 emails a month, plenty for a team
 
 ## How people control email
 
-Everyone chooses on their **Inbox** page: *as things happen* (default), *once a day* (a digest sent around 9 am New York time), or *never*. Core Admins can switch email off for a whole organisation in Settings → Notifications.
+Everyone chooses on their **Inbox** page: *as things happen* (default), *once a day* (a digest sent around 9 am New York time), or *never*. Core Admins can switch email off for a whole organization in Settings → Notifications.
 
 ## What runs on a schedule
 

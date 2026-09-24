@@ -75,7 +75,7 @@ function UserPanel({ user, orgs, isSelf, onClose }: { user: EditableUser | null;
               <Field label="Function" hint="Routes notifications. Designers and Core Admins can edit the format catalog.">
                 <ChoiceChips name="tag" multiple defaultValue={user.function_tags} options={TAGS} />
               </Field>
-              <Field label="Organisations" hint="Decides which events they can see.">
+              <Field label="Organizations" hint="Decides which events they can see.">
                 <ChoiceChips name="org" multiple defaultValue={user.orgIds} options={orgs.map((o) => ({ value: o.id, label: o.label }))} />
               </Field>
               <Field label="Chat mentions" hint="So Slack and Google Chat posts can ping them. Slack: their profile → ⋮ → Copy member ID. Google Chat fills itself in when they sign in.">

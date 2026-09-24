@@ -12,7 +12,7 @@ import { OrgMark } from "@/components/org-mark";
 import { setCurrentOrg } from "@/app/actions/org";
 import { signOut } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
-import type { Organisation } from "@/lib/types";
+import type { Organization } from "@/lib/types";
 
 const NAV = [
   { href: "/events", label: "Events", icon: "event" },
@@ -21,7 +21,7 @@ const NAV = [
 ];
 
 /** Desktop sidebar. Fixed to the viewport; collapses to a 64px icon rail (button at the bottom, the edge, or ⌘/Ctrl+B). */
-export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs: Organisation[]; user: { name: string; role: string; initials: string; avatar?: string | null }; slots: { used: number; max: number } }) {
+export function AppSidebar({ org, orgs, user, slots }: { org: Organization; orgs: Organization[]; user: { name: string; role: string; initials: string; avatar?: string | null }; slots: { used: number; max: number } }) {
   const pathname = usePathname();
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
@@ -29,7 +29,7 @@ export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className={cn("p-3", collapsed ? "flex-col items-center gap-2" : "flex-row items-center gap-1")}>
         <DropdownMenu>
-          <DropdownMenuTrigger title={collapsed ? `${org.name} · switch organisation` : undefined} className={cn("flex h-12 min-w-0 items-center gap-2.5 rounded-xl text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", collapsed ? "" : "flex-1", collapsed ? "justify-center hover:bg-sidebar-accent" : "border border-border bg-card pl-2 pr-2.5 hover:bg-muted")}>
+          <DropdownMenuTrigger title={collapsed ? `${org.name} · switch organization` : undefined} className={cn("flex h-12 min-w-0 items-center gap-2.5 rounded-xl text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", collapsed ? "" : "flex-1", collapsed ? "justify-center hover:bg-sidebar-accent" : "border border-border bg-card pl-2 pr-2.5 hover:bg-muted")}>
             <OrgMark org={org} size={32} />
             {!collapsed && <><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium leading-5">{org.name}</span><span className="block truncate text-xs text-muted-foreground">Design &amp; Concur</span></span><Icon name="unfold_more" className="shrink-0 text-muted-foreground" /></>}
           </DropdownMenuTrigger>
@@ -61,7 +61,7 @@ export function AppSidebar({ org, orgs, user, slots }: { org: Organisation; orgs
       </SidebarContent>
       <SidebarFooter className="gap-3 p-3">
         <div className="space-y-2 px-2 group-data-[collapsible=icon]:hidden">
-          <div className="flex items-center justify-between text-sm"><span className="flex items-center gap-1 text-muted-foreground">Event slots<InfoTip text="Both organisations draw from the same pool of active events." label="About event slots" /></span><span className="font-medium">{slots.used} / {slots.max}</span></div>
+          <div className="flex items-center justify-between text-sm"><span className="flex items-center gap-1 text-muted-foreground">Event slots<InfoTip text="Both organizations draw from the same pool of active events." label="About event slots" /></span><span className="font-medium">{slots.used} / {slots.max}</span></div>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted-strong"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (slots.used / slots.max) * 100)}%` }} /></div>
         </div>
         <DropdownMenu>

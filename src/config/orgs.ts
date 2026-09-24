@@ -1,4 +1,4 @@
-/** Display names for the two organisations. Slugs match the `organisations` table. */
+/** Display names for the two organizations. Slugs match the `organisations` table. */
 export const ORGS = {
   harisumiran: { slug: "harisumiran", name: "Harisumiran", short: "Harisumiran", letter: "H" },
   acc: { slug: "acc", name: "Atmiya Care Charities", short: "ACC", letter: "A" },

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { publicUrl } from "@/lib/storage";
 
-/** An organisation's logo, or a brand-coloured initial until one is uploaded (Settings → Organisations). */
+/** An organization's logo, or a brand-coloured initial until one is uploaded (Settings → Organizations). */
 export function OrgMark({ org, size = 32, className }: { org: { short_name: string; logo_path?: string | null }; size?: 24 | 32 | 40 | 48 | 64; className?: string }) {
   const url = publicUrl("branding", org.logo_path);
   const radius = size >= 48 ? "rounded-2xl" : size >= 32 ? "rounded-lg" : "rounded-md";

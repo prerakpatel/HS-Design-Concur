@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { BriefCard, ActivityFeed } from "@/components/events/event-detail";
 import { FormatGrid, type FormatCardData } from "@/components/events/format-grid";
+import { EventMenu } from "@/components/events/event-menu";
+import { deleteEvent } from "@/app/actions/events";
 import { orderSlots } from "@/lib/slot-order";
 import type { Brief, EventRow, Format, Slot } from "@/lib/types";
 
@@ -37,12 +39,13 @@ export default async function EventPage({ params, searchParams }: { params: Prom
     return { slotId: slot.id, name: f.name, size: formatSize(f, { w: slot.custom_w, h: slot.custom_h }), state: latest && !latest.sent_at ? "unsent" : slot.state, requested: slot.requested, version: latest?.number ?? null, versionId: latest?.id ?? null, uploadedByMe: latest?.uploaded_by === user.id, thumb, due: slot.due_on, assignee: slot.assignee ? { name: slot.assignee.name ?? slot.assignee.email, initials: initials(slot.assignee.name, slot.assignee.email), avatar: slot.assignee.avatar_url } : null, isPrimary: slot.is_primary, sort: f.sort, firstUploadAt: slot.versions?.length ? slot.versions.map((x) => x.created_at).sort()[0] : null };
   }))).filter((c): c is NonNullable<typeof c> => !!c).map((c) => ({ ...c, is_primary: c.isPrimary }))).map((c) => { const { sort, firstUploadAt, is_primary, ...rest } = c; void sort; void firstUploadAt; void is_primary; return rest as FormatCardData; });
   const requested = cards.filter((c) => c.requested); const approved = requested.filter((c) => c.state === "approved").length;
+  const canDelete = user.role === "core_admin" || event.created_by === user.id;
   const d = event.event_date ? format(new Date(event.event_date + "T00:00:00"), "EEE d MMM yyyy") : "Date not set";
   return (
     <>
       <PageHeader back={<BackLink href="/events" label="Events" />}
         title={event.title} subtitle={`${d} · ${event.venue ?? "Venue not set"}${creator ? ` · Created by ${creator.name ?? creator.email}` : ""}`}
-        actions={<>{event.status === "archived" ? <StateBadge state="requested" label="Archived · read-only" className="h-8 px-3 text-sm" /> : <>{event.status === "draft" && <StateBadge state="draft" className="h-8 px-3 text-sm" />}<Button asChild variant="secondary"><Link href={`/events/${id}/edit/${event.status === "draft" ? "review" : "basics"}`}>{event.status === "draft" ? "Continue setup" : "Edit event"}</Link></Button></>}<Button asChild variant={showActivity ? "secondary" : "outline"}><Link href={showActivity ? `/events/${id}` : `/events/${id}?activity=1`}><Icon name="history" className="!text-[18px]" />Activity{activity?.length ? ` · ${activity.length}` : ""}</Link></Button></>} />
+        actions={<>{event.status === "archived" ? <StateBadge state="requested" label="Archived · read-only" className="h-8 px-3 text-sm" /> : <>{event.status === "draft" && <StateBadge state="draft" className="h-8 px-3 text-sm" />}<Button asChild variant="secondary"><Link href={`/events/${id}/edit/${event.status === "draft" ? "review" : "basics"}`}>{event.status === "draft" ? "Continue setup" : "Edit event"}</Link></Button></>}<Button asChild variant={showActivity ? "secondary" : "outline"}><Link href={showActivity ? `/events/${id}` : `/events/${id}?activity=1`}><Icon name="history" className="!text-[18px]" />Activity{activity?.length ? ` · ${activity.length}` : ""}</Link></Button>{event.status !== "archived" && canDelete && <EventMenu title={event.title} isDraft={event.status === "draft"} remove={async () => { "use server"; await deleteEvent(id); }} />}</>} />
       <div className={showActivity ? "grid gap-10 lg:grid-cols-[1fr_280px]" : "grid gap-10"}>
         <div className="space-y-10">
           <BriefCard brief={{ date: event.event_date, timeText: brief?.time_text ?? null, inviteText: brief?.description ?? null, venueName: brief?.venue_name ?? event.venue ?? null, venueAddress: brief?.venue_address ?? null, notes: brief?.notes ?? null }} locked={!!event.brief_locked_at || event.status === "archived"} editHref={event.status === "archived" ? "#" : `/events/${id}/edit/brief`} />

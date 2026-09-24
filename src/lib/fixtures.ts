@@ -1,4 +1,4 @@
-import type { Organisation } from "@/lib/types";
+import type { Organization } from "@/lib/types";
 import type { EventListItem } from "@/components/events/event-list";
 import type { ActivityItem } from "@/components/events/event-detail";
 import type { FormatCardData } from "@/components/events/format-grid";
@@ -9,7 +9,7 @@ import type { FormatRow, AssignRow, Person } from "@/components/wizard/steps";
 import type { Format } from "@/lib/types";
 
 /** Static fixtures for the /preview design harness. Not used by the app. */
-export const ORGS: Organisation[] = [
+export const ORGS: Organization[] = [
   { id: "org-hs", slug: "harisumiran", name: "Harisumiran", short_name: "Harisumiran", accepting_signups: true, email_enabled: true, chat_enabled: false, chat_webhook_url: null, slack_enabled: false, slack_webhook_url: null, logo_path: null },
   { id: "org-acc", slug: "acc", name: "Atmiya Care Charities", short_name: "ACC", accepting_signups: true, email_enabled: true, chat_enabled: true, chat_webhook_url: null, slack_enabled: false, slack_webhook_url: null, logo_path: null },
 ];

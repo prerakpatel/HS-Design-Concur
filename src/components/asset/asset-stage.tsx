@@ -47,7 +47,6 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const [active, setActive] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [text, setText] = useState("");
-  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const ta = useRef<HTMLTextAreaElement>(null);
   const draftInput = useRef<HTMLTextAreaElement>(null);
@@ -56,7 +55,6 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const numbered = useMemo(() => { let n = 0; return new Map(comments.filter((c) => c.pin_x != null && c.pin_y != null).map((c) => [c.id, ++n])); }, [comments]);
   const pinsFor = (side: Side): Pin[] => comments.filter((c) => c.pin_x != null && c.pin_y != null && c.pin_side === side).map((c) => ({ id: c.id, n: numbered.get(c.id)!, x: c.pin_x!, y: c.pin_y! }));
   const openCount = comments.filter((c) => !c.addressed_at && !c.confirmed_at).length;
-  const suggestions = mentionQuery == null ? [] : members.filter((m) => m.name.toLowerCase().includes(mentionQuery) || m.handle.includes(mentionQuery)).slice(0, 5);
   useEffect(() => { if (draft) draftInput.current?.focus(); }, [draft]);
   useEffect(() => { if (active) document.getElementById(`comment-${active}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [active]);
 
@@ -73,8 +71,8 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
     if (!confirm(`Delete v${v.number}? Its files are removed for good.`)) return;
     try { await deleteVersion(v.id); toast.success(`Version ${v.number} deleted`); router.replace(`/events/${eventId}/slots/${slotId}`); router.refresh(); } catch (e) { toast.error((e as Error).message); }
   });
-  function onChange(v: string) { setText(v); const m = v.slice(0, ta.current?.selectionStart ?? v.length).match(/@([\w.-]*)$/); setMentionQuery(m ? m[1].toLowerCase() : null); }
-  function pick(m: Member) { const pos = ta.current?.selectionStart ?? text.length; setText(text.slice(0, pos).replace(/@([\w.-]*)$/, `@${m.name} `) + text.slice(pos)); setMentionQuery(null); ta.current?.focus(); }
+  const main = useMentions(members, text, setText, ta);
+  const bubble = useMentions(members, draftText, setDraftText, draftInput);
 
   const hasGuides = sides.some((s) => { const g = guideGeometry(safe, print, s.width, s.height); return g.cut || g.safe.top + g.safe.right + g.safe.bottom + g.safe.left > 0; });
   const current = versions.find((v) => v.id === currentVersionId) ?? null;
@@ -136,7 +134,8 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                     {draft?.side === s.side && <PinBubble n={numbered.size + 1} x={draft.x} y={draft.y} draft />}
                     {draft?.side === s.side && (
                       <div className={cn("absolute z-10 w-[min(340px,calc(100vw-2rem))] rounded-2xl bg-card p-2 shadow-xl ring-1 ring-border", draft.y > 0.7 ? "-translate-y-[calc(100%+26px)]" : "translate-y-[26px]")} style={{ left: `clamp(0px, ${draft.x * 100}% - 24px, calc(100% - min(340px, calc(100vw - 2rem))))`, top: `${draft.y * 100}%` }} onClick={(e) => e.stopPropagation()}>
-                        <Textarea ref={draftInput} rows={2} value={draftText} onChange={(e) => setDraftText(e.target.value)} placeholder="Describe the change" className="min-h-0 resize-none border-0 bg-transparent px-2 py-1.5 text-sm shadow-none focus-visible:ring-0"
+                        <Suggestions items={bubble.suggestions} onPick={bubble.pick} className={draft.y > 0.7 ? "left-0 right-0 top-full mt-1" : "bottom-full left-0 right-0 mb-1"} />
+                        <Textarea ref={draftInput} rows={2} value={draftText} onChange={(e) => bubble.onChange(e.target.value)} placeholder="Describe the change · @ to mention" className="min-h-0 resize-none border-0 bg-transparent px-2 py-1.5 text-sm shadow-none focus-visible:ring-0"
                           onKeyDown={(e) => { if (postKey(e) && draftText.trim() && !pending) { e.preventDefault(); post(draftText.trim(), draft); } if (e.key === "Escape") stop(); }} />
                         <div className="flex justify-end gap-1">
                           <Button type="button" variant="ghost" size="icon-sm" onClick={stop} aria-label="Cancel"><Icon name="close" className="!text-[18px]" /></Button>
@@ -211,13 +210,9 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           </ul>
           {canComment && versionId && (
             <div className="relative border-t border-border p-3">
-              {suggestions.length > 0 && (
-                <ul className="absolute bottom-full left-3 right-3 mb-1 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-                  {suggestions.map((m) => <li key={m.id}><button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted" onMouseDown={(e) => { e.preventDefault(); pick(m); }}><UserAvatar initials={m.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()} src={m.avatar} size={24} />{m.name}</button></li>)}
-                </ul>
-              )}
+              <Suggestions items={main.suggestions} onPick={main.pick} className="bottom-full left-3 right-3 mb-1" />
               <div className="flex items-end gap-2">
-                <Textarea ref={ta} rows={1} value={text} onChange={(e) => onChange(e.target.value)} placeholder="Write a comment… @ to mention" className="min-h-11 resize-none rounded-xl" onKeyDown={(e) => { if (postKey(e) && text.trim() && !pending) { e.preventDefault(); post(text, null); } }} />
+                <Textarea ref={ta} rows={1} value={text} onChange={(e) => main.onChange(e.target.value)} placeholder="Write a comment… @ to mention" className="min-h-11 resize-none rounded-xl" onKeyDown={(e) => { if (postKey(e) && text.trim() && !pending) { e.preventDefault(); post(text, null); } }} />
                 <Button size="icon" disabled={pending || !text.trim()} onClick={() => post(text, null)} aria-label="Post"><Icon name="arrow_upward" /></Button>
               </div>
             </div>
@@ -227,5 +222,23 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
       {/* Phones: the decision rides in a fixed bar */}
       {decisionBar && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur md:hidden [&>div]:justify-end">{decisionBar}</div>}
     </div>
+  );
+}
+
+/** @-mention autocomplete for a textarea: tracks the word at the caret, offers matches, and completes on pick. */
+function useMentions(members: Member[], value: string, setValue: (v: string) => void, ref: React.RefObject<HTMLTextAreaElement | null>) {
+  const [query, setQuery] = useState<string | null>(null);
+  const onChange = (v: string) => { setValue(v); const m = v.slice(0, ref.current?.selectionStart ?? v.length).match(/@([\w.-]*)$/); setQuery(m ? m[1].toLowerCase() : null); };
+  const pick = (m: Member) => { const pos = ref.current?.selectionStart ?? value.length; setValue(value.slice(0, pos).replace(/@([\w.-]*)$/, `@${m.name} `) + value.slice(pos)); setQuery(null); ref.current?.focus(); };
+  const suggestions = query == null ? [] : members.filter((m) => m.name.toLowerCase().includes(query) || m.handle.includes(query)).slice(0, 5);
+  return { onChange, pick, suggestions };
+}
+
+function Suggestions({ items, onPick, className }: { items: Member[]; onPick: (m: Member) => void; className: string }) {
+  if (items.length === 0) return null;
+  return (
+    <ul className={cn("absolute z-20 overflow-hidden rounded-xl border border-border bg-card shadow-lg", className)}>
+      {items.map((m) => <li key={m.id}><button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted" onMouseDown={(e) => { e.preventDefault(); onPick(m); }}><UserAvatar initials={m.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()} src={m.avatar} size={24} />{m.name}</button></li>)}
+    </ul>
   );
 }

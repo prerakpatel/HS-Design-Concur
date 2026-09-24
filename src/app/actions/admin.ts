@@ -21,7 +21,7 @@ export async function decideAccess(userId: string, formData: FormData) {
   const { supabase, user } = await requireCoreAdmin();
   const approve = formData.get("decision") === "approve";
   const orgIds = formData.getAll("org").map(String);
-  if (approve && orgIds.length === 0) throw new Error("Pick at least one organisation");
+  if (approve && orgIds.length === 0) throw new Error("Pick at least one organization");
   await supabase.from("users").update({ status: approve ? "active" : "removed" }).eq("id", userId);
   await supabase.from("access_requests").update({ decided_by: user.id, decided_at: new Date().toISOString(), decision: approve ? "approved" : "denied" }).eq("user_id", userId).is("decided_at", null);
   if (approve) {

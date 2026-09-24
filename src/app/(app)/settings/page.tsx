@@ -12,7 +12,7 @@ import { FormatsList } from "@/components/settings/format-editor";
 import { OrgMark } from "@/components/org-mark";
 import { TestButton } from "@/components/settings/test-button";
 import { emailConfigured } from "@/lib/email";
-import type { AppUser, Format, Organisation } from "@/lib/types";
+import type { AppUser, Format, Organization } from "@/lib/types";
 
 export const metadata = { title: "Settings" };
 
@@ -26,7 +26,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const [{ data: users }, { data: memberships }, { data: orgs }, { data: formats }, { data: requests }] = await Promise.all([
     supabase.from("users").select("*").order("name").returns<AppUser[]>(),
     supabase.from("org_memberships").select("user_id,org_id"),
-    supabase.from("organisations").select("*").order("name").returns<Organisation[]>(),
+    supabase.from("organisations").select("*").order("name").returns<Organization[]>(),
     supabase.from("formats").select("*").order("sort").returns<Format[]>(),
     supabase.from("access_requests").select("user_id,requested_at").is("decided_at", null),
   ]);
@@ -36,7 +36,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const pending = (users ?? []).filter((u) => u.status === "pending");
   const active = (users ?? []).filter((u) => u.status === "active");
   const orgOptions = (orgs ?? []).map((o) => ({ id: o.id, label: o.short_name }));
-  const tabs: [string, string][] = isAdmin ? [["users", "Users"], ["requests", pending.length ? `Requests · ${pending.length}` : "Requests"], ["formats", "Formats"], ["orgs", "Organisations"]] : [["formats", "Formats"]];
+  const tabs: [string, string][] = isAdmin ? [["users", "Users"], ["requests", pending.length ? `Requests · ${pending.length}` : "Requests"], ["formats", "Formats"], ["orgs", "Organizations"]] : [["formats", "Formats"]];
   return (
     <>
       <PageHeader title="Settings" subtitle={isAdmin ? "People, access, the format catalog and notifications" : "Format catalog · Designers can edit"} />

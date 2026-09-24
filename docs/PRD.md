@@ -43,10 +43,10 @@ next action, nothing configurable that doesn't need to be.
 
 ---
 
-## 4. People, roles and organisations
+## 4. People, roles and organizations
 
-### 4.1 Organisations
-Two seeded organisations: **Harisumiran** (the temple) and **Atmiya Care Charities**, shown as
+### 4.1 Organizations
+Two seeded organizations: **Harisumiran** (the temple) and **Atmiya Care Charities**, shown as
 **ACC** where space is tight (the non-profit wing). An event belongs to exactly one org. **Each org is a separate view**
 with a switcher in the sidebar for users who belong to both. There is no unified feed.
 
@@ -65,8 +65,8 @@ with a switcher in the sidebar for users who belong to both. There is no unified
 | **Core Admin** | Approve/deny access, remove users, assign org membership, grant/revoke Approver, promote/demote Core Admins, delete any event, edit org notification settings. Implicitly an Approver. |
 
 There is **no Sub-admin role**. Its only purpose was deleting accidental events, which is
-covered by: *the creator of an event may delete it themselves as long as no version on that
-event has been sent for review.* After that, only a Core Admin can delete.
+covered by: *the creator of an event may delete it themselves at any time; Core Admins may delete
+any event.* Either way it is a soft delete that a Core Admin can undo from Archive for 7 days.
 
 ### 4.4 Capabilities and function tags
 - **Approver** (toggle, granted by a Core Admin): may approve, request changes on, and reopen
@@ -87,7 +87,7 @@ event has been sent for review.* After that, only a Core Admin can delete.
 ## 5. Domain model
 
 ```
-Organisation
+Organization
 └── Event  (draft | active | archived; soft-deleted with 7-day restore)
     ├── title, org, event date, venue, created_by
     ├── Brief  (description, timing lines[], venue, notes)   — locks at first upload
@@ -209,7 +209,7 @@ All versions are kept until the event purge; with files this small no pruning is
 | **Cap reached** | Creating (or publishing a draft as) the 11th event is **blocked** with a message naming the oldest event and its date. |
 | **Auto-archive + purge** | Nightly: for events whose date is **≥ 7 days** past: the **primary** format (or, if none was marked, the first approved format) keeps one `reference` image per side from its approved version; every other file, in every other format, is deleted. Text (brief, comments, decisions, activity) is kept. The event becomes **archived** (read-only) in the same pass, which frees its event slot. *(v1.1: the separate 6-month archive rule was folded into this one; it was redundant once archiving happens at purge time.)* |
 | **Archive view** | Read-only list of archived events with reference image, brief, decision history and comments. |
-| **Delete event** | Soft delete; Core Admins can restore for 7 days; files purged after. Creator may delete their own event only if no version has ever been sent for review. |
+| **Delete event** | Soft delete from the event page ⋮ or the wizard; Core Admins can restore for 7 days from Archive; files purged after. Core Admins may delete any event, everyone else only events they created. A deleted event does not count toward the 10-event cap. |
 | **Draft sweep** | Drafts untouched for 30 days are deleted; the creator is notified (in-app + email) at day 23 and again when it goes. Editing the draft resets the clock. |
 | **Device reminder** | Every 1 November, Designers and Core Admins get a reminder to refresh the phone preview presets (§9.5). |
 
@@ -274,7 +274,7 @@ to `config/devices.ts` and the one-line update command.
 |---|---|---|
 | In-app inbox | always on | bell with unread count |
 | Email | per user | user can switch to a daily digest or off; **Core Admins can turn email off org-wide** in Settings |
-| Google Chat | per org | incoming-webhook URL in Settings › Organisations; **Core Admins can turn it off**; every post @mentions the people it concerns (Google account = Chat identity, linked at sign-in) |
+| Google Chat | per org | incoming-webhook URL in Settings › Organizations; **Core Admins can turn it off**; every post @mentions the people it concerns (Google account = Chat identity, linked at sign-in) |
 | Slack | per org | same posts via a Slack incoming webhook; people add their Slack member ID on their Profile to be @mentioned, otherwise they are named in bold |
 
 Events that notify: access requested (Core Admins; never chat); access approved (never chat); event published

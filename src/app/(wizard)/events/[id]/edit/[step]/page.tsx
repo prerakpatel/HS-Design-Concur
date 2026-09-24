@@ -46,7 +46,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
     const byFormat = new Map((slots ?? []).map((sl) => [sl.format_id, sl]));
     const rows = (formats ?? []).flatMap((f) => { const sl = byFormat.get(f.id); return sl ? [{ slotId: sl.id, name: f.name, size: formatSize(f, { w: sl.custom_w, h: sl.custom_h }), kind: f.class, requested: sl.requested, isPrimary: sl.is_primary, notes: sl.notes ?? "", customSize: f.allow_custom_size, w: sl.custom_w, h: sl.custom_h }] : []; });
     return (
-      <WizardShell eventId={id} step={s} statuses={statuses} title="Which formats does this event need?" subtitle="Mark the rest N/A. You can change this any time from the event page." wide>
+      <WizardShell eventId={id} step={s} statuses={statuses} title="Which formats does this event need?" subtitle="All formats start off. Turn on the ones you need; you can change this any time from the event page." wide>
         <FormatsForm eventId={id} rows={rows} action={saveFormats.bind(null, id)} />
       </WizardShell>
     );

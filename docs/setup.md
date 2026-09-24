@@ -49,7 +49,7 @@ tool or the Supabase CLI. Never edit an applied migration.
 
 ## Branding
 
-Settings → Organisations lets a Core Admin upload each organisation's logo (PNG or SVG, square works best,
+Settings → Organizations lets a Core Admin upload each organization's logo (PNG or SVG, square works best,
 under 1 MB). It replaces the coloured initial in the sidebar, the phone Profile tab, the org switcher and the
 sign-in page. Logos live in the public `branding` bucket; the sign-in page reads names and logos through the
 `org_branding` view, which exposes only those columns. The sign-in illustration is `public/brand/design-concur-hero.webp`.
@@ -93,7 +93,7 @@ The service worker is `public/sw.js`.
 
 ## Slack
 
-Per org, Settings → Organisations: turn on Slack notifications and paste an incoming-webhook URL
+Per org, Settings → Organizations: turn on Slack notifications and paste an incoming-webhook URL
 (Slack app → Incoming Webhooks → Add New Webhook to Workspace → pick the channel). "Test Slack" posts a hello.
 
 ## What goes to chat, and who gets pinged

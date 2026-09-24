@@ -4,7 +4,7 @@ Use these terms exactly. Avoid the synonyms listed.
 
 | Term | Meaning | Not |
 |---|---|---|
-| **Organisation (org)** | Harisumiran (the temple) or Atmiya Care Charities, ACC (the non-profit wing). Every event belongs to one. Each org is a separate view. | tenant, workspace, team |
+| **Organization (org)** | Harisumiran (the temple) or Atmiya Care Charities, ACC (the non-profit wing). Every event belongs to one. Each org is a separate view. | tenant, workspace, team |
 | **Event** | A festival or programme that needs assets. Has one date, one brief, many format slots. | project, campaign |
 | **Brief** | The event-level content: description, timing lines, venue, notes. Written once, locked at first upload. | content, copy |
 | **Brief** | What goes on the designs: date, timings (one free-text block, as written on the design), invite text, venue name and address. | copy, content |

@@ -5,7 +5,7 @@ import { Icon } from "@/components/material-icon";
 import { Button } from "@/components/ui/button";
 import { setCurrentOrg } from "@/app/actions/org";
 import { signOut } from "@/app/actions/auth";
-import type { Organisation } from "@/lib/types";
+import type { Organization } from "@/lib/types";
 import { RoleChips } from "@/components/role-chips";
 import { ChatHandles } from "@/components/chat-handles";
 
@@ -13,11 +13,11 @@ import { ChatHandles } from "@/components/chat-handles";
 export interface ProfileUser { name: string; email: string; roles: string[]; initials: string; avatar?: string | null; slackId: string | null; gchatLinked: boolean }
 
 /**
- * The "you" screen: who you are, which organisation you are working in, and the doors to Settings, notifications
+ * The "you" screen: who you are, which organization you are working in, and the doors to Settings, notifications
  * and sign-out. On phones this is the fourth tab and replaces the old top bar; on desktop the sidebar covers the
  * same ground, so the page is just a plain fallback.
  */
-export function ProfileView({ user, orgs, currentOrgId }: { user: ProfileUser; orgs: Organisation[]; currentOrgId: string }) {
+export function ProfileView({ user, orgs, currentOrgId }: { user: ProfileUser; orgs: Organization[]; currentOrgId: string }) {
   const currentOrg = orgs.find((o) => o.id === currentOrgId);
   const row = "flex h-14 items-center gap-4 px-4 text-sm";
   return (
@@ -40,7 +40,7 @@ export function ProfileView({ user, orgs, currentOrgId }: { user: ProfileUser; o
             </li>
           ))}
         </ul>
-        {orgs.length > 1 && <p className="mt-2 px-1 text-xs text-muted-foreground">Events, formats and people are per organisation. Switch here to see the other one.</p>}
+        {orgs.length > 1 && <p className="mt-2 px-1 text-xs text-muted-foreground">Events, formats and people are per organization. Switch here to see the other one.</p>}
       </section>
 
       <ChatHandles slackId={user.slackId} gchatLinked={user.gchatLinked} orgName={currentOrg?.short_name ?? "the team"} />

@@ -13,7 +13,7 @@ export function AccessRequests({ pending, orgs, defaultOrgId, action }: { pendin
         <li key={u.id}>
           <form action={action.bind(null, u.id)} className="rounded-2xl border border-border p-5 md:p-6">
             <div className="flex items-center gap-4"><UserAvatar initials={u.initials} src={u.avatar} size={40} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{u.name}</p><p className="text-sm text-muted-foreground"><span className="break-all">{u.email}</span> · asked {relativeTime(u.requested_at)}</p></div></div>
-            <div className="mt-5"><p className="text-sm font-medium">Which organisations?</p><div className="mt-2"><ChoiceChips name="org" multiple size="sm" defaultValue={defaultOrgId ? [defaultOrgId] : []} options={orgs.map((o) => ({ value: o.id, label: o.label }))} /></div></div>
+            <div className="mt-5"><p className="text-sm font-medium">Which organizations?</p><div className="mt-2"><ChoiceChips name="org" multiple size="sm" defaultValue={defaultOrgId ? [defaultOrgId] : []} options={orgs.map((o) => ({ value: o.id, label: o.label }))} /></div></div>
             <div className="mt-5 flex justify-end gap-2"><Button type="submit" name="decision" value="deny" variant="ghost">Deny</Button><Button type="submit" name="decision" value="approve">Approve</Button></div>
           </form>
         </li>

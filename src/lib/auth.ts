@@ -2,14 +2,14 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { AppUser, Organisation } from "@/lib/types";
+import type { AppUser, Organization } from "@/lib/types";
 import { DEFAULT_ORG } from "@/config/orgs";
 
 export const ORG_COOKIE = "dc.org";
 
 /**
  * Session for the current request. The token is verified locally (getClaims, cached signing keys), then the
- * user row, memberships and organisations load in parallel: one round of latency instead of four.
+ * user row, memberships and organizations load in parallel: one round of latency instead of four.
  */
 export const getSession = cache(async () => {
   const supabase = await createClient();
@@ -19,7 +19,7 @@ export const getSession = cache(async () => {
   const [{ data: user }, { data: memberships }, { data: orgs }] = await Promise.all([
     supabase.from("users").select("*").eq("id", uid).single<AppUser>(),
     supabase.from("org_memberships").select("org_id").eq("user_id", uid),
-    supabase.from("organisations").select("*").order("name").returns<Organisation[]>(),
+    supabase.from("organisations").select("*").order("name").returns<Organization[]>(),
   ]);
   if (!user) return null;
   const memberOrgIds = new Set((memberships ?? []).map((m) => m.org_id));
@@ -27,7 +27,7 @@ export const getSession = cache(async () => {
   return { supabase, user, orgs: myOrgs };
 });
 
-export type ActiveContext = NonNullable<Awaited<ReturnType<typeof getSession>>> & { org: Organisation };
+export type ActiveContext = NonNullable<Awaited<ReturnType<typeof getSession>>> & { org: Organization };
 
 /** Active user with at least one org, or null. Route handlers use this and answer 401 themselves. */
 export async function getActiveUser(): Promise<ActiveContext | null> {

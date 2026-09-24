@@ -1,8 +1,8 @@
 import type { Format } from "@/lib/types";
 
 export function formatSize(f: Pick<Format, "width" | "height" | "unit" | "allow_custom_size">, custom?: { w: number | null; h: number | null }) {
-  if (f.allow_custom_size) return custom?.w && custom?.h ? `${custom.w} × ${custom.h} px` : "custom size";
-  if (f.width == null || f.height == null) return "";
+  if (f.allow_custom_size && custom?.w && custom?.h) return `${custom.w} × ${custom.h} px`;
+  if (f.width == null || f.height == null) return f.allow_custom_size ? "custom size" : "";
   return f.unit === "in" ? `${f.width} × ${f.height} in` : `${f.width} × ${f.height}`;
 }
 

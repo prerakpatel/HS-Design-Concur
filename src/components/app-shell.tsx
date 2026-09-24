@@ -3,9 +3,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { MainFrame } from "@/components/main-frame";
-import type { Organisation } from "@/lib/types";
+import type { Organization } from "@/lib/types";
 
-export interface ShellProps { org: Organisation; orgs: Organisation[]; user: { name: string; role: string; initials: string; avatar?: string | null }; slots: { used: number; max: number }; sidebarOpen?: boolean }
+export interface ShellProps { org: Organization; orgs: Organization[]; user: { name: string; role: string; initials: string; avatar?: string | null }; slots: { used: number; max: number }; sidebarOpen?: boolean }
 
 /** Desktop: fixed 256px sidebar (collapses to a 64px rail, remembered in a cookie) + content column. Mobile: bottom tab bar with a Profile tab for org switching and account (PRD §12.3). */
 export function AppShell({ org, orgs, user, slots, sidebarOpen = true, children, wide }: ShellProps & { children: React.ReactNode; wide?: boolean }) {

@@ -89,3 +89,11 @@ line everywhere; ⌘/Ctrl + Enter posts, as does the check / arrow button. Tappi
 edge; print formats add a dashed pink cut (trim) line with crop ticks outside the corners. Insets
 come from the catalog (PRD §9.1). The DRAFT watermark is a single giant outlined word across the
 diagonal at 22 % opacity.
+
+## Formats step
+
+A new event starts with every format off; the step is about turning on what this event needs. Digital
+formats are one row each with an On / Off chip, notes and the Primary radio. Print is a single dropdown
+(an event normally has one print piece, at one size) with a quiet "+ Add a print item" link for the rare
+second piece. LED backwall defaults to 3584 × 1536 and can be overridden per event. The asset page header
+shows the format's size next to its name (TV 1920 × 1080) so nobody has to look it up.
