@@ -10,6 +10,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { InfoTip } from "@/components/info-tip";
 import { OrgMark } from "@/components/org-mark";
 import { setCurrentOrg } from "@/app/actions/org";
+import { WhatsNewButton } from "@/components/whats-new";
 import { signOut } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
 import type { Organization } from "@/lib/types";
@@ -21,7 +22,7 @@ const NAV = [
 ];
 
 /** Desktop sidebar. Fixed to the viewport; collapses to a 64px icon rail (button at the bottom, the edge, or ⌘/Ctrl+B). */
-export function AppSidebar({ org, orgs, user, slots }: { org: Organization; orgs: Organization[]; user: { name: string; role: string; initials: string; avatar?: string | null }; slots: { used: number; max: number } }) {
+export function AppSidebar({ org, orgs, user, slots, whatsNewUnseen }: { org: Organization; orgs: Organization[]; user: { name: string; role: string; initials: string; avatar?: string | null }; slots: { used: number; max: number }; whatsNewUnseen: boolean }) {
   const pathname = usePathname();
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
@@ -60,6 +61,7 @@ export function AppSidebar({ org, orgs, user, slots }: { org: Organization; orgs
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="gap-3 p-3">
+        <div className={cn("flex", collapsed && "justify-center")}><WhatsNewButton unseen={whatsNewUnseen} collapsed={collapsed} /></div>
         <div className="space-y-2 px-2 group-data-[collapsible=icon]:hidden">
           <div className="flex items-center justify-between text-sm"><span className="flex items-center gap-1 text-muted-foreground">Event slots<InfoTip text="Both organizations draw from the same pool of active events." label="About event slots" /></span><span className="font-medium">{slots.used} / {slots.max}</span></div>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted-strong"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (slots.used / slots.max) * 100)}%` }} /></div>

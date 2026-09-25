@@ -5,6 +5,8 @@ import { notificationText, notificationHref } from "@/lib/labels";
 import { notify, subjectFor, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
 import { refreshStalePreviews } from "@/lib/uploads/refresh-preview";
+import { postRelease } from "@/lib/changelog";
+import { RELEASES } from "@/config/changelog";
 import { getActiveUser } from "@/lib/auth";
 
 export const maxDuration = 60;
@@ -79,6 +81,12 @@ export async function GET(req: Request) {
       if ("ok" in r) await db.from("notifications").update({ emailed_at: new Date().toISOString() }).eq("id", n.id);
     }
   }
+  // 3b. Release notes not yet announced in chat (a Core Admin may also share them from the dialog).
+  const { data: sharedRows } = await db.from("changelog_posts").select("release_id");
+  const shared = new Set((sharedRows ?? []).map((r) => r.release_id as string));
+  report.releasesPosted = 0;
+  for (const r of RELEASES.filter((x) => !shared.has(x.id)).reverse()) { const out = await postRelease(db, r.id); if (out.posted) report.releasesPosted = (report.releasesPosted as number) + 1; }
+
   // 4. Old watermark previews
   report.previews = await refreshStalePreviews(db, 20);
   return NextResponse.json({ ok: true, today, ...report });

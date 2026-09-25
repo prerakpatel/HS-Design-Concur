@@ -8,9 +8,10 @@ import { signOut } from "@/app/actions/auth";
 import type { Organization } from "@/lib/types";
 import { RoleChips } from "@/components/role-chips";
 import { ChatHandles } from "@/components/chat-handles";
+import { WhatsNewButton } from "@/components/whats-new";
 
 // icons: account_circle chevron_right check settings notifications logout
-export interface ProfileUser { name: string; email: string; roles: string[]; initials: string; avatar?: string | null; slackId: string | null; gchatLinked: boolean }
+export interface ProfileUser { name: string; email: string; roles: string[]; initials: string; avatar?: string | null; slackId: string | null; gchatLinked: boolean; whatsNewUnseen?: boolean }
 
 /**
  * The "you" screen: who you are, which organization you are working in, and the doors to Settings, notifications
@@ -49,6 +50,7 @@ export function ProfileView({ user, orgs, currentOrgId }: { user: ProfileUser; o
         <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
           <li><Link href="/settings" className={row + " hover:bg-subtle"}><Icon name="settings" /><span className="flex-1 font-medium">Settings</span><Icon name="chevron_right" className="text-muted-foreground" /></Link></li>
           <li><Link href="/inbox" className={row + " hover:bg-subtle"}><Icon name="notifications" /><span className="flex-1 font-medium">Notifications</span><Icon name="chevron_right" className="text-muted-foreground" /></Link></li>
+          <li><WhatsNewButton variant="row" unseen={!!user.whatsNewUnseen} /></li>
         </ul>
       </section>
 

@@ -18,6 +18,8 @@ the `Icon` component (`src/components/material-icon.tsx`).
 - `"use server"` modules export async functions only; constants live in `src/config/*`.
 - Schema changes are new files under `supabase/migrations/`; the applied history is in Supabase.
 - Before pushing: `npm run lint`, `npx tsc --noEmit`, `npm run build`.
+- After roughly four shipped features, add a release to `src/config/changelog.ts` (date id, title, plain bullets);
+  that alone drives the "What's new" dialog, the sidebar sparkle and the chat announcement.
 
 ## Agent skills
 

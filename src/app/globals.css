@@ -179,3 +179,10 @@
 .msr[data-fill="1"] { font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 20; }
 .msr[data-size="24"] { font-size: 24px; font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24; }
 .msr[data-size="24"][data-fill="1"] { font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24; }
+
+/* "What's new" sparkle: a light sweep until the release has been read. */
+@keyframes shimmer-sweep { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.shimmer { animation: shimmer-glow 2.4s ease-in-out infinite; }
+@keyframes shimmer-glow { 0%, 100% { opacity: 1; filter: drop-shadow(0 0 0 transparent); } 50% { opacity: 0.75; filter: drop-shadow(0 0 6px color-mix(in oklch, var(--brand) 60%, transparent)); } }
+.shimmer-text { background: linear-gradient(90deg, var(--foreground) 0%, var(--foreground) 40%, var(--brand) 50%, var(--foreground) 60%, var(--foreground) 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer-sweep 2.8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .shimmer, .shimmer-text { animation: none; } .shimmer-text { color: inherit; background: none; } }

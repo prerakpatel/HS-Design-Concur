@@ -1,6 +1,7 @@
 import { requireActiveUser, initials } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { ProfileView } from "@/components/profile-view";
+import { LATEST_RELEASE } from "@/config/changelog";
 
 export const metadata = { title: "Profile" };
 
@@ -12,7 +13,7 @@ export default async function ProfilePage() {
   return (
     <>
       <PageHeader title="Profile" />
-      <ProfileView user={{ name: user.name ?? user.email, email: user.email, roles, initials: initials(user.name, user.email), avatar: user.avatar_url, slackId: user.slack_user_id, gchatLinked: !!user.gchat_user_id }} orgs={orgs} currentOrgId={org.id} />
+      <ProfileView user={{ name: user.name ?? user.email, email: user.email, roles, initials: initials(user.name, user.email), avatar: user.avatar_url, slackId: user.slack_user_id, gchatLinked: !!user.gchat_user_id, whatsNewUnseen: user.changelog_seen !== LATEST_RELEASE.id }} orgs={orgs} currentOrgId={org.id} />
     </>
   );
 }

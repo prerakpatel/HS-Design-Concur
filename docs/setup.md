@@ -134,3 +134,11 @@ named in bold in Google Chat, and vice versa. Routing lives in `src/lib/notify.t
 - Review: comments with @mentions and pins, addressed/confirm flags, Request changes, Approve and notify / download, Reopen. All approve/reopen actions pass an "Are you sure?" dialog.
 - Settings: approve or deny access requests with org membership, edit role / Approver / tags / orgs, remove users, per-org notification switches and Google Chat / Slack webhook URLs. Formats tab: Designers and Core Admins add, edit, reorder and deactivate catalog formats; a new format joins every open event as N/A.
 - Inbox: in-app notifications with mark-all-read; push, Google Chat and Slack fan-out with @mentions.
+
+## Release notes ("What's new")
+
+Releases live in `src/config/changelog.ts`, newest first: a date id, a title and plain bullets. Shipping a new
+entry does three things: the sidebar / Profile sparkle shimmers for everyone who has not read it, the dialog
+opens by itself the next time each person arrives (once, remembered in `users.changelog_seen`), and the daily
+job posts the bullets to every org chat (`changelog_posts` stops repeats). A Core Admin can post sooner with
+"Share in chat" inside the dialog. Convention: add a release after roughly four shipped features.
