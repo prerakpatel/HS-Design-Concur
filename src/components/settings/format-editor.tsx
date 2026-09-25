@@ -91,9 +91,12 @@ function FormatPanel({ format, onClose }: { format: Format | "new" | null; onClo
               {cls === "print" ? (
                 <div className="grid grid-cols-3 gap-2">
                   <div className="space-y-2"><Label htmlFor="f-dpi">DPI</Label><Input id="f-dpi" name="dpi" type="number" defaultValue={f?.dpi ?? 300} /></div>
-                  <div className="space-y-2"><Label htmlFor="f-bleed">Bleed, in</Label><Input id="f-bleed" name="bleed_in" type="number" step="0.01" defaultValue={f?.bleed_in ?? 0.25} /></div>
-                  <div className="space-y-2"><Label htmlFor="f-safe">Safe, in</Label><Input id="f-safe" name="safe_margin_in" type="number" step="0.01" defaultValue={f?.safe_margin_in ?? 0.25} /></div>
+                  <div className="space-y-2"><Label htmlFor="f-bleed">Bleed, in</Label><Input id="f-bleed" name="bleed_in" type="number" step="any" min="0" defaultValue={f?.bleed_in ?? 0.125} /></div>
+                  <div className="space-y-2"><Label htmlFor="f-safe">Safe, in</Label><Input id="f-safe" name="safe_margin_in" type="number" step="any" min="0" defaultValue={f?.safe_margin_in ?? 0.25} /></div>
                 </div>
+              ) : null}
+              {cls === "print" ? (
+                <p className="text-sm text-muted-foreground">Bleed and safe margin are per format, so each print piece can have its own. Width and height are the file size including bleed on every side; the guides show trim (bleed in from the edge) and the safe area (safe margin in from trim).</p>
               ) : (
                 <div className="space-y-2">
                   <Label>Safe area, px from each edge</Label>
