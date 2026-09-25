@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 // icons: add_comment grid_on zoom_out_map check close arrow_upward more_vert upload sync flip delete replay edit chat_bubble
 export type Side = "front" | "back";
 export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number }
-export interface CommentView { id: string; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
+export interface CommentView { id: string; version: number; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
 export interface Member { id: string; name: string; handle: string; avatar?: string | null }
 export interface VersionChip { id: string; number: number; decision: string; canManage: boolean; hasBack: boolean }
 export interface StatusView { state: BadgeState; version: number | null; uploader: string | null; uploadedAt: string | null }
@@ -52,9 +52,15 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const draftInput = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
-  const numbered = useMemo(() => { let n = 0; return new Map(comments.filter((c) => c.pin_x != null && c.pin_y != null).map((c) => [c.id, ++n])); }, [comments]);
-  const pinsFor = (side: Side): Pin[] => comments.filter((c) => c.pin_x != null && c.pin_y != null && c.pin_side === side).map((c) => ({ id: c.id, n: numbered.get(c.id)!, x: c.pin_x!, y: c.pin_y! }));
-  const openCount = comments.filter((c) => !c.addressed_at && !c.confirmed_at).length;
+  // Resolved comments stay: hidden by default, one tap away. Pins are drawn for the version on screen only.
+  const [showResolved, setShowResolved] = useState(false);
+  const isDone = (c: CommentView) => !!c.addressed_at || !!c.confirmed_at;
+  const currentNumber = versions.find((v) => v.id === currentVersionId)?.number ?? null;
+  const shown = useMemo(() => comments.filter((c) => showResolved || !isDone(c)), [comments, showResolved]);
+  const numbered = useMemo(() => { let n = 0; return new Map(shown.filter((c) => c.version === currentNumber && c.pin_x != null && c.pin_y != null).map((c) => [c.id, ++n])); }, [shown, currentNumber]);
+  const pinsFor = (side: Side): Pin[] => shown.filter((c) => numbered.has(c.id) && c.pin_side === side).map((c) => ({ id: c.id, n: numbered.get(c.id)!, x: c.pin_x!, y: c.pin_y! }));
+  const openCount = comments.filter((c) => !isDone(c)).length;
+  const resolvedCount = comments.length - openCount;
   useEffect(() => { if (draft) draftInput.current?.focus(); }, [draft]);
   useEffect(() => { if (active) document.getElementById(`comment-${active}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [active]);
 
@@ -166,13 +172,24 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
         </div>
 
         <div className="flex max-h-[min(78dvh,880px)] flex-col rounded-2xl border border-border">
-          <p className="flex items-baseline justify-between border-b border-border px-4 py-3 text-sm font-medium">Comments <span className="text-muted-foreground">· {comments.length}</span>{openCount > 0 && <span className="ml-auto text-xs font-normal text-muted-foreground">{openCount} open</span>}</p>
+          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 text-sm">
+            <p className="font-medium">Comments{openCount > 0 && <span className="font-normal text-muted-foreground"> · {openCount} open</span>}</p>
+            {resolvedCount > 0 && <button type="button" onClick={() => setShowResolved((v) => !v)} aria-pressed={showResolved} className="text-[13px] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{showResolved ? "Hide resolved" : `Show ${resolvedCount} resolved`}</button>}
+          </div>
           <ul className="flex-1 overflow-y-auto px-2 py-2">
             {comments.length === 0 && <li className="px-2 py-3 text-sm text-muted-foreground">No comments yet. Use Comment to pin one on the design, or write below.</li>}
-            {comments.map((c) => {
-              const done = !!c.addressed_at || !!c.confirmed_at; const n = numbered.get(c.id);
+            {comments.length > 0 && shown.length === 0 && <li className="px-2 py-3 text-sm text-muted-foreground">Everything here is resolved. <button type="button" onClick={() => setShowResolved(true)} className="font-medium text-foreground underline-offset-4 hover:underline">Show the {resolvedCount} resolved comment{resolvedCount === 1 ? "" : "s"}</button> to read the discussion.</li>}
+            {shown.map((c, i) => {
+              const done = isDone(c); const n = numbered.get(c.id);
+              const newVersion = i === 0 || shown[i - 1].version !== c.version;
               return (
-                <li key={c.id} id={`comment-${c.id}`} onClick={() => n && setActive(c.id)} className={cn("group/c flex gap-3 rounded-xl px-2 py-2.5 transition-colors", active === c.id && "bg-subtle", done && "opacity-70")}>
+                <Fragment key={c.id}>
+                {newVersion && versions.length > 1 && (
+                  <li className={cn("flex items-center gap-3 px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground", i > 0 && "mt-3")} aria-label={`Comments on version ${c.version}`}>
+                    <span className="h-px flex-1 bg-border" /><span>v{c.version}{c.version === currentNumber ? " · this version" : ""}</span><span className="h-px flex-1 bg-border" />
+                  </li>
+                )}
+                <li id={`comment-${c.id}`} onClick={() => n && setActive(c.id)} className={cn("group/c flex gap-3 rounded-xl px-2 py-2.5 transition-colors", active === c.id && "bg-subtle", done && "opacity-60")}>
                   <UserAvatar initials={c.author.initials} src={c.author.avatar} size={32} className="mt-0.5 shrink-0" />
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-start gap-2">
@@ -200,11 +217,12 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                         <Textarea rows={3} value={editing.text} onChange={(e) => setEditing({ id: c.id, text: e.target.value })} className="rounded-xl" autoFocus />
                         <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending || !editing.text.trim()} onClick={() => start(async () => { try { await editComment(c.id, editing.text); setEditing(null); toast.success("Saved"); router.refresh(); } catch (e) { toast.error((e as Error).message); } })}>Save</Button></div>
                       </div>
-                    ) : <p className={cn("whitespace-pre-wrap text-sm leading-5", done && "line-through decoration-muted-foreground/60")}>{c.body}</p>}
+                    ) : <p className="whitespace-pre-wrap text-sm leading-5">{c.body}</p>}
                     {!done && canComment && <button className="text-[13px] font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "addressed"); }} disabled={pending}>Mark as done</button>}
-                    {done && <span className="flex items-center gap-1 text-[13px] text-success-text"><Icon name="check" className="!text-[16px]" />Done</span>}
+                    {done && <span className="flex items-center gap-1 text-[13px] text-success-text"><Icon name="check" className="!text-[16px]" />Resolved{c.confirmed_at ? " · confirmed" : ""}</span>}
                   </div>
                 </li>
+                </Fragment>
               );
             })}
           </ul>
