@@ -72,16 +72,39 @@ export async function saveEvent(eventId: string, formData: FormData) {
 
 export async function saveFormats(eventId: string, formData: FormData) {
   const { supabase, event } = await ownEvent(eventId);
-  const { data: slots } = await supabase.from("slots").select("id,format_id").eq("event_id", event.id);
-  const primary = String(formData.get("primary") ?? "");
-  for (const s of slots ?? []) {
-    const requested = formData.get(`req_${s.id}`) === "on";
+  const { data: slots } = await supabase.from("slots").select("id,format_id,versions(id)").eq("event_id", event.id);
+  const requestedIds = new Set<string>();
+  let primary = String(formData.get("primary") ?? "");
+  const fail = (e: { message: string } | null) => { if (e) throw new Error(e.message); };
+
+  // Print items: a size change on an item that already has designs moves them to the new size. The empty slot
+  // of the new size is dropped, the old slot takes the new format, and a fresh (off) slot keeps the old size in
+  // the catalog for this event. Only the print section posts print_orig_/print_pick_ pairs.
+  for (let i = 0; formData.has(`print_pick_${i}`); i++) {
+    const orig = String(formData.get(`print_orig_${i}`) ?? ""); const pick = String(formData.get(`print_pick_${i}`) ?? "");
+    if (!pick) continue;
+    if (orig && orig !== pick) {
+      const from = (slots ?? []).find((s) => s.id === orig); const to = (slots ?? []).find((s) => s.id === pick);
+      if (from && to && (from.versions?.length ?? 0) > 0) {
+        if ((to.versions?.length ?? 0) > 0) throw new Error("Both print sizes already have designs. Turn one off instead of changing its size.");
+        fail((await supabase.from("slots").delete().eq("id", to.id)).error);
+        fail((await supabase.from("slots").update({ format_id: to.format_id, updated_at: new Date().toISOString() }).eq("id", from.id)).error);
+        fail((await supabase.from("slots").insert({ event_id: event.id, format_id: from.format_id, requested: false })).error);
+        to.id = "__gone__"; requestedIds.add(from.id); if (primary === pick) primary = from.id;
+        continue;
+      }
+    }
+    requestedIds.add(pick);
+  }
+  const { data: fresh } = await supabase.from("slots").select("id,format_id").eq("event_id", event.id);
+  for (const s of fresh ?? []) {
+    const requested = requestedIds.has(s.id) || formData.get(`req_${s.id}`) === "on";
     const is_primary = requested && s.id === primary;
-    const notes = String(formData.get(`notes_${s.id}`) ?? "").trim() || null;
+    const notes = formData.has(`notes_${s.id}`) ? String(formData.get(`notes_${s.id}`) ?? "").trim() || null : undefined;
     const cw = Number(formData.get(`w_${s.id}`) || 0) || null;
     const ch = Number(formData.get(`h_${s.id}`) || 0) || null;
-    await supabase.from("slots").update({ requested, notes, custom_w: cw, custom_h: ch, is_primary: false, updated_at: new Date().toISOString() }).eq("id", s.id);
-    if (is_primary) await supabase.from("slots").update({ is_primary: true }).eq("id", s.id);
+    fail((await supabase.from("slots").update({ requested, ...(notes !== undefined ? { notes } : {}), custom_w: cw, custom_h: ch, is_primary: false, updated_at: new Date().toISOString() }).eq("id", s.id)).error);
+    if (is_primary) fail((await supabase.from("slots").update({ is_primary: true }).eq("id", s.id)).error);
   }
   await supabase.from("events").update({ last_edited_at: new Date().toISOString() }).eq("id", event.id);
   revalidatePath(`/events/${event.id}`);

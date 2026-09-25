@@ -50,7 +50,7 @@ export function EventForm({ eventId, orgName, values, action, notice, locked }: 
   );
 }
 
-export interface FormatRow { slotId: string; name: string; size: string; kind: string; requested: boolean; isPrimary: boolean; notes: string; customSize: boolean; w: number | null; h: number | null }
+export interface FormatRow { slotId: string; name: string; size: string; kind: string; requested: boolean; isPrimary: boolean; notes: string; customSize: boolean; w: number | null; h: number | null; hasVersions?: boolean }
 export function FormatsForm({ eventId, rows, action }: { eventId: string; rows: FormatRow[]; action: Action }) {
   return (
     <form action={action}>

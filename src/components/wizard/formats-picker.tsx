@@ -19,15 +19,18 @@ export function FormatsPicker({ rows }: { rows: FormatRow[] }) {
   const [on, setOn] = useState<Set<string>>(() => new Set(rows.filter((r) => r.requested).map((r) => r.slotId)));
   const [primary, setPrimary] = useState<string>(() => rows.find((r) => r.isPrimary)?.slotId ?? "");
   const [notesOpen, setNotesOpen] = useState<Set<string>>(() => new Set(rows.filter((r) => r.notes).map((r) => r.slotId)));
+  // A print item is a slot. Its dropdown picks a size; changing it on an item that already has designs asks the
+  // server to move those designs to the new size (saveFormats swaps the formats), so nothing is lost.
   const initialPrint = print.filter((r) => r.requested).map((r) => r.slotId);
   const [printOn, setPrintOn] = useState(initialPrint.length > 0);
-  const [picks, setPicks] = useState<string[]>(initialPrint.length ? initialPrint : [print[0]?.slotId ?? ""]);
+  const [items, setItems] = useState<{ orig: string | null; pick: string }[]>(() => initialPrint.length ? initialPrint.map((id) => ({ orig: id, pick: id })) : [{ orig: null, pick: print[0]?.slotId ?? "" }]);
+  const picks = items.map((it) => it.pick);
 
   const need = (id: string, want: boolean) => setOn((s) => { const n = new Set(s); if (want) n.add(id); else { n.delete(id); if (primary === id) setPrimary(""); } return n; });
   const chosenPrint = new Set(printOn ? picks.filter(Boolean) : []);
   const requested = (id: string) => on.has(id) || chosenPrint.has(id);
-  const setPick = (i: number, v: string) => setPicks((p) => { const next = p.map((x, j) => (j === i ? v : x)); if (primary && !next.includes(primary) && print.some((r) => r.slotId === primary)) setPrimary(""); return next; });
-  const removePick = (i: number) => setPicks((p) => p.filter((_, j) => j !== i));
+  const setPick = (i: number, v: string) => setItems((p) => { const next = p.map((it, j) => (j === i ? { ...it, pick: v } : it)); if (primary && !next.some((it) => it.pick === primary) && print.some((r) => r.slotId === primary)) setPrimary(""); return next; });
+  const removeItem = (i: number) => setItems((p) => { const next = p.filter((_, j) => j !== i); if (primary === p[i].pick) setPrimary(""); return next; });
 
   return (
     <div>
@@ -51,21 +54,25 @@ export function FormatsPicker({ rows }: { rows: FormatRow[] }) {
             </div>
             {printOn && (
               <div className="mt-3 space-y-3">
-                {picks.map((pick, i) => {
-                  const row = print.find((r) => r.slotId === pick);
+                {items.map((it, i) => {
+                  const row = print.find((r) => r.slotId === it.pick);
+                  const origRow = it.orig ? print.find((r) => r.slotId === it.orig) : null;
+                  const moving = !!origRow?.hasVersions && it.pick !== it.orig;
                   return (
                     <div key={i}>
+                      <input type="hidden" name={`print_orig_${i}`} value={it.orig ?? ""} /><input type="hidden" name={`print_pick_${i}`} value={it.pick} />
                       <div className="flex items-center gap-2">
-                        <SelectField value={pick} onChange={(e) => setPick(i, e.target.value)} aria-label={i === 0 ? "Print size" : `Print item ${i + 1}`} className="min-w-0 flex-1 sm:max-w-xs">
-                          {print.filter((r) => r.slotId === pick || !chosenPrint.has(r.slotId)).map((r) => <option key={r.slotId} value={r.slotId}>{r.name.replace(/^Print\s+/i, "")}</option>)}
+                        <SelectField value={it.pick} onChange={(e) => setPick(i, e.target.value)} aria-label={i === 0 ? "Print size" : `Print item ${i + 1}`} className="min-w-0 flex-1 sm:max-w-xs">
+                          {print.filter((r) => r.slotId === it.pick || !chosenPrint.has(r.slotId)).map((r) => <option key={r.slotId} value={r.slotId}>{r.name.replace(/^Print\s+/i, "")}{r.hasVersions ? " · has designs" : ""}</option>)}
                         </SelectField>
-                        {i > 0 && <button type="button" onClick={() => removePick(i)} className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Remove</button>}
+                        {items.length > 1 && <button type="button" onClick={() => removeItem(i)} className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Remove</button>}
                       </div>
+                      {moving && <p className="mt-1.5 text-[13px] text-muted-foreground">The designs and comments on {origRow!.name.replace(/^Print\s+/i, "")} move to this size when you save.</p>}
                       {row && <RowExtras row={row} primary={primary} onPrimary={(id) => setPrimary(primary === id ? "" : id)} noteOpen={notesOpen.has(row.slotId)} onOpenNote={(id) => setNotesOpen((s) => new Set(s).add(id))} />}
                     </div>
                   );
                 })}
-                {picks.length < print.length && <button type="button" onClick={() => setPicks((p) => [...p, print.find((r) => !chosenPrint.has(r.slotId))?.slotId ?? ""])} className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">+ Add a print item</button>}
+                {items.length < print.length && <button type="button" onClick={() => setItems((p) => [...p, { orig: null, pick: print.find((r) => !chosenPrint.has(r.slotId))?.slotId ?? "" }])} className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">+ Add a print item</button>}
               </div>
             )}
           </li>

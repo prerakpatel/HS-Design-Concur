@@ -36,11 +36,11 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
 
   if (s === "formats") {
     const [{ data: slots }, { data: formats }] = await Promise.all([
-      supabase.from("slots").select("*").eq("event_id", id).returns<Slot[]>(),
+      supabase.from("slots").select("*,versions(id)").eq("event_id", id).returns<(Slot & { versions: { id: string }[] })[]>(),
       supabase.from("formats").select("*").eq("active", true).order("sort").returns<Format[]>(),
     ]);
     const byFormat = new Map((slots ?? []).map((sl) => [sl.format_id, sl]));
-    const rows = (formats ?? []).flatMap((f) => { const sl = byFormat.get(f.id); return sl ? [{ slotId: sl.id, name: f.name, size: formatSize(f, { w: sl.custom_w, h: sl.custom_h }), kind: f.class, requested: sl.requested, isPrimary: sl.is_primary, notes: sl.notes ?? "", customSize: f.allow_custom_size, w: sl.custom_w, h: sl.custom_h }] : []; });
+    const rows = (formats ?? []).flatMap((f) => { const sl = byFormat.get(f.id); return sl ? [{ slotId: sl.id, name: f.name, size: formatSize(f, { w: sl.custom_w, h: sl.custom_h }), kind: f.class, requested: sl.requested, isPrimary: sl.is_primary, notes: sl.notes ?? "", customSize: f.allow_custom_size, w: sl.custom_w, h: sl.custom_h, hasVersions: (sl.versions?.length ?? 0) > 0 }] : []; });
     return (
       <WizardShell eventId={id} step={s} statuses={statuses} title="Which formats does this event need?" subtitle="All formats start off. Turn on the ones you need; you can change this any time from the event page." wide>
         <FormatsForm eventId={id} rows={rows} action={saveFormats.bind(null, id)} />
