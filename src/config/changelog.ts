@@ -7,6 +7,17 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: "2026-09-26",
+    title: "Richer comments, one-tap downloads and lighter storage",
+    items: [
+      "Comments can be bold, italic, underlined or coloured, with bullets, links and @-mention chips. Select text to see the tools; on phones they sit above the keyboard.",
+      "Download every approved design of an event as one ZIP from the Formats header.",
+      "Change the designer on a format straight from its page.",
+      "Only the two newest versions of a format keep their files; older versions keep their comments so the thread still reads.",
+      "Changing a print item's size moves its designs and comments to the new size instead of hiding them.",
+    ],
+  },
+  {
     id: "2026-09-25",
     title: "Send for review, chat pings and a tidier setup",
     items: [

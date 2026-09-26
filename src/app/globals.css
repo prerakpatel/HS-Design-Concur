@@ -186,3 +186,19 @@
 @keyframes shimmer-glow { 0%, 100% { opacity: 1; filter: drop-shadow(0 0 0 transparent); } 50% { opacity: 0.75; filter: drop-shadow(0 0 6px color-mix(in oklch, var(--brand) 60%, transparent)); } }
 .shimmer-text { background: linear-gradient(90deg, var(--foreground) 0%, var(--foreground) 40%, var(--brand) 50%, var(--foreground) 60%, var(--foreground) 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer-sweep 2.8s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .shimmer, .shimmer-text { animation: none; } .shimmer-text { color: inherit; background: none; } }
+
+/* Rich comments: the small HTML subset written by the comment editor (src/lib/rich-text.ts). */
+.rich p { margin: 0; }
+.rich p + p, .rich p + ul, .rich ul + p { margin-top: 0.375rem; }
+.rich ul { list-style: disc; padding-left: 1.25rem; }
+.rich li + li { margin-top: 0.125rem; }
+.rich a { color: var(--info); text-decoration: underline; text-underline-offset: 2px; }
+.rich u { text-underline-offset: 2px; }
+.rich .mention, .rich [data-type="mention"] { color: var(--info); font-weight: 500; }
+.rich [data-color="red"] { color: var(--destructive-text); }
+.rich [data-color="blue"] { color: var(--info); }
+.rich [data-color="green"] { color: var(--success-text); }
+.rich [data-color="yellow"] { color: var(--warning-text); }
+.rich [data-color="gray"] { color: var(--muted-foreground); }
+.swatch-red { background: var(--destructive-text); } .swatch-blue { background: var(--info); } .swatch-green { background: var(--success-text); } .swatch-yellow { background: var(--warning-text); } .swatch-gray { background: var(--muted-foreground); }
+.tiptap p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: color-mix(in oklch, var(--muted-foreground) 55%, transparent); pointer-events: none; height: 0; }

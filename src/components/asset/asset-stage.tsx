@@ -1,10 +1,9 @@
 "use client";
 import Link from "next/link";
-import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/user-avatar";
 import { Icon } from "@/components/material-icon";
 import { StateBadge, type BadgeState } from "@/components/state-badge";
@@ -13,6 +12,10 @@ import { Lightbox } from "@/components/asset/lightbox";
 import { UploadPanel, requestUpload } from "@/components/asset/upload-panel";
 import { Guides, PinBubble, DraftMark, guideGeometry, type SafeArea, type Pin, type PrintGuides } from "@/components/asset/viewer";
 import { addComment, setCommentFlag, editComment, deleteComment, deleteVersion } from "@/app/actions/reviews";
+import { assignSlot } from "@/app/actions/events";
+import { CommentEditor } from "@/components/rich/comment-editor";
+import { RichBody } from "@/components/rich/rich-body";
+import { SelectField } from "@/components/ui/select-field";
 import { relativeTime } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
@@ -22,10 +25,8 @@ export interface SideView { side: Side; src: string | null; isGif: boolean; widt
 export interface CommentView { id: string; version: number; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
 export interface Member { id: string; name: string; handle: string; avatar?: string | null }
 export interface VersionChip { id: string; number: number; decision: string; canManage: boolean; hasBack: boolean; purged?: boolean }
-export interface StatusView { state: BadgeState; version: number | null; uploader: string | null; uploadedAt: string | null }
+export interface StatusView { state: BadgeState; version: number | null; uploader: string | null; uploadedAt: string | null; assigneeId?: string | null; canAssign?: boolean }
 
-/** Enter = new line. ⌘/Ctrl+Enter posts, everywhere a comment is written. */
-const postKey = (e: React.KeyboardEvent) => e.key === "Enter" && (e.metaKey || e.ctrlKey);
 
 /**
  * The asset page body. Left: a plain toolbar (versions · upload · ⋯ | comment · guides) over the artwork, front and
@@ -43,13 +44,11 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const [open, setOpen] = useState<Side | null>(null);
   const [mode, setMode] = useState<"view" | "place">("view");
   const [draft, setDraft] = useState<{ side: Side; x: number; y: number } | null>(null);
-  const [draftText, setDraftText] = useState("");
+  const [draftText, setDraftText] = useState(""); const [draftEmpty, setDraftEmpty] = useState(true);
   const [active, setActive] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(""); const [textEmpty, setTextEmpty] = useState(true);
   const [pending, start] = useTransition();
-  const ta = useRef<HTMLTextAreaElement>(null);
-  const draftInput = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
   // Resolved comments stay: hidden by default, one tap away. Pins are drawn for the version on screen only.
@@ -61,14 +60,14 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const pinsFor = (side: Side): Pin[] => shown.filter((c) => numbered.has(c.id) && c.pin_side === side).map((c) => ({ id: c.id, n: numbered.get(c.id)!, x: c.pin_x!, y: c.pin_y! }));
   const openCount = comments.filter((c) => !isDone(c)).length;
   const resolvedCount = comments.length - openCount;
-  useEffect(() => { if (draft) draftInput.current?.focus(); }, [draft]);
   useEffect(() => { if (active) document.getElementById(`comment-${active}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [active]);
 
-  const stop = () => { setMode("view"); setDraft(null); setDraftText(""); };
+  const stop = () => { setMode("view"); setDraft(null); setDraftText(""); setDraftEmpty(true); };
   const post = (body: string, pin: { side: Side; x: number; y: number } | null) => start(async () => {
-    try { await addComment(versionId!, body, pin); setText(""); stop(); toast.success(pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
+    try { await addComment(versionId!, body, pin); setText(""); setTextEmpty(true); stop(); toast.success(pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
     catch (e) { toast.error((e as Error).message); }
   });
+  const reassign = (userId: string) => start(async () => { try { await assignSlot(slotId, userId || null); toast.success(userId ? "Designer changed" : "Unassigned"); router.refresh(); } catch (e) { toast.error((e as Error).message); } });
   const flag = (id: string, f: "addressed" | "unaddress" | "reopen") => start(async () => {
     try { await setCommentFlag(id, f); router.refresh(); if (f === "addressed") toast.success("Marked as done", { action: { label: "Undo", onClick: () => flag(id, "unaddress") }, duration: 8000 }); }
     catch (e) { toast.error((e as Error).message); }
@@ -77,8 +76,6 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
     if (!confirm(`Delete v${v.number}? Its files are removed for good.`)) return;
     try { await deleteVersion(v.id); toast.success(`Version ${v.number} deleted`); router.replace(`/events/${eventId}/slots/${slotId}`); router.refresh(); } catch (e) { toast.error((e as Error).message); }
   });
-  const main = useMentions(members, text, setText, ta);
-  const bubble = useMentions(members, draftText, setDraftText, draftInput);
 
   const hasGuides = sides.some((s) => { const g = guideGeometry(safe, print, s.width, s.height); return g.cut || g.safe.top + g.safe.right + g.safe.bottom + g.safe.left > 0; });
   const current = versions.find((v) => v.id === currentVersionId) ?? null;
@@ -140,12 +137,10 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                     {draft?.side === s.side && <PinBubble n={numbered.size + 1} x={draft.x} y={draft.y} draft />}
                     {draft?.side === s.side && (
                       <div className={cn("absolute z-10 w-[min(340px,calc(100vw-2rem))] rounded-2xl bg-card p-2 shadow-xl ring-1 ring-border", draft.y > 0.7 ? "-translate-y-[calc(100%+26px)]" : "translate-y-[26px]")} style={{ left: `clamp(0px, ${draft.x * 100}% - 24px, calc(100% - min(340px, calc(100vw - 2rem))))`, top: `${draft.y * 100}%` }} onClick={(e) => e.stopPropagation()}>
-                        <Suggestions items={bubble.suggestions} onPick={bubble.pick} className={draft.y > 0.7 ? "left-0 right-0 top-full mt-1" : "bottom-full left-0 right-0 mb-1"} />
-                        <Textarea ref={draftInput} rows={2} value={draftText} onChange={(e) => bubble.onChange(e.target.value)} placeholder="Describe the change · @ to mention" className="min-h-0 resize-none border-0 bg-transparent px-2 py-1.5 text-sm shadow-none focus-visible:ring-0"
-                          onKeyDown={(e) => { if (postKey(e) && draftText.trim() && !pending) { e.preventDefault(); post(draftText.trim(), draft); } if (e.key === "Escape") stop(); }} />
+                        <CommentEditor value={draftText} onChange={(h, empty) => { setDraftText(h); setDraftEmpty(empty); }} onSubmit={() => { if (!draftEmpty && !pending) post(draftText, draft); }} placeholder="Describe the change · @ to mention" members={members} autoFocus compact className="border-0 focus-within:ring-0" />
                         <div className="flex justify-end gap-1">
                           <Button type="button" variant="ghost" size="icon-sm" onClick={stop} aria-label="Cancel"><Icon name="close" className="!text-[18px]" /></Button>
-                          <Button type="button" size="icon-sm" disabled={!draftText.trim() || pending} onClick={() => post(draftText.trim(), draft)} aria-label="Post comment"><Icon name="check" className="!text-[18px]" /></Button>
+                          <Button type="button" size="icon-sm" disabled={draftEmpty || pending} onClick={() => post(draftText, draft)} aria-label="Post comment"><Icon name="check" className="!text-[18px]" /></Button>
                         </div>
                       </div>
                     )}
@@ -167,6 +162,17 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
             <StateBadge state={status.state} />
             {status.version != null && <span className="text-sm font-medium">v{status.version}</span>}
           </div>
+          {status.assigneeId !== undefined && (
+            <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+              <span className="text-muted-foreground">Designer</span>
+              {status.canAssign && !readOnly ? (
+                <SelectField value={status.assigneeId ?? ""} onChange={(e) => reassign(e.target.value)} disabled={pending} aria-label="Assigned designer" className="w-[60%] [&>select]:h-9 [&>select]:pl-3 [&>select]:text-right">
+                  <option value="">Unassigned</option>
+                  {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </SelectField>
+              ) : <span className="truncate text-right">{members.find((m) => m.id === status.assigneeId)?.name ?? "Unassigned"}</span>}
+            </div>
+          )}
           {status.uploader && <p className="mt-3 flex justify-between gap-3 text-sm"><span className="text-muted-foreground">Uploaded by</span><span className="truncate text-right">{status.uploader}{status.uploadedAt ? <span className="text-muted-foreground"> · {relativeTime(status.uploadedAt)}</span> : null}</span></p>}
           {decision && <div className="mt-4 hidden md:block">{decision}</div>}
         </div>
@@ -214,10 +220,10 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                     </div>
                     {editing?.id === c.id ? (
                       <div className="space-y-2">
-                        <Textarea rows={3} value={editing.text} onChange={(e) => setEditing({ id: c.id, text: e.target.value })} className="rounded-xl" autoFocus />
-                        <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending || !editing.text.trim()} onClick={() => start(async () => { try { await editComment(c.id, editing.text); setEditing(null); toast.success("Saved"); router.refresh(); } catch (e) { toast.error((e as Error).message); } })}>Save</Button></div>
+                        <CommentEditor value={editing.text} onChange={(h) => setEditing({ id: c.id, text: h })} members={members} autoFocus compact />
+                        <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending} onClick={() => start(async () => { try { await editComment(c.id, editing.text); setEditing(null); toast.success("Saved"); router.refresh(); } catch (e) { toast.error((e as Error).message); } })}>Save</Button></div>
                       </div>
-                    ) : <p className="whitespace-pre-wrap text-sm leading-5">{c.body}</p>}
+                    ) : <RichBody body={c.body} />}
                     {!done && canComment && <button className="text-[13px] font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "addressed"); }} disabled={pending}>Mark as done</button>}
                     {done && <span className="flex items-center gap-1 text-[13px] text-success-text"><Icon name="check" className="!text-[16px]" />Resolved{c.confirmed_at ? " · confirmed" : ""}</span>}
                   </div>
@@ -228,10 +234,9 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           </ul>
           {canComment && versionId && (
             <div className="relative border-t border-border p-3">
-              <Suggestions items={main.suggestions} onPick={main.pick} className="bottom-full left-3 right-3 mb-1" />
               <div className="flex items-end gap-2">
-                <Textarea ref={ta} rows={1} value={text} onChange={(e) => main.onChange(e.target.value)} placeholder="Write a comment… @ to mention" className="min-h-11 resize-none rounded-xl" onKeyDown={(e) => { if (postKey(e) && text.trim() && !pending) { e.preventDefault(); post(text, null); } }} />
-                <Button size="icon" disabled={pending || !text.trim()} onClick={() => post(text, null)} aria-label="Post"><Icon name="arrow_upward" /></Button>
+                <CommentEditor value={text} onChange={(h, empty) => { setText(h); setTextEmpty(empty); }} onSubmit={() => { if (!textEmpty && !pending) post(text, null); }} placeholder="Write a comment… @ to mention" members={members} className="min-w-0 flex-1" />
+                <Button size="icon" disabled={pending || textEmpty} onClick={() => post(text, null)} aria-label="Post"><Icon name="arrow_upward" /></Button>
               </div>
             </div>
           )}
@@ -240,23 +245,5 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
       {/* Phones: the decision rides in a fixed bar */}
       {decisionBar && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur md:hidden [&>div]:justify-end">{decisionBar}</div>}
     </div>
-  );
-}
-
-/** @-mention autocomplete for a textarea: tracks the word at the caret, offers matches, and completes on pick. */
-function useMentions(members: Member[], value: string, setValue: (v: string) => void, ref: React.RefObject<HTMLTextAreaElement | null>) {
-  const [query, setQuery] = useState<string | null>(null);
-  const onChange = (v: string) => { setValue(v); const m = v.slice(0, ref.current?.selectionStart ?? v.length).match(/@([\w.-]*)$/); setQuery(m ? m[1].toLowerCase() : null); };
-  const pick = (m: Member) => { const pos = ref.current?.selectionStart ?? value.length; setValue(value.slice(0, pos).replace(/@([\w.-]*)$/, `@${m.name} `) + value.slice(pos)); setQuery(null); ref.current?.focus(); };
-  const suggestions = query == null ? [] : members.filter((m) => m.name.toLowerCase().includes(query) || m.handle.includes(query)).slice(0, 5);
-  return { onChange, pick, suggestions };
-}
-
-function Suggestions({ items, onPick, className }: { items: Member[]; onPick: (m: Member) => void; className: string }) {
-  if (items.length === 0) return null;
-  return (
-    <ul className={cn("absolute z-20 overflow-hidden rounded-xl border border-border bg-card shadow-lg", className)}>
-      {items.map((m) => <li key={m.id}><button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted" onMouseDown={(e) => { e.preventDefault(); onPick(m); }}><UserAvatar initials={m.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()} src={m.avatar} size={24} />{m.name}</button></li>)}
-    </ul>
   );
 }

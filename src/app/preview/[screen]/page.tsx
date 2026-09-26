@@ -31,7 +31,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
   const { screen } = await params;
   if (!SCREENS.includes(screen as (typeof SCREENS)[number])) notFound();
   const org = F.ORGS[0];
-  const shell = (children: React.ReactNode, wide?: boolean) => <AppShell org={org} orgs={F.ORGS} user={F.ME} slots={F.SLOTS} wide={wide} changelog={{ releases: RELEASES, unseen: true, canShare: true, sharedIds: [] }}>{children}</AppShell>;
+  const shell = (children: React.ReactNode, wide?: boolean) => <AppShell org={org} orgs={F.ORGS} user={F.ME} slots={F.SLOTS} wide={wide} changelog={{ releases: RELEASES, unseen: false, canShare: true, sharedIds: [] }}>{children}</AppShell>;
   const tabs = (items: [string, string, number?][], active: string) => (
     <nav className="mb-6 flex gap-6 border-b border-border text-sm font-medium">
       {items.map(([k, l, n]) => <span key={k} className={"-mb-px flex items-center gap-2 border-b-2 pb-3 " + (active === k ? "border-foreground text-foreground" : "border-transparent text-muted-foreground")}>{l}{n != null && <span className="text-sm font-normal text-muted-foreground">{n}</span>}</span>)}

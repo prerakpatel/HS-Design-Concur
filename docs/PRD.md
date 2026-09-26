@@ -149,6 +149,8 @@ is the transition. A slot's state always follows its newest *sent* version.
 | Send for review | uploader, assignee, Core Admin | Older pending versions superseded. Slot → In review. | Approvers, requester; chat post with preview |
 | (daily) Waiting for review | system | A sent version undecided for ≥ 1 day → reminder once a day until decided. | Approvers |
 | Request changes | Approver | Slot → Changes requested. Comments required (≥1). | Assignee, Publication |
+| Comment | anyone on the org | Rich text: bold, italic, underline, five colours, bullets, links, @-mention chips. Pinned or in the thread. Stored as sanitised HTML; excerpts are plain text. | Mentioned people, or the designer and prior commenters |
+| Reassign designer | Core Admin, approver, creator | From the asset page status card. | New designer |
 | Mark addressed | anyone | Per-comment flag on the new version. | Comment author |
 | Confirm / reopen comment | Approver | Closes or re-flags the comment. | Assignee |
 | **Approve and notify** | Approver | Confirmation dialog ("Approve *Sambandh Event v3*? This notifies everyone on the event."). Slot → Approved. | Everyone on the event, both orgs' channels per settings |

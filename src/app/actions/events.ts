@@ -174,3 +174,23 @@ export async function toggleSlotRequested(slotId: string, requested: boolean) {
   const { data: slot } = await supabase.from("slots").update({ requested, updated_at: new Date().toISOString() }).eq("id", slotId).select("event_id").single();
   if (slot) revalidatePath(`/events/${slot.event_id}`);
 }
+
+/** Change who designs a format from the asset page. Core Admins, the event creator and approvers may. */
+export async function assignSlot(slotId: string, userId: string | null) {
+  const { supabase, user, org } = await requireActiveUser();
+  const { data: slot } = await supabase.from("slots").select("id,assignee_id,event_id,formats(name),events(id,org_id,title,status,created_by)").eq("id", slotId).maybeSingle();
+  const event = slot?.events as unknown as { id: string; org_id: string; title: string; status: string; created_by: string } | null;
+  if (!slot || !event || event.org_id !== org.id) throw new Error("Format not found");
+  if (event.status === "archived") throw new Error("Archived events are read-only");
+  if (user.role !== "core_admin" && event.created_by !== user.id && !user.is_approver) throw new Error("Only Core Admins, approvers or the event creator can reassign a format");
+  if (userId) {
+    const { data: member } = await supabase.from("users").select("id,org_memberships!inner(org_id)").eq("id", userId).eq("status", "active").eq("org_memberships.org_id", org.id).maybeSingle();
+    if (!member) throw new Error("That person is not in this organization");
+  }
+  if ((slot.assignee_id ?? null) === (userId ?? null)) return;
+  const { error } = await supabase.from("slots").update({ assignee_id: userId, updated_at: new Date().toISOString() }).eq("id", slotId);
+  if (error) throw new Error(error.message);
+  const formatName = (slot.formats as unknown as { name: string } | null)?.name ?? "a format";
+  if (userId && event.status === "active") await notify(supabase, [userId], "slot.assigned", { eventId: event.id, slotId, title: event.title, format: formatName, assignee: userId, by: user.name ?? user.email }, user.id, { orgId: org.id });
+  revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slotId}`);
+}

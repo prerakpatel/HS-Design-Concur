@@ -5,6 +5,7 @@ import { notify, eventParticipants, taggedMemberIds } from "@/lib/notify";
 import { signedUrl, BUCKET } from "@/lib/storage";
 import { assetFilename } from "@/lib/labels";
 import { recomputeSlotState } from "@/lib/slot-state";
+import { sanitizeComment, plainText, mentionIds } from "@/lib/rich-text";
 
 async function loadVersion(versionId: string) {
   const ctx = await requireActiveUser();
@@ -106,15 +107,16 @@ export async function reopenVersion(versionId: string, reason: string) {
 /** Comment with @mentions ("@Nikhil Joshi" or "@nikhil") and an optional pin. */
 export async function addComment(versionId: string, body: string, pin?: { x: number; y: number; side?: "front" | "back" } | null) {
   const { supabase, user, org, version, slot, event, formatName } = await loadVersion(versionId);
-  const text = body.trim(); if (!text) throw new Error("Empty comment");
+  const html = sanitizeComment(body); const text = plainText(html); if (!text) throw new Error("Empty comment");
   const { data: members } = await supabase.from("users").select("id,name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id);
-  const mentions = new Set<string>();
+  // Mentions come from the editor's @ chips; typed "@first" still counts for people who skip the popup.
+  const mentions = new Set<string>(mentionIds(html).filter((id) => (members ?? []).some((m) => m.id === id)));
   for (const m of members ?? []) {
     const name = (m.name ?? "").toLowerCase(); const first = name.split(" ")[0]; const handle = m.email.split("@")[0].toLowerCase();
     const lower = text.toLowerCase();
     if ((name && lower.includes("@" + name)) || (first && new RegExp(`@${first}(\\b|$)`).test(lower)) || lower.includes("@" + handle)) mentions.add(m.id);
   }
-  const { error } = await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: text, mentions: [...mentions], pin_x: pin?.x ?? null, pin_y: pin?.y ?? null, pin_side: pin?.side ?? "front" });
+  const { error } = await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: html, mentions: [...mentions], pin_x: pin?.x ?? null, pin_y: pin?.y ?? null, pin_side: pin?.side ?? "front" });
   if (error) throw new Error(error.message);
   const payload = { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: text.slice(0, 200) };
   if (mentions.size) await notify(supabase, mentions, "comment.mention", payload, user.id, { orgId: org.id });
@@ -196,11 +198,11 @@ export async function deleteVersion(versionId: string) {
 
 export async function editComment(commentId: string, body: string) {
   const { supabase, user } = await requireActiveUser();
-  const text = body.trim(); if (!text) throw new Error("Empty comment");
+  const html = sanitizeComment(body); if (!plainText(html)) throw new Error("Empty comment");
   const { data: c } = await supabase.from("comments").select("author_id,versions(slots(id,event_id))").eq("id", commentId).maybeSingle();
   if (!c) throw new Error("Comment not found");
   if (c.author_id !== user.id && user.role !== "core_admin") throw new Error("You can only edit your own comments");
-  const { error } = await supabase.from("comments").update({ body: text, edited_at: new Date().toISOString() }).eq("id", commentId);
+  const { error } = await supabase.from("comments").update({ body: html, edited_at: new Date().toISOString() }).eq("id", commentId);
   if (error) throw new Error(error.message);
   const s = (c.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;
   if (s) revalidatePath(`/events/${s.event_id}/slots/${s.id}`);

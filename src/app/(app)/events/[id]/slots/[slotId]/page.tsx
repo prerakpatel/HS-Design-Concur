@@ -91,7 +91,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
           {stalePreviews.length > 0 && <PreviewRefresher sideIds={stalePreviews} />}
           <AssetStage versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} comments={cviews} members={mlist} canComment={!readOnly} canModerate={user.role === "core_admin"}
             versions={chips} currentVersionId={current?.id ?? null} eventId={id} slotId={slotId} upload={canUpload && !readOnly ? { accept: fmt.allowed_mimes, isPrint, nextNumber: (vlist[0]?.number ?? 0) + 1 } : null}
-            status={{ state: state as "requested" | "unsent", version: current?.number ?? null, uploader: purged ? (who ? `${who} (reference)` : "Reference") : who, uploadedAt: current?.created_at ?? null }} decision={decision} decisionBar={decisionRow} readOnly={readOnly} />
+            status={{ state: state as "requested" | "unsent", version: current?.number ?? null, uploader: purged ? (who ? `${who} (reference)` : "Reference") : who, uploadedAt: current?.created_at ?? null, assigneeId: slot.assignee_id, canAssign: user.role === "core_admin" || event.created_by === user.id || user.is_approver }} decision={decision} decisionBar={decisionRow} readOnly={readOnly} />
         </>
       )}
       </div>

@@ -104,3 +104,13 @@ The Formats header on the event page grows a "Download approved · N" button as 
 (icon and count only on phones). It fetches one ZIP from `/api/events/[id]/download`, every approved design
 named exactly like the single downloads (year_event_format_vN.ext, "-back" for a print back), so a folder of
 them sorts sensibly. Per-format downloads on the asset page stay for the one-off case.
+
+## Comment formatting
+
+Comments are written in a small rich-text editor (Tiptap): bold, italic, underline, a palette of five colours,
+one level of bullets, links and @-mentions as chips. Nothing else, on purpose. On desktop the tools hover over
+the selected text in a dark pill, Google-Chat style, with the colour swatches and the link field dropping out
+of it. On phones a floating bubble would fight the system's copy / paste menu and hide under the keyboard, so
+the same row is docked to the top of the composer instead: always reachable while typing, never covering the
+text. Bodies are stored as a sanitised HTML subset (src/lib/rich-text.ts); notifications and chat posts use the
+plain words.
