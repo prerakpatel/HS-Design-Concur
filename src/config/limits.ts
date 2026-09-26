@@ -6,3 +6,4 @@ export const DELETE_RESTORE_DAYS = 7;   // Core Admins can restore a deleted eve
 export const DRAFT_SWEEP_DAYS = 30;     // untouched drafts are deleted after this
 export const DRAFT_WARN_DAYS = 23;      // the creator is warned on this day
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+export const VERSIONS_KEPT = 2;         // newest versions of a format that keep their files; older ones keep only comments

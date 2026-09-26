@@ -5,6 +5,7 @@ import { notificationText, notificationHref } from "@/lib/labels";
 import { notify, subjectFor, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
 import { refreshStalePreviews } from "@/lib/uploads/refresh-preview";
+import { pruneAllSlots } from "@/lib/uploads/prune";
 import { postRelease } from "@/lib/changelog";
 import { RELEASES } from "@/config/changelog";
 import { getActiveUser } from "@/lib/auth";
@@ -86,6 +87,9 @@ export async function GET(req: Request) {
   const shared = new Set((sharedRows ?? []).map((r) => r.release_id as string));
   report.releasesPosted = 0;
   for (const r of RELEASES.filter((x) => !shared.has(x.id)).reverse()) { const out = await postRelease(db, r.id); if (out.posted) report.releasesPosted = (report.releasesPosted as number) + 1; }
+
+  // 3c. Version files: only the newest two per format keep theirs (safety net for the upload-time prune).
+  report.versionsPruned = await pruneAllSlots(db);
 
   // 4. Old watermark previews
   report.previews = await refreshStalePreviews(db, 20);

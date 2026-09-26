@@ -21,7 +21,7 @@ export type Side = "front" | "back";
 export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number }
 export interface CommentView { id: string; version: number; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
 export interface Member { id: string; name: string; handle: string; avatar?: string | null }
-export interface VersionChip { id: string; number: number; decision: string; canManage: boolean; hasBack: boolean }
+export interface VersionChip { id: string; number: number; decision: string; canManage: boolean; hasBack: boolean; purged?: boolean }
 export interface StatusView { state: BadgeState; version: number | null; uploader: string | null; uploadedAt: string | null }
 
 /** Enter = new line. ⌘/Ctrl+Enter posts, everywhere a comment is written. */
@@ -94,7 +94,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           {versions.length > 1 && (
             <div className="flex items-center gap-1" role="tablist" aria-label="Versions">
               {[...versions].sort((a, b) => a.number - b.number).map((v) => (
-                <Button key={v.id} asChild variant="outline" role="tab" aria-selected={currentVersionId === v.id} className={cn(pill, "px-3.5", currentVersionId === v.id && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")}>
+                <Button key={v.id} asChild variant="outline" role="tab" aria-selected={currentVersionId === v.id} title={v.purged ? `v${v.number}: comments only, files removed` : undefined} className={cn(pill, "px-3.5", v.purged && currentVersionId !== v.id && "border-dashed text-muted-foreground", currentVersionId === v.id && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")}>
                   <Link href={`/events/${eventId}/slots/${slotId}?v=${v.number}`}>v{v.number}{v.decision === "approved" && <Icon name="check" className="!text-[16px]" />}</Link>
                 </Button>
               ))}

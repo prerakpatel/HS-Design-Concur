@@ -3,6 +3,7 @@ import { processUpload } from "@/lib/images";
 import { rasterisePdf } from "@/lib/pdf";
 import { BUCKET } from "@/lib/storage";
 import { recomputeSlotState } from "@/lib/slot-state";
+import { pruneOldVersions } from "@/lib/uploads/prune";
 import type { ActiveContext } from "@/lib/auth";
 import { MARK_VERSION } from "@/config/marks";
 
@@ -82,6 +83,8 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
     if (!event.brief_locked_at) await supabase.from("events").update({ brief_locked_at: new Date().toISOString() }).eq("id", event.id);
     await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slotId, version_id: versionId, actor_id: user.id, kind: "version.uploaded", payload: { format: fmt.name, number } });
     if (replaceVersionId) await recomputeSlotState(supabase, slotId);
+    // A new version pushes the oldest out: only the newest VERSIONS_KEPT keep files (approved ones always do).
+    else await pruneOldVersions(supabase, slotId);
   }
   revalidatePath(`/events/${event.id}`);
   revalidatePath(`/events/${event.id}/slots/${slotId}`);
