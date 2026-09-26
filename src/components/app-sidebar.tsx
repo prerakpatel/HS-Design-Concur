@@ -43,8 +43,8 @@ export function AppSidebar({ org, orgs, user, slots, whatsNewUnseen }: { org: Or
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        {/* Collapse / expand: a hamburger right of the org switcher; collapsed, it sits on top of the org mark. The edge rail and ⌘B do the same. */}
-        <button type="button" onClick={toggleSidebar} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={`${collapsed ? "Expand" : "Collapse"} · ⌘B`}
+        {/* Collapse / expand: a hamburger right of the org switcher; collapsed, it sits on top of the org mark. The edge rail does the same. */}
+        <button type="button" onClick={toggleSidebar} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand" : "Collapse"}
           className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring", collapsed && "order-first")}>
           <Icon name="menu" size={20} />
         </button>
