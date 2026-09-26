@@ -8,7 +8,7 @@ export type TextColor = (typeof TEXT_COLORS)[number];
 
 const OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: ["p", "br", "strong", "em", "u", "ul", "li", "a", "span"],
-  allowedAttributes: { a: ["href"], span: ["data-color", "data-type", "data-id", "data-label"] },
+  allowedAttributes: { a: ["href", "target", "rel"], span: ["data-color", "data-type", "data-id", "data-label"] },
   allowedSchemes: ["http", "https", "mailto"],
   transformTags: {
     a: (tag, attribs) => ({ tagName: "a", attribs: { href: attribs.href ?? "", rel: "noopener noreferrer", target: "_blank" } }),

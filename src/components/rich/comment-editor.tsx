@@ -47,6 +47,15 @@ const DashBullet = Extension.create({
   },
 });
 
+/** Inside a bullet, Shift+Enter starts the next bullet (like Enter) instead of a soft line break. */
+const ListEnter = Extension.create({
+  name: "listEnter",
+  priority: 1000,
+  addKeyboardShortcuts() {
+    return { "Shift-Enter": () => (this.editor.isActive("listItem") ? this.editor.commands.splitListItem("listItem") : false) };
+  },
+});
+
 /** @-mention popup: a plain list positioned at the caret, driven by Tiptap's suggestion plugin. */
 function mentionSuggestion(members: EditorMember[]): Omit<SuggestionOptions<EditorMember>, "editor"> {
   return {
@@ -117,6 +126,7 @@ export function CommentEditor({ value, onChange, onSubmit, placeholder, members,
       Link.extend({ inclusive: false }).configure({ openOnClick: false, autolink: true, defaultProtocol: "https", HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" } }),
       Colored,
       DashBullet,
+      ListEnter,
       Placeholder.configure({ placeholder: placeholder ?? "" }),
       Mention.configure({ HTMLAttributes: { class: "mention" }, renderHTML: ({ node }) => ["span", { "data-type": "mention", "data-id": node.attrs.id, "data-label": node.attrs.label, class: "mention" }, `@${node.attrs.label ?? node.attrs.id}`], suggestion: mentionSuggestion(members) }),
     ],
