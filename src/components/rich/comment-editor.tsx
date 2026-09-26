@@ -6,7 +6,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Mark, mergeAttributes } from "@tiptap/core";
+import { Extension, Mark, mergeAttributes } from "@tiptap/core";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { Icon } from "@/components/material-icon";
 import { TEXT_COLORS, type TextColor } from "@/lib/rich-text";
@@ -21,6 +21,23 @@ const Colored = Mark.create<{ HTMLAttributes: Record<string, unknown> }>({
   addAttributes() { return { color: { default: null, parseHTML: (el) => el.getAttribute("data-color"), renderHTML: (attrs) => (attrs.color ? { "data-color": attrs.color } : {}) } }; },
   parseHTML() { return [{ tag: "span[data-color]" }]; },
   renderHTML({ HTMLAttributes }) { return ["span", mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0]; },
+});
+
+/**
+ * "- " (or "* ") at the start of a line becomes a bullet. Tiptap's own input rule covers ordinary keyboards; this
+ * repeats the check after every change, because composing keyboards (Gboard, some iOS layouts) insert text
+ * without the keystroke the input rule listens for.
+ */
+const DashBullet = Extension.create({
+  name: "dashBullet",
+  onUpdate() {
+    const { state } = this.editor; const { $from, empty } = state.selection;
+    if (!empty || $from.parent.type.name !== "paragraph" || $from.depth !== 1) return;
+    const text = $from.parent.textBetween(0, $from.parentOffset, undefined, "\ufffc");
+    if (!/^[-*]\s$/.test(text)) return;
+    const from = $from.start(); const to = from + text.length;
+    queueMicrotask(() => this.editor.chain().deleteRange({ from, to }).toggleBulletList().run());
+  },
 });
 
 /** @-mention popup: a plain list positioned at the caret, driven by Tiptap's suggestion plugin. */
@@ -92,6 +109,7 @@ export function CommentEditor({ value, onChange, onSubmit, placeholder, members,
       // inclusive: false → typing right after a link continues as plain text (bold / italic / underline still extend).
       Link.extend({ inclusive: false }).configure({ openOnClick: false, autolink: true, defaultProtocol: "https", HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" } }),
       Colored,
+      DashBullet,
       Placeholder.configure({ placeholder: placeholder ?? "" }),
       Mention.configure({ HTMLAttributes: { class: "mention" }, renderHTML: ({ node }) => ["span", { "data-type": "mention", "data-id": node.attrs.id, "data-label": node.attrs.label, class: "mention" }, `@${node.attrs.label ?? node.attrs.id}`], suggestion: mentionSuggestion(members) }),
     ],
