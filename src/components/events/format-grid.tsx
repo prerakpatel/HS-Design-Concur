@@ -13,13 +13,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { approveMany } from "@/app/actions/reviews";
 import { cn } from "@/lib/utils";
 
+// icons: download
 export interface FormatCardData { slotId: string; name: string; size: string; state: BadgeState; requested: boolean; version: number | null; versionId: string | null; uploadedByMe?: boolean; thumb: string | null; due: string | null; assignee: { name: string; initials: string; avatar?: string | null } | null; isPrimary?: boolean }
 
 /**
  * Format cards: media-first, badge and version overlaid, 2 columns on phones, 3 on desktop.
  * Approvers get a Select mode to approve several in-review formats at once (PRD §6.2, no Approve All).
  */
-export function FormatGrid({ eventId, cards, canApprove = false, meta }: { eventId: string; cards: FormatCardData[]; canApprove?: boolean; meta?: string }) {
+export function FormatGrid({ eventId, cards, canApprove = false, meta, downloadable = 0 }: { eventId: string; cards: FormatCardData[]; canApprove?: boolean; meta?: string; /** Approved formats whose files still exist; > 0 shows Download all. */ downloadable?: number }) {
   const [picked, setPicked] = useState<string[]>([]);
   const selecting = picked.length > 0;
   const [confirm, setConfirm] = useState(false);
@@ -41,7 +42,11 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta }: { event
 
   return (
     <section>
-      <SectionHeader title="Formats" meta={meta} action={naCount > 0 && <Button variant="ghost" size="sm" onClick={() => setShowNa((v) => !v)}>{showNa ? "Hide N/A" : `Show N/A (${naCount})`}</Button>} />
+      <SectionHeader title="Formats" meta={meta} action={<div className="flex items-center gap-1.5">
+        {naCount > 0 && <Button variant="ghost" size="sm" onClick={() => setShowNa((v) => !v)}>{showNa ? "Hide N/A" : `Show N/A (${naCount})`}</Button>}
+        {/* Every approved design in one ZIP, named like the single downloads. Phones get icon + count. */}
+        {downloadable > 0 && <Button asChild variant="secondary" size="sm"><a href={`/api/events/${eventId}/download`} download aria-label={`Download all ${downloadable} approved designs`}><Icon name="download" className="!text-[18px]" /><span className="max-sm:hidden">Download approved</span><span>{downloadable > 1 ? ` · ${downloadable}` : ""}</span></a></Button>}
+      </div>} />
       {/* Bulk approve: approvers get a checkbox on each in-review card (hover on desktop, always on touch). Ticking one brings up the action bar. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">
         {visible.map((c) => {

@@ -85,7 +85,7 @@ export function relativeTime(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { day: "numeric", month: "short" });
 }
 
-const slugify = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "asset";
+export const slugify = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "asset";
 
 /** Download name: year_event_format_v1.ext (PRD §7): "2026_jal-jhilani-utsav_ig-post_v1.jpg". */
 export function assetFilename(o: { eventDate: string | null; eventTitle: string; formatName: string; side?: string; number: number; path: string }) {

@@ -49,7 +49,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
       <div className={showActivity ? "grid gap-10 lg:grid-cols-[1fr_280px]" : "grid gap-10"}>
         <div className="space-y-10">
           <BriefCard brief={{ date: event.event_date, timeText: brief?.time_text ?? null, inviteText: brief?.description ?? null, venueName: brief?.venue_name ?? event.venue ?? null, venueAddress: brief?.venue_address ?? null, notes: brief?.notes ?? null }} locked={!!event.brief_locked_at || event.status === "archived"} editHref={event.status === "archived" ? "#" : `/events/${id}/edit/event`} />
-          <FormatGrid eventId={id} cards={cards} canApprove={event.status !== "archived" && (user.is_approver || user.role === "core_admin")} meta={`${approved} approved · ${requested.length - approved} in progress · ${cards.length - requested.length} N/A`} />
+          <FormatGrid eventId={id} cards={cards} downloadable={cards.filter((c) => c.requested && c.state === "approved" && c.thumb).length} canApprove={event.status !== "archived" && (user.is_approver || user.role === "core_admin")} meta={`${approved} approved · ${requested.length - approved} in progress · ${cards.length - requested.length} N/A`} />
         </div>
         {showActivity && <ActivityFeed items={(activity ?? []).map((a) => { const who = a.actor as unknown as { name: string | null; email: string; avatar_url: string | null } | null; return { id: a.id, who: who?.name ?? who?.email ?? "Design & Concur", initials: initials(who?.name ?? null, who?.email ?? "?"), avatar: who?.avatar_url ?? null, what: (VERB[a.kind] ?? (() => a.kind))(a.payload as Record<string, string>), when: a.created_at }; })} />}
       </div>

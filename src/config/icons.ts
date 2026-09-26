@@ -23,6 +23,7 @@ export const ICON_NAMES = [
   "delete",
   "devices",
   "done_all",
+  "download",
   "edit",
   "event",
   "expand_more",

@@ -154,6 +154,7 @@ is the transition. A slot's state always follows its newest *sent* version.
 | **Approve and notify** | Approver | Confirmation dialog ("Approve *Sambandh Event v3*? This notifies everyone on the event."). Slot → Approved. | Everyone on the event, both orgs' channels per settings |
 | **Approve and download** | Approver | Same as above, then downloads the optimised file (or a ZIP of Front + Back). | Same |
 | Bulk approve | Approver | Multi-select slots on the Event page → one confirmation dialog listing them. No "Approve all" button exists. | Same |
+| Download all approved | anyone on the org | Event page → "Download approved · N": one ZIP of every approved design, files named like single downloads. | — |
 | Reopen | Approver | Explicit switch on an approved slot with a reason. Slot → Changes requested. Prior approval recorded as *superseded*. | Everyone on the event |
 
 "Everyone on the event" = creator, all assignees, everyone who has commented, all Approvers

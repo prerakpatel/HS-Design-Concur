@@ -97,3 +97,10 @@ formats are one row each with an On / Off chip, notes and the Primary radio. Pri
 (an event normally has one print piece, at one size) with a quiet "+ Add a print item" link for the rare
 second piece. LED backwall defaults to 3584 × 1536 and can be overridden per event. The asset page header
 shows the format's size next to its name (TV 1920 × 1080) so nobody has to look it up.
+
+## Download all approved
+
+The Formats header on the event page grows a "Download approved · N" button as soon as one format is approved
+(icon and count only on phones). It fetches one ZIP from `/api/events/[id]/download`, every approved design
+named exactly like the single downloads (year_event_format_vN.ext, "-back" for a print back), so a folder of
+them sorts sensibly. Per-format downloads on the asset page stay for the one-off case.
