@@ -11,6 +11,7 @@ import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { Icon } from "@/components/material-icon";
 import { TEXT_COLORS, type TextColor } from "@/lib/rich-text";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // icons: format_bold format_italic format_underlined format_color_text format_list_bulleted link link_off text_format close check
 export interface EditorMember { id: string; name: string; handle: string; avatar?: string | null }
@@ -115,6 +116,7 @@ export function CommentEditor({ value, onChange, onSubmit, placeholder, members,
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
   const [colorOpen, setColorOpen] = useState(false);
+  const mobile = useIsMobile();
   const submitRef = useRef(onSubmit);
   useEffect(() => { submitRef.current = onSubmit; }, [onSubmit]);
   const editor = useEditor({
@@ -148,34 +150,40 @@ export function CommentEditor({ value, onChange, onSubmit, placeholder, members,
     else editor.chain().focus().extendMarkRange("link").setLink({ href: /^https?:\/\//i.test(raw) || raw.startsWith("mailto:") ? raw : `https://${raw}` }).run();
     setLinkOpen(false);
   };
-  const tools = <Tools editor={editor} onLink={openLink} colorOpen={colorOpen} setColorOpen={(v) => { setColorOpen(v); if (v) setLinkOpen(false); }} />;
+  const tools = <Tools editor={editor} link={{ open: linkOpen, value: linkValue, setValue: setLinkValue, openIt: openLink, apply: applyLink, close: () => setLinkOpen(false) }} colorOpen={colorOpen} setColorOpen={(v) => { setColorOpen(v); if (v) setLinkOpen(false); }} />;
 
   return (
     <div className={cn("relative rounded-xl border border-input bg-card focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50", className)}>
-      {/* Phones: the row lives above the text so it sits right over the keyboard. */}
-      <div className="flex items-center gap-0.5 border-b border-border px-1.5 py-1 md:hidden">{tools}</div>
-      {/* Desktop: the same tools hover over whatever is selected. */}
-      <div className="max-md:hidden">
-        <BubbleMenu editor={editor} shouldShow={({ editor, state }) => !state.selection.empty && editor.isEditable} options={{ placement: "top", offset: 8 }} className="flex items-center gap-0.5 rounded-xl bg-foreground p-1 text-background shadow-xl">
+      {/* Phones: the row lives above the text so it sits right over the keyboard. Desktop: the same tools hover
+          over the selection, and the link field takes the pill's place. One or the other, never both. */}
+      {mobile ? (
+        <div className="flex items-center gap-0.5 border-b border-border px-1.5 py-1">{tools}</div>
+      ) : (
+        <BubbleMenu editor={editor} shouldShow={({ editor, state }) => (!state.selection.empty || linkOpen) && editor.isEditable} options={{ placement: "top", offset: 8 }} className="flex items-center gap-0.5 rounded-xl bg-foreground p-1 text-background shadow-xl">
           {tools}
         </BubbleMenu>
-      </div>
-      <EditorContent editor={editor} />
-      {linkOpen && (
-        <div className="absolute inset-x-2 bottom-full z-20 mb-1 flex items-center gap-2 rounded-xl border border-border bg-card p-2 shadow-lg">
-          <Icon name="link" className="ml-1 !text-[18px] text-muted-foreground" />
-          <input autoFocus value={linkValue} onChange={(e) => setLinkValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyLink(); } if (e.key === "Escape") setLinkOpen(false); }} placeholder="Type or paste a link" inputMode="url" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
-          <button type="button" onClick={applyLink} className="rounded-lg px-2.5 py-1 text-sm font-medium hover:bg-muted">Apply</button>
-          <button type="button" onClick={() => setLinkOpen(false)} aria-label="Close" className="flex size-7 items-center justify-center rounded-lg hover:bg-muted"><Icon name="close" className="!text-[18px]" /></button>
-        </div>
       )}
+      <EditorContent editor={editor} />
     </div>
   );
 }
 
-function Tools({ editor, onLink, colorOpen, setColorOpen }: { editor: Editor; onLink: () => void; colorOpen: boolean; setColorOpen: (v: boolean) => void }) {
+interface LinkState { open: boolean; value: string; setValue: (v: string) => void; openIt: () => void; apply: () => void; close: () => void }
+
+function Tools({ editor, link, colorOpen, setColorOpen }: { editor: Editor; link: LinkState; colorOpen: boolean; setColorOpen: (v: boolean) => void }) {
   const btn = (active: boolean) => cn("flex size-8 items-center justify-center rounded-lg transition-colors hover:bg-current/10", active && "bg-current/15");
   const color = editor.getAttributes("colored").color as TextColor | undefined;
+  if (link.open) {
+    // The toolbar becomes the link field, so it is always exactly where the tools were.
+    return (
+      <div className="flex h-8 min-w-[260px] items-center gap-1.5 pl-2">
+        <Icon name="link" className="!text-[18px] opacity-70" />
+        <input autoFocus value={link.value} onChange={(e) => link.setValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); link.apply(); } if (e.key === "Escape") { e.preventDefault(); link.close(); } }} placeholder="Type or paste a link" inputMode="url" className="min-w-0 flex-1 bg-transparent text-sm text-current outline-none placeholder:text-current/50" />
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={link.apply} className="rounded-lg px-2.5 py-1 text-sm font-medium hover:bg-current/10">Apply</button>
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={link.close} aria-label="Close" className="flex size-7 items-center justify-center rounded-lg hover:bg-current/10"><Icon name="close" className="!text-[18px]" /></button>
+      </div>
+    );
+  }
   return (
     <>
       <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleBold().run()} aria-label="Bold" aria-pressed={editor.isActive("bold")} className={btn(editor.isActive("bold"))}><Icon name="format_bold" className="!text-[20px]" /></button>
@@ -193,7 +201,7 @@ function Tools({ editor, onLink, colorOpen, setColorOpen }: { editor: Editor; on
       <span className="mx-0.5 h-5 w-px bg-current/25" />
       <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleBulletList().run()} aria-label="Bullet list" aria-pressed={editor.isActive("bulletList")} className={btn(editor.isActive("bulletList"))}><Icon name="format_list_bulleted" className="!text-[20px]" /></button>
       <span className="mx-0.5 h-5 w-px bg-current/25" />
-      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onLink} aria-label="Link" aria-pressed={editor.isActive("link")} className={btn(editor.isActive("link"))}><Icon name="link" className="!text-[20px]" /></button>
+      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={link.openIt} aria-label="Link" aria-pressed={editor.isActive("link")} className={btn(editor.isActive("link"))}><Icon name="link" className="!text-[20px]" /></button>
     </>
   );
 }

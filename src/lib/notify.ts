@@ -113,7 +113,8 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
       // A formatted comment keeps its bold, italics, bullets, links and mentions in the platform's own markup.
       const rendered = excerptHtml ? chatLines(kind, { ...payload, excerpt: htmlToChat(excerptHtml, platform, (id, label) => at(id) || `@${label}`) }).body : body;
       const bodyText = rendered.replace(/\{@([0-9a-f-]{36})\}/g, (_, id) => at(id) || "someone");
-      const who = mentions.filter((id) => !placeholderIds.includes(id)).map(at).filter(Boolean).join(" ");
+      const inlined = new Set([...placeholderIds, ...(excerptHtml ? mentionIds(excerptHtml) : [])]);
+      const who = mentions.filter((id) => !inlined.has(id)).map(at).filter(Boolean).join(" ");
       return postChat(hook, [chat.bold(head), bodyText, who, chat.link(href, "Open in Design & Concur")].filter(Boolean).join("\n"), image);
     }));
     for (const r of results) if ("error" in r) console.error("[chat]", r.error);
