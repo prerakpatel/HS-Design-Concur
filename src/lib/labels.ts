@@ -38,7 +38,7 @@ export function chatDate(d: unknown) {
   if (typeof d !== "string" || !d) return "";
   return new Date(d.length === 10 ? `${d}T12:00:00` : d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
-const quote = (s: unknown) => (typeof s === "string" && s.trim() ? `“${s.trim()}”` : "");
+const quote = (s: unknown) => (typeof s === "string" && s.trim() ? (s.includes("\n") ? `\n${s.trim()}` : `“${s.trim()}”`) : "");
 /**
  * Chat post body: a bold first line (emoji · event · format) and a plain second line saying what happened.
  * `{@<userId>}` placeholders become a real @mention (or a bold name) per platform in notify().

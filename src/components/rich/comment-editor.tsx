@@ -89,7 +89,8 @@ export function CommentEditor({ value, onChange, onSubmit, placeholder, members,
     autofocus: autoFocus ? "end" : false,
     extensions: [
       StarterKit.configure({ heading: false, strike: false, code: false, codeBlock: false, blockquote: false, orderedList: false, horizontalRule: false, link: false, underline: undefined }),
-      Link.configure({ openOnClick: false, autolink: true, defaultProtocol: "https", HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" } }),
+      // inclusive: false → typing right after a link continues as plain text (bold / italic / underline still extend).
+      Link.extend({ inclusive: false }).configure({ openOnClick: false, autolink: true, defaultProtocol: "https", HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" } }),
       Colored,
       Placeholder.configure({ placeholder: placeholder ?? "" }),
       Mention.configure({ HTMLAttributes: { class: "mention" }, renderHTML: ({ node }) => ["span", { "data-type": "mention", "data-id": node.attrs.id, "data-label": node.attrs.label, class: "mention" }, `@${node.attrs.label ?? node.attrs.id}`], suggestion: mentionSuggestion(members) }),
@@ -149,7 +150,7 @@ function Tools({ editor, onLink, colorOpen, setColorOpen }: { editor: Editor; on
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setColorOpen(!colorOpen)} aria-label="Text colour" aria-expanded={colorOpen} className={btn(!!color)}><Icon name="format_color_text" className="!text-[20px]" /></button>
         {colorOpen && (
           <span className="absolute left-1/2 top-full z-30 mt-2 flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-foreground p-2.5 shadow-xl">
-            <Swatch label="Default" active={!color} className="bg-background" onPick={() => { editor.chain().focus().unsetMark("colored").run(); setColorOpen(false); }} />
+            <Swatch label="Default text" active={!color} className="swatch-default" onPick={() => { editor.chain().focus().unsetMark("colored").run(); setColorOpen(false); }} />
             {TEXT_COLORS.map((c) => <Swatch key={c} label={c} active={color === c} className={`swatch-${c}`} onPick={() => { editor.chain().focus().setMark("colored", { color: c }).run(); setColorOpen(false); }} />)}
           </span>
         )}
@@ -163,5 +164,5 @@ function Tools({ editor, onLink, colorOpen, setColorOpen }: { editor: Editor; on
 }
 
 function Swatch({ label, active, className, onPick }: { label: string; active: boolean; className: string; onPick: () => void }) {
-  return <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onPick} aria-label={label} aria-pressed={active} className={cn("size-7 rounded-full ring-2 ring-offset-2 ring-offset-foreground transition-transform hover:scale-110", active ? "ring-background" : "ring-transparent", className)} />;
+  return <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onPick} aria-label={label} aria-pressed={active} className={cn("size-7 rounded-full shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.35)] ring-2 ring-offset-2 ring-offset-foreground transition-transform hover:scale-110", active ? "ring-background" : "ring-transparent", className)} />;
 }

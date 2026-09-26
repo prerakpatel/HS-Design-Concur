@@ -5,6 +5,7 @@ import { postChat, chat, mention, platformOf, type ChatUser, type ChatImage } fr
 import { signedUrl } from "@/lib/storage";
 import { sendPush } from "@/lib/push";
 import { notificationText, notificationHref, chatLines } from "@/lib/labels";
+import { htmlToChat, mentionIds } from "@/lib/rich-text";
 
 export type NotificationKind =
   | "access.requested" | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "comment.posted"
@@ -102,13 +103,16 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
     const { head, body } = chatLines(kind, payload);
     const image = await previewImage(supabase, payload, head, href);
     const placeholderIds = [...body.matchAll(/\{@([0-9a-f-]{36})\}/g)].map((m) => m[1]);
-    const wanted = [...new Set([...mentions, ...placeholderIds])];
+    const excerptHtml = typeof payload.excerptHtml === "string" ? payload.excerptHtml : null;
+    const wanted = [...new Set([...mentions, ...placeholderIds, ...(excerptHtml ? mentionIds(excerptHtml) : [])])];
     const people = new Map<string, ChatUser>();
     if (wanted.length) for (const u of ((await supabase.from("users").select("id,name,email,slack_user_id,gchat_user_id").in("id", wanted)).data as ChatUser[] | null) ?? []) people.set(u.id, u);
     const results = await Promise.all(hooks.map((hook) => {
       const platform = platformOf(hook);
       const at = (id: string) => { const u = people.get(id); return u ? mention(u, platform) : ""; };
-      const bodyText = body.replace(/\{@([0-9a-f-]{36})\}/g, (_, id) => at(id) || "someone");
+      // A formatted comment keeps its bold, italics, bullets, links and mentions in the platform's own markup.
+      const rendered = excerptHtml ? chatLines(kind, { ...payload, excerpt: htmlToChat(excerptHtml, platform, (id, label) => at(id) || `@${label}`) }).body : body;
+      const bodyText = rendered.replace(/\{@([0-9a-f-]{36})\}/g, (_, id) => at(id) || "someone");
       const who = mentions.filter((id) => !placeholderIds.includes(id)).map(at).filter(Boolean).join(" ");
       return postChat(hook, [chat.bold(head), bodyText, who, chat.link(href, "Open in Design & Concur")].filter(Boolean).join("\n"), image);
     }));

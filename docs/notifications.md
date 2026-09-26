@@ -12,6 +12,17 @@ In-app notifications and push always work. Email and Google Chat need two one-ti
 
 Repeat for the ACC space if it has its own. What gets posted: new events, assignments, uploads, decisions, comments, due reminders and access requests, with the people concerned @mentioned (full table in [setup.md](setup.md#what-goes-to-chat-and-who-gets-pinged)). Google Chat mentions work automatically from the Google sign-in; for Slack each person pastes their member ID on their Profile.
 
+## A2 · Slack (10 minutes, per channel)
+
+1. Go to https://api.slack.com/apps → **Create New App** → **From scratch**. Name it `Design & Concur`, pick the Harisumiran workspace, **Create App**.
+2. In the app's left menu open **Incoming Webhooks** → switch **Activate Incoming Webhooks** on.
+3. Scroll down → **Add New Webhook to Workspace** → choose the channel the design team uses (e.g. `#design`) → **Allow**.
+4. Copy the webhook URL (starts with `https://hooks.slack.com/services/…`). Treat it like a password: anyone holding it can post to that channel.
+5. In the app: **Settings → Organizations** → paste it under the organization → tick **Slack notifications** → **Save** → **Test Slack**. A hello should land in the channel.
+6. Optional but worth it: under **Basic Information → Display Information** give the app the Design & Concur icon so posts are easy to spot.
+
+Repeat for a second channel if ACC has its own (one webhook URL per channel). For @mentions to ping people, each person pastes their Slack member ID on their Profile page (Slack: profile → ⋮ → **Copy member ID**), or a Core Admin enters it in Settings → Users; without it their name appears in bold instead. Comments keep their formatting in Slack: bold, italics, bullets, links and mentions; underline and colours have no Slack equivalent and are dropped.
+
 ## B · Email (20 minutes, once)
 
 Email is sent through Resend (free tier: 3,000 emails a month, plenty for a team this size).

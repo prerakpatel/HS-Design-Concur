@@ -93,8 +93,8 @@ The service worker is `public/sw.js`.
 
 ## Slack
 
-Per org, Settings → Organizations: turn on Slack notifications and paste an incoming-webhook URL
-(Slack app → Incoming Webhooks → Add New Webhook to Workspace → pick the channel). "Test Slack" posts a hello.
+Per org, Settings → Organizations: turn on Slack notifications and paste an incoming-webhook URL. Step-by-step
+in [notifications.md](notifications.md#a2--slack-10-minutes-per-channel). "Test Slack" posts a hello.
 
 ## What goes to chat, and who gets pinged
 

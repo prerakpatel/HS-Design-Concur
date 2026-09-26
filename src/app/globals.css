@@ -192,7 +192,8 @@
 .rich p + p, .rich p + ul, .rich ul + p { margin-top: 0.375rem; }
 .rich ul { list-style: disc; padding-left: 1.25rem; }
 .rich li + li { margin-top: 0.125rem; }
-.rich a { color: var(--info); text-decoration: underline; text-underline-offset: 2px; }
+.rich a { color: var(--info); font-weight: 500; text-decoration: none; }
+.rich a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .rich u { text-underline-offset: 2px; }
 .rich .mention, .rich [data-type="mention"] { color: var(--info); font-weight: 500; }
 .rich [data-color="red"] { color: var(--destructive-text); }
@@ -200,5 +201,5 @@
 .rich [data-color="green"] { color: var(--success-text); }
 .rich [data-color="yellow"] { color: var(--warning-text); }
 .rich [data-color="gray"] { color: var(--muted-foreground); }
-.swatch-red { background: var(--destructive-text); } .swatch-blue { background: var(--info); } .swatch-green { background: var(--success-text); } .swatch-yellow { background: var(--warning-text); } .swatch-gray { background: var(--muted-foreground); }
+.swatch-default { background: var(--foreground); } .swatch-red { background: var(--destructive-text); } .swatch-blue { background: var(--info); } .swatch-green { background: var(--success-text); } .swatch-yellow { background: var(--warning-text); } .swatch-gray { background: var(--muted-foreground); }
 .tiptap p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: color-mix(in oklch, var(--muted-foreground) 55%, transparent); pointer-events: none; height: 0; }

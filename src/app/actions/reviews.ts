@@ -118,7 +118,7 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
   }
   const { error } = await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: html, mentions: [...mentions], pin_x: pin?.x ?? null, pin_y: pin?.y ?? null, pin_side: pin?.side ?? "front" });
   if (error) throw new Error(error.message);
-  const payload = { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: text.slice(0, 200) };
+  const payload = { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: text.slice(0, 200), excerptHtml: html };
   if (mentions.size) await notify(supabase, mentions, "comment.mention", payload, user.id, { orgId: org.id });
   else {
     // No @mention: it is for the designer, the uploader and whoever has already spoken on this version.
