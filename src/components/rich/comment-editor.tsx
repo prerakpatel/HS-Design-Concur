@@ -33,10 +33,17 @@ const DashBullet = Extension.create({
   onUpdate() {
     const { state } = this.editor; const { $from, empty } = state.selection;
     if (!empty || $from.parent.type.name !== "paragraph" || $from.depth !== 1) return;
-    const text = $from.parent.textBetween(0, $from.parentOffset, undefined, "\ufffc");
-    if (!/^[-*]\s$/.test(text)) return;
-    const from = $from.start(); const to = from + text.length;
-    queueMicrotask(() => this.editor.chain().deleteRange({ from, to }).toggleBulletList().run());
+    // After a Shift+Enter line break the "line" starts at the break, not at the paragraph.
+    let breakAt = -1;
+    $from.parent.forEach((node, offset) => { if (node.type.name === "hardBreak" && offset < $from.parentOffset) breakAt = offset; });
+    const lineStart = breakAt >= 0 ? breakAt + 1 : 0;
+    const line = $from.parent.textBetween(lineStart, $from.parentOffset, undefined, "\ufffc");
+    if (!/^[-*]\s$/.test(line)) return;
+    const start = $from.start(); const cursor = start + $from.parentOffset;
+    queueMicrotask(() => {
+      if (breakAt >= 0) this.editor.chain().deleteRange({ from: start + breakAt, to: cursor }).splitBlock().toggleBulletList().run();
+      else this.editor.chain().deleteRange({ from: start, to: cursor }).toggleBulletList().run();
+    });
   },
 });
 
