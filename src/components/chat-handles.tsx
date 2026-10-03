@@ -27,7 +27,7 @@ export function ChatHandles({ slackId, gchatLinked, orgName }: { slackId: string
         <div className="space-y-2">
           <label htmlFor="slack_user_id" className="text-sm font-medium">Slack member ID</label>
           <Input id="slack_user_id" name="slack_user_id" value={value} onChange={(e) => setValue(e.target.value)} placeholder="U0123ABCD" autoCapitalize="characters" autoCorrect="off" spellCheck={false} className="font-mono uppercase" />
-          <p className="text-sm text-muted-foreground">In Slack, open your profile → ⋮ → <span className="font-medium text-foreground">Copy member ID</span>. Leave empty if you are not on Slack; posts then show your name instead of pinging you.</p>
+          <p className="text-sm text-muted-foreground">Usually filled in for you from your email. If it is empty or wrong: in Slack, open your profile → ⋮ → <span className="font-medium text-foreground">Copy member ID</span>. Leave it empty if you are not on Slack; posts then show your name instead of pinging you.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={pending || !dirty}>{pending ? "Saving…" : "Save"}</Button>

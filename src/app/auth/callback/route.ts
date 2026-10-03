@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { notify, coreAdminIds } from "@/lib/notify";
+import { slackLookupByEmail } from "@/lib/slack";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -16,10 +17,12 @@ export async function GET(request: Request) {
         // doubles as the Google Chat user ID, so @mentions in Chat work without anyone typing anything.
         const meta = (data.user.user_metadata ?? {}) as { avatar_url?: string; picture?: string; provider_id?: string; sub?: string };
         const googleId = meta.provider_id ?? meta.sub ?? data.user.identities?.find((i) => i.provider === "google")?.id ?? null;
-        const { data: me } = await supabase.from("users").select("status,name,email,gchat_user_id").eq("id", data.user.id).maybeSingle();
+        const { data: me } = await supabase.from("users").select("status,name,email,gchat_user_id,slack_user_id").eq("id", data.user.id).maybeSingle();
         const patch: Record<string, string> = {};
         const avatar_url = meta.avatar_url ?? meta.picture; if (avatar_url) patch.avatar_url = avatar_url;
         if (googleId && /^\d{6,}$/.test(googleId) && !me?.gchat_user_id) patch.gchat_user_id = googleId;
+        // Slack: the workspace is asked for the member with this email, so nobody has to paste an ID.
+        if (me && !me.slack_user_id) { const slackId = await slackLookupByEmail(me.email); if (slackId) patch.slack_user_id = slackId; }
         if (Object.keys(patch).length) await supabase.from("users").update(patch).eq("id", data.user.id);
         if (me?.status === "pending") await announceAccessRequest(data.user.id, me.name, me.email);
       }

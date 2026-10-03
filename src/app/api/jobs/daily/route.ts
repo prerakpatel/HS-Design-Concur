@@ -6,6 +6,7 @@ import { notify, subjectFor, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
 import { refreshStalePreviews } from "@/lib/uploads/refresh-preview";
 import { pruneAllSlots } from "@/lib/uploads/prune";
+import { matchSlackIds } from "@/lib/slack";
 import { postRelease } from "@/lib/changelog";
 import { RELEASES } from "@/config/changelog";
 import { getActiveUser } from "@/lib/auth";
@@ -90,6 +91,9 @@ export async function GET(req: Request) {
 
   // 3c. Version files: only the newest two per format keep theirs (safety net for the upload-time prune).
   report.versionsPruned = await pruneAllSlots(db);
+
+  // 3d. Slack member IDs for anyone still missing one (email lookup; needs SLACK_BOT_TOKEN).
+  report.slackMatched = (await matchSlackIds(db)).matched;
 
   // 4. Old watermark previews
   report.previews = await refreshStalePreviews(db, 20);

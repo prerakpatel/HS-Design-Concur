@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
 import { normaliseSlackId } from "@/lib/chat";
+import { matchSlackIds, slackConfigured } from "@/lib/slack";
 import type { FunctionTag } from "@/lib/types";
 import { EVENT_CAP, DELETE_RESTORE_DAYS } from "@/config/limits";
 
@@ -123,4 +124,13 @@ export async function restoreEvent(eventId: string) {
   await supabase.from("events").update({ deleted_at: null }).eq("id", event.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, actor_id: user.id, kind: "event.restored", payload: { title: event.title } });
   revalidatePath("/archive"); revalidatePath("/events");
+}
+
+/** Core Admin: ask Slack for everyone's member ID by email, now rather than at their next sign-in. */
+export async function matchSlackMembers() {
+  const { supabase } = await requireCoreAdmin();
+  if (!slackConfigured()) throw new Error("Add SLACK_BOT_TOKEN on Vercel first (docs/notifications.md → Slack).");
+  const r = await matchSlackIds(supabase);
+  revalidatePath("/settings"); revalidatePath("/profile");
+  return r;
 }

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireActiveUser, initials } from "@/lib/auth";
-import { decideAccess, updateOrgSettings, sendTestChat, sendTestEmail } from "@/app/actions/admin";
+import { decideAccess, updateOrgSettings, sendTestChat, sendTestEmail, matchSlackMembers } from "@/app/actions/admin";
+import { slackConfigured } from "@/lib/slack";
 import { PageHeader, SectionHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 <ToggleRow name="slack_enabled" label="Slack notifications" hint="The same posts in a Slack channel. People add their Slack member ID on their Profile to be @mentioned." on={o.slack_enabled} />
                 <div className="space-y-2"><Label htmlFor={`slack-${o.id}`}>Slack webhook URL</Label><Input id={`slack-${o.id}`} name="slack_webhook_url" defaultValue={o.slack_webhook_url ?? ""} placeholder="https://hooks.slack.com/services/…" /></div>
                 <div className="flex flex-wrap gap-2 pt-1"><Button type="submit">Save</Button><TestButton label="Test Google Chat" action={async () => { "use server"; await sendTestChat(o.id, "chat"); }} /><TestButton label="Test Slack" action={async () => { "use server"; await sendTestChat(o.id, "slack"); }} /></div>
+                <p className="text-sm text-muted-foreground">{slackConfigured() ? "Slack member IDs are found by email at sign-in and nightly, so @mentions ping without anyone pasting an ID." : "To match people to Slack by email automatically, add SLACK_BOT_TOKEN on Vercel (docs/notifications.md → Slack). Until then each person pastes their member ID on their Profile."}{slackConfigured() && <> <TestButton label="Match Slack members now" done="Everyone with a matching email now has a Slack ID." action={async () => { "use server"; const r = await matchSlackMembers(); if (r.unmatched.length) throw new Error(`Matched ${r.matched}. No Slack member found for: ${r.unmatched.join(", ")}`); }} /></>}</p>
               </form>
             ))}
           </section>

@@ -21,7 +21,14 @@ Repeat for the ACC space if it has its own. What gets posted: new events, assign
 5. In the app: **Settings → Organizations** → paste it under the organization → tick **Slack notifications** → **Save** → **Test Slack**. A hello should land in the channel.
 6. Optional but worth it: under **Basic Information → Display Information** give the app the Design & Concur icon so posts are easy to spot.
 
-Repeat for a second channel if ACC has its own (one webhook URL per channel). For @mentions to ping people, each person pastes their Slack member ID on their Profile page (Slack: profile → ⋮ → **Copy member ID**), or a Core Admin enters it in Settings → Users; without it their name appears in bold instead. Comments keep their formatting in Slack: bold, italics, bullets, links and mentions; underline and colours have no Slack equivalent and are dropped.
+Repeat for a second channel if ACC has its own (one webhook URL per channel).
+
+**Let the app find everyone's Slack ID (5 more minutes, once).** Without this each person pastes their member ID on their Profile; with it the app looks people up by email at sign-in and nightly.
+
+7. Still in the Slack app: **OAuth & Permissions** → under **Scopes → Bot Token Scopes** add `users:read` and `users:read.email`.
+8. At the top of the same page **Install to Workspace** (or **Reinstall**) → **Allow**. Copy the **Bot User OAuth Token** (starts with `xoxb-`).
+9. Vercel → the project → **Settings → Environment Variables** → add `SLACK_BOT_TOKEN` = that token, all environments, mark it sensitive → **Save** → **Deployments → ⋯ → Redeploy**.
+10. In the app: **Settings → Organizations → Match Slack members now**. It reports anyone whose Slack email differs from their sign-in email; those few paste their ID on their Profile (Slack: profile → ⋮ → **Copy member ID**). Comments keep their formatting in Slack: bold, italics, bullets, links and mentions; underline and colours have no Slack equivalent and are dropped.
 
 ## B · Email (20 minutes, once)
 
