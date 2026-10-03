@@ -14,7 +14,13 @@ export async function postChat(webhookUrl: string, text: string, image?: ChatIma
   }
   try {
     const res = await fetch(webhookUrl, { method: "POST", headers: { "Content-Type": "application/json; charset=UTF-8" }, body: JSON.stringify(body) });
-    if (!res.ok) return { error: `Webhook ${res.status}: ${(await res.text()).slice(0, 200)}` };
+    if (!res.ok) {
+      const text = (await res.text()).slice(0, 200);
+      // Slack revokes a webhook when the app is reinstalled or the channel is removed; say what to do, not the code.
+      if (/no_service|invalid_token|channel_not_found|channel_is_archived/.test(text)) return { error: "Slack says this webhook no longer works. In the Slack app open Incoming Webhooks, copy the current URL for the channel (reinstalling the app issues new ones), paste it in Settings → Organizations and save." };
+      if (res.status === 404 && /chat\.googleapis\.com/.test(webhookUrl)) return { error: "Google Chat says this webhook no longer exists. In the space, open Apps & integrations → Webhooks, copy the current URL, paste it in Settings → Organizations and save." };
+      return { error: `Webhook ${res.status}: ${text}` };
+    }
     return { ok: true as const };
   } catch (e) { return { error: (e as Error).message }; }
 }
