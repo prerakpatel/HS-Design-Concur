@@ -10,6 +10,7 @@ import { BriefCard, ActivityFeed } from "@/components/events/event-detail";
 import { FormatGrid } from "@/components/events/format-grid";
 import { UsersList } from "@/components/settings/user-editor";
 import { AccessRequests } from "@/components/settings/access-requests";
+import { GroupsEditor } from "@/components/settings/groups-editor";
 import { FormatsList } from "@/components/settings/format-editor";
 import { WizardShell } from "@/components/wizard/wizard-shell";
 import { EventForm, FormatsForm, AssignForm, ReviewPanel } from "@/components/wizard/steps";
@@ -23,7 +24,7 @@ import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
 
 export const dynamic = "force-dynamic";
-const SCREENS = ["events", "event", "slot", "profile", "settings", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
+const SCREENS = ["events", "event", "slot", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
 
 /** Design preview harness. Renders real components with fixture data so screens can be reviewed without a database. */
 export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
@@ -68,6 +69,10 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
 
   if (screen === "profile") return shell(<><PageHeader title="Profile" /><ProfileView user={{ name: F.ME.name, email: "prerak@harisumiran.org", roles: F.ME.role.split(" · "), initials: F.ME.initials, slackId: null, gchatLinked: true }} orgs={F.ORGS} currentOrgId={org.id} /></>);
 
+  if (screen === "groups") return shell(<><PageHeader title="Settings" subtitle="People, access, the format catalog and notifications" />
+    {tabs([["users", "Users"], ["groups", "Groups · 2"], ["requests", "Requests"], ["formats", "Formats"], ["orgs", "Organizations"]], "groups")}
+    <GroupsEditor users={[{ id: "u-1", name: "Prerak Patel", initials: "PP", hint: "prerak@harisumiran.org" }, { id: "u-2", name: "Mihir Shah", initials: "MS", hint: "mihir@hariss.org" }, { id: "u-3", name: "Kinjal Patel", initials: "KP", hint: "kinjal@hariss.org" }, { id: "u-4", name: "Rina Desai", initials: "RD", hint: "rina@hariss.org" }, { id: "u-5", name: "Nikhil Joshi", initials: "NJ", hint: "nikhil@hariss.org" }]}
+      groups={[{ id: "g-1", org_id: "o-1", name: "Designers", hears: "own", chat_webhook_url: "x", slack_webhook_url: null, members: ["u-2", "u-3", "u-4"] }, { id: "g-2", org_id: "o-1", name: "Core members", hears: "milestones", chat_webhook_url: null, slack_webhook_url: "x", members: ["u-1", "u-5"] }]} /></>);
   if (screen === "settings" || screen === "requests" || screen === "formats") return shell(<>
     <PageHeader title="Settings" subtitle="People, access, the format catalog and notifications" />
     {tabs([["users", "Users"], ["requests", "Requests · 2"], ["formats", "Formats"], ["notifications", "Notifications"]], screen === "settings" ? "users" : screen)}

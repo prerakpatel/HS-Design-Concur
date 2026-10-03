@@ -27,8 +27,8 @@ const CHAT: Partial<Record<NotificationKind, "mention" | "channel">> = {
   "event.all_approved": "mention", "event.published": "mention", "event.archived": "channel",
 };
 
-/** Event-level moments every group hears about, whatever its setting. */
-const MILESTONES = new Set<NotificationKind>(["event.published", "event.all_approved", "event.archived", "versions.approved"]);
+/** Event-level moments every group hears about, whatever its setting. Archiving is housekeeping: org channel only. */
+const MILESTONES = new Set<NotificationKind>(["event.published", "event.all_approved"]);
 
 const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> = {
   "access.requested": (p) => `Access request: ${p.name ?? p.email}`,
@@ -112,7 +112,7 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
     const explicit = new Set(Array.isArray(payload.groups) ? (payload.groups as string[]) : []);
     const someoneUngrouped = groups.length === 0 || [...audience].some((id) => !grouped.has(id));
     const hookList: string[] = [];
-    if (milestone || someoneUngrouped) hookList.push(...orgs.flatMap((o) => [o.chat_enabled && o.chat_webhook_url, o.slack_enabled && o.slack_webhook_url]).filter((h): h is string => !!h));
+    if (milestone || someoneUngrouped || kind === "event.archived") hookList.push(...orgs.flatMap((o) => [o.chat_enabled && o.chat_webhook_url, o.slack_enabled && o.slack_webhook_url]).filter((h): h is string => !!h));
     for (const g of groups) {
       const touches = g.members.some((m) => audience.has(m));
       if (explicit.has(g.id) || g.hears === "all" || milestone || (g.hears === "own" && touches)) hookList.push(...[g.chat_webhook_url, g.slack_webhook_url].filter((h): h is string => !!h));

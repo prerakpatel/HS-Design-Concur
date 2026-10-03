@@ -51,7 +51,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       {tab === "users" && <UsersList currentUserId={user.id} orgs={orgOptions} users={active.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, role: u.role, is_approver: u.is_approver, function_tags: u.function_tags, orgIds: orgsOf.get(u.id) ?? [], groupIds: groupsOf.get(u.id) ?? [], email_pref: u.email_pref, slack_user_id: u.slack_user_id, gchat_user_id: u.gchat_user_id }))} groups={groups.map((g) => ({ id: g.id, label: g.name }))} />}
 
-      {tab === "groups" && <GroupsEditor groups={groups} users={active.filter((u) => (orgsOf.get(u.id) ?? []).includes(org.id)).map((u) => ({ id: u.id, name: u.name ?? u.email, initials: initials(u.name, u.email), avatar: u.avatar_url }))} />}
+      {tab === "groups" && <GroupsEditor groups={groups} users={active.filter((u) => (orgsOf.get(u.id) ?? []).includes(org.id)).map((u) => ({ id: u.id, name: u.name ?? u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, hint: u.email }))} />}
 
       {tab === "requests" && <AccessRequests action={decideAccess} orgs={orgOptions} defaultOrgId={org.id} pending={pending.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, requested_at: askedAt.get(u.id) ?? u.created_at }))} />}
 

@@ -6,8 +6,8 @@ export interface Group { id: string; org_id: string; name: string; hears: GroupH
 
 export const HEARS_LABEL: Record<GroupHears, { label: string; hint: string }> = {
   all: { label: "Everything", hint: "Every post for this organization." },
-  own: { label: "Its own designs", hint: "Uploads, decisions, comments and reminders for designs its members work on, plus event milestones." },
-  milestones: { label: "Milestones only", hint: "Event published, all designs approved, archived. Nothing per design unless the group is @mentioned." },
+  own: { label: "Its own designs", hint: "Posts about designs its members work on, plus event published and all designs approved." },
+  milestones: { label: "Milestones only", hint: "Only event published and all designs approved. Nothing per design unless the group is @mentioned." },
 };
 
 /** Groups of one or more organizations, with member ids. */

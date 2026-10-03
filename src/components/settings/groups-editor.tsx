@@ -1,5 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
+import { PeoplePicker, type PickablePerson } from "@/components/settings/people-picker";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,7 +18,7 @@ import { HEARS_LABEL, type Group, type GroupHears } from "@/lib/groups";
 import { errorMessage } from "@/lib/user-error";
 
 // icons: group_add chevron_right groups
-export interface GroupUser { id: string; name: string; initials: string; avatar?: string | null }
+export type GroupUser = PickablePerson;
 
 /**
  * Settings › Groups: people + a chat home + what they hear about. One calm row per group; tap to edit. Chat posts
@@ -66,12 +67,9 @@ function GroupPanel({ group, users, onClose }: { group: Group | "new" | null; us
             <DialogHeader className="border-b border-border px-6 py-5 text-left"><DialogTitle className="text-lg">{g ? g.name : "New group"}</DialogTitle><DialogDescription>{g ? "Members, chat home and what the group hears about." : "A team with its own channel: designers, social media, core members…"}</DialogDescription></DialogHeader>
             <div className="min-h-0 flex-1 space-y-7 overflow-y-auto px-6 py-6">
               <div className="space-y-2"><Label htmlFor="g-name">Name</Label><Input id="g-name" name="name" required defaultValue={g?.name ?? ""} placeholder="e.g. Core members" /></div>
-              <Field label="Hears about" hint="Event milestones (published, all approved, archived) reach every group whatever you pick.">
-                <ChoiceChips name="hears" defaultValue={g?.hears ?? "own"} options={(Object.keys(HEARS_LABEL) as GroupHears[]).map((k) => ({ value: k, label: HEARS_LABEL[k].label, hint: HEARS_LABEL[k].hint }))} />
-                <p className="text-sm text-muted-foreground">{HEARS_LABEL.own.hint} / {HEARS_LABEL.milestones.hint}</p>
-              </Field>
+              <HearsPicker defaultValue={g?.hears ?? "own"} />
               <Field label="People" hint="Someone can be in several groups.">
-                <ChoiceChips name="member" multiple size="sm" defaultValue={g?.members ?? []} options={users.map((u) => ({ value: u.id, label: u.name }))} />
+                <PeoplePicker name="member" people={users} defaultValue={g?.members ?? []} placeholder="Search by name…" />
               </Field>
               <Field label="Chat home" hint="A Google Chat space and/or a Slack channel of the group's own. Webhooks exist for spaces and channels, not for direct-message groups.">
                 <div className="space-y-2"><Label htmlFor="g-chat">Google Chat webhook URL</Label><Input id="g-chat" name="chat_webhook_url" defaultValue={g?.chat_webhook_url ?? ""} placeholder="https://chat.googleapis.com/v1/spaces/…" /></div>
@@ -87,5 +85,16 @@ function GroupPanel({ group, users, onClose }: { group: Group | "new" | null; us
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** The three "hears about" choices with one line of explanation for whichever is picked. */
+function HearsPicker({ defaultValue }: { defaultValue: GroupHears }) {
+  const [hears, setHears] = useState<GroupHears>(defaultValue);
+  return (
+    <Field label="Hears about">
+      <ChoiceChips name="hears" defaultValue={defaultValue} onChange={(v) => setHears((v[0] as GroupHears) ?? defaultValue)} options={(Object.keys(HEARS_LABEL) as GroupHears[]).map((k) => ({ value: k, label: HEARS_LABEL[k].label }))} />
+      <p className="text-sm text-muted-foreground">{HEARS_LABEL[hears].hint}</p>
+    </Field>
   );
 }
