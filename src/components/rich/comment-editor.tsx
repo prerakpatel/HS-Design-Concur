@@ -69,6 +69,11 @@ function mentionSuggestion(members: EditorMember[]): Omit<SuggestionOptions<Edit
     },
     render: () => {
       let el: HTMLDivElement | null = null; let items: EditorMember[] = []; let index = 0; let command: SuggestionProps<EditorMember>["command"] | null = null;
+      let rectFn: (() => DOMRect | null) | null | undefined = null;
+      // The popup is position: fixed, so it must follow the caret whenever the page, a panel or the keyboard moves it.
+      const follow = () => place(rectFn);
+      const watch = () => { window.addEventListener("scroll", follow, true); window.addEventListener("resize", follow); window.visualViewport?.addEventListener("resize", follow); window.visualViewport?.addEventListener("scroll", follow); };
+      const unwatch = () => { window.removeEventListener("scroll", follow, true); window.removeEventListener("resize", follow); window.visualViewport?.removeEventListener("resize", follow); window.visualViewport?.removeEventListener("scroll", follow); };
       const paint = () => {
         if (!el) return;
         el.innerHTML = "";
@@ -91,6 +96,7 @@ function mentionSuggestion(members: EditorMember[]): Omit<SuggestionOptions<Edit
       };
       const place = (rect: (() => DOMRect | null) | null | undefined) => {
         const r = rect?.(); if (!el || !r) return;
+        if (r.bottom < 0 || r.top > window.innerHeight) { el.style.display = "none"; return; } else if (items.length) el.style.display = "block";
         const width = 240; const left = Math.min(r.left, window.innerWidth - width - 8);
         const below = r.bottom + 4; const above = r.top - 4;
         el.style.width = `${width}px`; el.style.left = `${Math.max(8, left)}px`;
@@ -101,18 +107,18 @@ function mentionSuggestion(members: EditorMember[]): Omit<SuggestionOptions<Edit
           el = document.createElement("div");
           el.className = "fixed z-50 max-h-72 overflow-y-auto rounded-xl border border-border bg-card py-1 shadow-lg";
           document.body.appendChild(el);
-          items = props.items; index = 0; command = props.command; paint(); place(props.clientRect);
+          items = props.items; index = 0; command = props.command; rectFn = props.clientRect; paint(); place(rectFn); watch();
         },
-        onUpdate: (props) => { items = props.items; index = Math.min(index, Math.max(0, items.length - 1)); command = props.command; paint(); place(props.clientRect); },
+        onUpdate: (props) => { items = props.items; index = Math.min(index, Math.max(0, items.length - 1)); command = props.command; rectFn = props.clientRect; paint(); place(rectFn); },
         onKeyDown: ({ event }) => {
           if (!items.length) return false;
           if (event.key === "ArrowDown") { index = (index + 1) % items.length; paint(); return true; }
           if (event.key === "ArrowUp") { index = (index - 1 + items.length) % items.length; paint(); return true; }
           if (event.key === "Enter" || event.key === "Tab") { const m = items[index]; if (m) command?.({ id: m.id, label: m.name }); return true; }
-          if (event.key === "Escape") { el?.remove(); el = null; return true; }
+          if (event.key === "Escape") { el?.remove(); el = null; unwatch(); return true; }
           return false;
         },
-        onExit: () => { el?.remove(); el = null; },
+        onExit: () => { el?.remove(); el = null; unwatch(); },
       };
     },
   };
