@@ -34,6 +34,8 @@ export const ICON_NAMES = [
   "format_list_bulleted",
   "format_underlined",
   "grid_on",
+  "group_add",
+  "groups",
   "history",
   "hourglass_top",
   "how_to_reg",

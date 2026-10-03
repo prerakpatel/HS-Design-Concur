@@ -6,6 +6,7 @@ import { signedUrl } from "@/lib/storage";
 import { sendPush } from "@/lib/push";
 import { notificationText, notificationHref, chatLines } from "@/lib/labels";
 import { htmlToChat, mentionIds } from "@/lib/rich-text";
+import { loadGroups } from "@/lib/groups";
 
 export type NotificationKind =
   | "access.requested" | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "comment.posted"
@@ -25,6 +26,9 @@ const CHAT: Partial<Record<NotificationKind, "mention" | "channel">> = {
   "version.changes_requested": "mention", "version.approved": "channel", "versions.approved": "mention", "version.reopened": "mention",
   "event.all_approved": "mention", "event.published": "mention", "event.archived": "channel",
 };
+
+/** Event-level moments every group hears about, whatever its setting. */
+const MILESTONES = new Set<NotificationKind>(["event.published", "event.all_approved", "event.archived", "versions.approved"]);
 
 const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> = {
   "access.requested": (p) => `Access request: ${p.name ?? p.email}`,
@@ -97,8 +101,24 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
   }
 
   if (orgId && kind in CHAT) {
-    // One post per distinct webhook, so two orgs sharing a channel do not double up.
-    const hooks = [...new Set(orgs.flatMap((o) => [o.chat_enabled && o.chat_webhook_url, o.slack_enabled && o.slack_webhook_url]).filter((h): h is string => !!h))];
+    // Where does this post go? Groups route by the people concerned (PRD §10):
+    //  - milestones (published, all approved, archived, bulk approvals) reach every group and the org channel;
+    //  - a design post reaches groups set to "everything", groups set to "its own designs" that include someone
+    //    concerned, any group @mentioned in the comment, and the org channel when someone concerned is in no group.
+    const groups = await loadGroups(supabase, orgId === "all" ? "all" : Array.isArray(orgId) ? orgId : [orgId]);
+    const milestone = MILESTONES.has(kind);
+    const audience = new Set([...ids, ...mentions]);
+    const grouped = new Set(groups.flatMap((g) => g.members));
+    const explicit = new Set(Array.isArray(payload.groups) ? (payload.groups as string[]) : []);
+    const someoneUngrouped = groups.length === 0 || [...audience].some((id) => !grouped.has(id));
+    const hookList: string[] = [];
+    if (milestone || someoneUngrouped) hookList.push(...orgs.flatMap((o) => [o.chat_enabled && o.chat_webhook_url, o.slack_enabled && o.slack_webhook_url]).filter((h): h is string => !!h));
+    for (const g of groups) {
+      const touches = g.members.some((m) => audience.has(m));
+      if (explicit.has(g.id) || g.hears === "all" || milestone || (g.hears === "own" && touches)) hookList.push(...[g.chat_webhook_url, g.slack_webhook_url].filter((h): h is string => !!h));
+    }
+    // One post per distinct webhook, so two groups sharing a channel do not double up.
+    const hooks = [...new Set(hookList)];
     if (hooks.length === 0) return;
     const { head, body } = chatLines(kind, payload);
     const image = await previewImage(supabase, payload, head, href);
@@ -111,7 +131,7 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
       const platform = platformOf(hook);
       const at = (id: string) => { const u = people.get(id); return u ? mention(u, platform) : ""; };
       // A formatted comment keeps its bold, italics, bullets, links and mentions in the platform's own markup.
-      const rendered = excerptHtml ? chatLines(kind, { ...payload, excerpt: htmlToChat(excerptHtml, platform, (id, label) => at(id) || `@${label}`) }).body : body;
+      const rendered = excerptHtml ? chatLines(kind, { ...payload, excerpt: htmlToChat(excerptHtml, platform, (id, label) => at(id) || chat.bold(`@${label}`)) }).body : body;
       const bodyText = rendered.replace(/\{@([0-9a-f-]{36})\}/g, (_, id) => at(id) || "someone");
       const inlined = new Set([...placeholderIds, ...(excerptHtml ? mentionIds(excerptHtml) : [])]);
       const who = mentions.filter((id) => !inlined.has(id)).map(at).filter(Boolean).join(" ");

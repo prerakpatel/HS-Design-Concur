@@ -5,7 +5,7 @@ import { notify, eventParticipants, taggedMemberIds } from "@/lib/notify";
 import { signedUrl, BUCKET } from "@/lib/storage";
 import { assetFilename } from "@/lib/labels";
 import { recomputeSlotState } from "@/lib/slot-state";
-import { sanitizeComment, plainText, mentionIds } from "@/lib/rich-text";
+import { sanitizeComment, plainText, mentionIds, groupMentionIds } from "@/lib/rich-text";
 import { UserError } from "@/lib/user-error";
 
 async function loadVersion(versionId: string) {
@@ -112,6 +112,9 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
   const { data: members } = await supabase.from("users").select("id,name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id);
   // Mentions come from the editor's @ chips; typed "@first" still counts for people who skip the popup.
   const mentions = new Set<string>(mentionIds(html).filter((id) => (members ?? []).some((m) => m.id === id)));
+  // @Group: every member is told, and the comment lands in that group's chat whatever it normally hears about.
+  const groupIds = groupMentionIds(html);
+  if (groupIds.length) { const { data: gm } = await supabase.from("group_members").select("user_id,groups!inner(org_id)").in("group_id", groupIds).eq("groups.org_id", org.id); for (const row of gm ?? []) mentions.add(row.user_id as string); }
   for (const m of members ?? []) {
     const name = (m.name ?? "").toLowerCase(); const first = name.split(" ")[0]; const handle = m.email.split("@")[0].toLowerCase();
     const lower = text.toLowerCase();
@@ -119,7 +122,7 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
   }
   const { error } = await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: html, mentions: [...mentions], pin_x: pin?.x ?? null, pin_y: pin?.y ?? null, pin_side: pin?.side ?? "front" });
   if (error) throw new UserError(error.message);
-  const payload = { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: text.slice(0, 200), excerptHtml: html };
+  const payload = { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: text.slice(0, 200), excerptHtml: html, groups: groupIds };
   if (mentions.size) await notify(supabase, mentions, "comment.mention", payload, user.id, { orgId: org.id });
   else {
     // No @mention: it is for the designer, the uploader and whoever has already spoken on this version.

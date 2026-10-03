@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 // icons: format_bold format_italic format_underlined format_color_text format_list_bulleted link link_off text_format close check
-export interface EditorMember { id: string; name: string; handle: string; avatar?: string | null }
+export interface EditorMember { id: string; name: string; handle: string; avatar?: string | null; /** "group" ids are stored as group:<id> and post to that group's chat. */ kind?: "person" | "group" }
 
 /** A text colour from the small palette, stored as <span data-color="red">. */
 const Colored = Mark.create<{ HTMLAttributes: Record<string, unknown> }>({
@@ -70,7 +70,7 @@ function mentionSuggestion(members: EditorMember[]): Omit<SuggestionOptions<Edit
         items.forEach((m, i) => {
           const b = document.createElement("button"); b.type = "button";
           b.className = "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted" + (i === index ? " bg-muted" : "");
-          b.textContent = m.name;
+          b.textContent = m.name; if (m.kind === "group") { const tag = document.createElement("span"); tag.className = "ml-auto text-xs text-muted-foreground"; tag.textContent = "group"; b.appendChild(tag); }
           b.addEventListener("mousedown", (e) => { e.preventDefault(); command?.({ id: m.id, label: m.name }); });
           el!.appendChild(b);
         });

@@ -7,6 +7,17 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: "2026-10-03",
+    title: "Groups, smarter Slack and clearer messages",
+    items: [
+      "Groups: Core Admins can create teams with their own Google Chat space or Slack channel and choose what each hears about: everything, its own designs, or milestones only.",
+      "Mention a group in a comment (@Core members) to notify everyone in it and send the comment to their chat.",
+      "Slack member IDs are found automatically from your email once the workspace is connected; no more pasting.",
+      "Error messages now say what went wrong in plain words, and toasts sit bottom-left, clear of the buttons.",
+      "Comment editor: a dash and a space starts a bullet, Shift+Enter inside a bullet makes the next one, and the colour palette matches the brand file.",
+    ],
+  },
+  {
     id: "2026-09-26",
     title: "Richer comments, one-tap downloads and lighter storage",
     items: [

@@ -35,7 +35,7 @@ export async function decideAccess(userId: string, formData: FormData) {
 }
 
 export async function updateUser(userId: string, formData: FormData) {
-  const { supabase, user } = await requireCoreAdmin();
+  const { supabase, user, org } = await requireCoreAdmin();
   const role = formData.get("role") === "core_admin" ? "core_admin" : "member";
   const is_approver = formData.get("is_approver") === "on";
   const function_tags = formData.getAll("tag").map(String).filter((t): t is FunctionTag => ["central", "publication", "designer"].includes(t));
@@ -50,6 +50,14 @@ export async function updateUser(userId: string, formData: FormData) {
   if (gchat_user_id && !/^\d{6,}$/.test(gchat_user_id)) throw new UserError("A Google Chat user ID is a long number");
   await supabase.from("users").update({ role, is_approver, function_tags, slack_user_id, gchat_user_id }).eq("id", userId);
   await setMemberships(supabase, userId, orgIds);
+  if (formData.get("groups_present")) {
+    // Only this organization's groups are on the form; memberships in the other org's groups are left alone.
+    const { data: own } = await supabase.from("groups").select("id").eq("org_id", org.id);
+    const ownIds = (own ?? []).map((g) => g.id as string);
+    const wanted = formData.getAll("group").map(String).filter((g) => ownIds.includes(g));
+    if (ownIds.length) await supabase.from("group_members").delete().eq("user_id", userId).in("group_id", ownIds);
+    if (wanted.length) await supabase.from("group_members").insert(wanted.map((group_id) => ({ group_id, user_id: userId })));
+  }
   revalidatePath("/settings");
 }
 

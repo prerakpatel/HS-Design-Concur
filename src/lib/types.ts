@@ -14,3 +14,4 @@ export interface Slot { id: string; event_id: string; format_id: string; request
 export const SLOT_STATE_LABEL: Record<SlotState | "na" | "draft" | "needs_you" | "unsent", string> = {
   requested: "Requested", in_review: "In review", changes_requested: "Changes requested", approved: "Approved", na: "N/A", draft: "Draft", needs_you: "Needs you", unsent: "Not sent yet",
 };
+export type { Group, GroupHears } from "@/lib/groups";

@@ -280,6 +280,7 @@ to `config/devices.ts` and the one-line update command.
 | Email | per user | user can switch to a daily digest or off; **Core Admins can turn email off org-wide** in Settings |
 | Google Chat | per org | incoming-webhook URL in Settings › Organizations; **Core Admins can turn it off**; every post @mentions the people it concerns (Google account = Chat identity, linked at sign-in) |
 | Slack | per org | same posts via a Slack incoming webhook; people add their Slack member ID on their Profile to be @mentioned, otherwise they are named in bold |
+| Groups | per org | Settings › Groups: people + their own space/channel webhooks + *Everything* / *Its own designs* / *Milestones only*. Design posts route to the groups of the people concerned, milestones to every group, and @Group in a comment to that group's chat. The org webhooks stay as the fallback. |
 
 Events that notify: access requested (Core Admins; never chat); access approved (never chat); event published
 (assignees; chat post lists format → designer); assigned to you; @mentioned; comment without a mention

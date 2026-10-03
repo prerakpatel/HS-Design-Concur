@@ -116,6 +116,13 @@ approvals never go to chat: they would show a newcomer's name and email to the w
 | Due in 3 days / due today | the designer |
 | Event archived | nobody, channel only |
 
+**Groups (Settings → Groups).** A group is people + a chat home (its own Google Chat space and/or Slack
+channel webhook) + what it hears about: *Everything*, *Its own designs* (posts about designs its members work
+on, plus milestones) or *Milestones only* (published, all approved, archived). Design posts go to the groups of
+the people concerned; the organization's own webhooks keep receiving milestones and anything for someone in no
+group. Typing @Group in a comment notifies every member and drops the comment into that group's chat whatever
+it normally hears about; approving stays with approvers. Routing: `src/lib/notify.ts`, data: `src/lib/groups.ts`.
+
 **How a mention finds someone.** Google Chat: automatic. The Google account a person signs in with is also
 their Chat identity, so `users.gchat_user_id` fills itself in at sign-in (`src/app/auth/callback/route.ts`).
 Slack: with `SLACK_BOT_TOKEN` set (a bot token with users:read + users:read.email), the app looks each person up

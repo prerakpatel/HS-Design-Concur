@@ -14,13 +14,13 @@ import { Input } from "@/components/ui/input";
 import { updateUser, removeUser } from "@/app/actions/admin";
 import { errorMessage } from "@/lib/user-error";
 
-export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; is_approver: boolean; function_tags: string[]; orgIds: string[]; email_pref?: "instant" | "digest" | "off"; slack_user_id?: string | null; gchat_user_id?: string | null }
+export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; is_approver: boolean; function_tags: string[]; orgIds: string[]; groupIds?: string[]; email_pref?: "instant" | "digest" | "off"; slack_user_id?: string | null; gchat_user_id?: string | null }
 export interface OrgOption { id: string; label: string }
 const TAGS = [{ value: "central", label: "Central" }, { value: "publication", label: "Publication" }, { value: "designer", label: "Designer" }];
 const tagLabel = (t: string) => TAGS.find((x) => x.value === t)?.label ?? t;
 
 /** Users list: one calm row per person; tap opens a side sheet with the full editor. */
-export function UsersList({ users, orgs, currentUserId }: { users: EditableUser[]; orgs: OrgOption[]; currentUserId: string }) {
+export function UsersList({ users, orgs, groups = [], currentUserId }: { users: EditableUser[]; orgs: OrgOption[]; groups?: OrgOption[]; currentUserId: string }) {
   const [open, setOpen] = useState<EditableUser | null>(null);
   return (
     <>
@@ -52,12 +52,12 @@ export function UsersList({ users, orgs, currentUserId }: { users: EditableUser[
           </li>
         ))}
       </ul>
-      <UserPanel user={open} orgs={orgs} isSelf={open?.id === currentUserId} onClose={() => setOpen(null)} />
+      <UserPanel user={open} orgs={orgs} groups={groups} isSelf={open?.id === currentUserId} onClose={() => setOpen(null)} />
     </>
   );
 }
 
-function UserPanel({ user, orgs, isSelf, onClose }: { user: EditableUser | null; orgs: OrgOption[]; isSelf: boolean; onClose: () => void }) {
+function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser | null; orgs: OrgOption[]; groups: OrgOption[]; isSelf: boolean; onClose: () => void }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   return (
@@ -79,6 +79,12 @@ function UserPanel({ user, orgs, isSelf, onClose }: { user: EditableUser | null;
               <Field label="Organizations" hint="Decides which events they can see.">
                 <ChoiceChips name="org" multiple defaultValue={user.orgIds} options={orgs.map((o) => ({ value: o.id, label: o.label }))} />
               </Field>
+              {groups.length > 0 && (
+                <Field label="Groups" hint="Decides which chat channels their posts go to. Manage groups in the Groups tab.">
+                  <input type="hidden" name="groups_present" value="1" />
+                  <ChoiceChips name="group" multiple defaultValue={user.groupIds ?? []} options={groups.map((g) => ({ value: g.id, label: g.label }))} />
+                </Field>
+              )}
               <Field label="Chat mentions" hint="So Slack and Google Chat posts can ping them. Slack: their profile → ⋮ → Copy member ID. Google Chat fills itself in when they sign in.">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="space-y-1.5 text-sm"><span className="text-muted-foreground">Slack member ID</span><Input name="slack_user_id" defaultValue={user.slack_user_id ?? ""} placeholder="U0123ABCD" autoCapitalize="characters" spellCheck={false} className="font-mono uppercase" /></label>

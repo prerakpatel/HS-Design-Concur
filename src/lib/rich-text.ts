@@ -14,7 +14,7 @@ const OPTIONS: sanitizeHtml.IOptions = {
     a: (tag, attribs) => ({ tagName: "a", attribs: { href: attribs.href ?? "", rel: "noopener noreferrer", target: "_blank" } }),
     span: (tag, attribs) => {
       const keep: Record<string, string> = {};
-      if (attribs["data-type"] === "mention" && /^[0-9a-f-]{36}$/.test(attribs["data-id"] ?? "")) { keep["data-type"] = "mention"; keep["data-id"] = attribs["data-id"]; if (attribs["data-label"]) keep["data-label"] = attribs["data-label"].slice(0, 80); }
+      if (attribs["data-type"] === "mention" && /^(group:)?[0-9a-f-]{36}$/.test(attribs["data-id"] ?? "")) { keep["data-type"] = "mention"; keep["data-id"] = attribs["data-id"]; if (attribs["data-label"]) keep["data-label"] = attribs["data-label"].slice(0, 80); }
       if ((TEXT_COLORS as readonly string[]).includes(attribs["data-color"] ?? "")) keep["data-color"] = attribs["data-color"];
       return { tagName: "span", attribs: keep };
     },
@@ -32,6 +32,11 @@ export function sanitizeComment(html: string): string {
 export function plainText(body: string): string {
   if (!isHtml(body)) return body.trim();
   return sanitizeHtml(body.replace(/<\/(p|li)>/g, "$&\n").replace(/<br\s*\/?>/g, "\n"), { allowedTags: [], allowedAttributes: {} }).replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\n{2,}/g, "\n").trim();
+}
+
+/** Group ids named through the editor's @-mention chips (stored as data-id="group:<id>"). */
+export function groupMentionIds(html: string): string[] {
+  return [...html.matchAll(/data-type="mention"[^>]*data-id="group:([0-9a-f-]{36})"/g)].map((m) => m[1]);
 }
 
 /** User ids named through the editor's @-mention chips. */

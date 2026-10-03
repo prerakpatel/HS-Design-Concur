@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireActiveUser, initials } from "@/lib/auth";
 import { signedUrl } from "@/lib/storage";
 import { formatSize } from "@/lib/labels";
+import { loadGroups, groupHandle } from "@/lib/groups";
 import { orderSlots } from "@/lib/slot-order";
 import { UploadPanel } from "@/components/asset/upload-panel";
 import { AssetHeader } from "@/components/asset/asset-header";
@@ -50,7 +51,12 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const { data: comments } = vlist.length ? await supabase.from("comments").select("*,author:author_id(name,email,avatar_url,role,is_approver,function_tags)").in("version_id", vlist.map((x) => x.id)).order("created_at") : { data: [] as never[] };
   const roleOf = (u: { role: string; is_approver: boolean; function_tags: string[] }) => u.role === "core_admin" ? "Core Admin" : u.is_approver ? "Approver" : u.function_tags?.[0] ? u.function_tags[0][0].toUpperCase() + u.function_tags[0].slice(1) : "Member";
   const cviews: CommentView[] = (comments ?? []).map((c) => { const a = c.author as unknown as { name: string | null; email: string; avatar_url: string | null; role: string; is_approver: boolean; function_tags: string[] }; return { id: c.id, version: versionNumber.get(c.version_id) ?? 0, body: c.body, created_at: c.created_at, pin_x: c.pin_x, pin_y: c.pin_y, pin_side: (c.pin_side ?? "front") as "front" | "back", edited_at: c.edited_at, mine: c.author_id === user.id, addressed_at: c.addressed_at, confirmed_at: c.confirmed_at, author: { name: a?.name ?? a?.email ?? "Someone", initials: initials(a?.name ?? null, a?.email ?? "?"), avatar: a?.avatar_url ?? null, role: a ? roleOf(a) : "" } }; });
-  const mlist: Member[] = ((members ?? []) as unknown as Pick<AppUser, "id" | "name" | "email" | "avatar_url">[]).map((m) => ({ id: m.id, name: m.name ?? m.email.split("@")[0], handle: m.email.split("@")[0].toLowerCase(), avatar: m.avatar_url }));
+  const groups = await loadGroups(supabase, [org.id]);
+  const mlist: Member[] = [
+    ...((members ?? []) as unknown as Pick<AppUser, "id" | "name" | "email" | "avatar_url">[]).map((m) => ({ id: m.id, name: m.name ?? m.email.split("@")[0], handle: m.email.split("@")[0].toLowerCase(), avatar: m.avatar_url })),
+    // Groups sit in the same @ list; their chip id is group:<id> so a comment can be sent to a whole team's chat.
+    ...groups.map((g) => ({ id: `group:${g.id}`, name: g.name, handle: groupHandle(g.name), avatar: null, kind: "group" as const })),
+  ];
   const canApprove = user.is_approver || user.role === "core_admin";
   const uploader = current?.uploader as unknown as { name: string | null; email: string } | null;
   const isPrint = fmt.class === "print";

@@ -24,7 +24,7 @@ import { errorMessage } from "@/lib/user-error";
 export type Side = "front" | "back";
 export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number }
 export interface CommentView { id: string; version: number; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
-export interface Member { id: string; name: string; handle: string; avatar?: string | null }
+export interface Member { id: string; name: string; handle: string; avatar?: string | null; kind?: "person" | "group" }
 export interface VersionChip { id: string; number: number; decision: string; canManage: boolean; hasBack: boolean; purged?: boolean }
 export interface StatusView { state: BadgeState; version: number | null; uploader: string | null; uploadedAt: string | null; assigneeId?: string | null; canAssign?: boolean }
 
