@@ -62,7 +62,7 @@ with a switcher in the sidebar for users who belong to both. There is no unified
 | Role | Grants |
 |---|---|
 | **Member** | Everything below not marked otherwise. |
-| **Core Admin** | Approve/deny access, remove users, assign org membership, grant/revoke Approver, promote/demote Core Admins, delete any event, edit org notification settings. Implicitly an Approver. |
+| **Core Admin** | Approve/deny access, remove users, assign org membership, grant/revoke Approver, promote/demote Core Admins, delete any event, edit org notification settings. **Not an Approver unless the switch is on**: running the app and approving designs are separate duties, so a Core Admin can stay out of review notifications. |
 
 There is **no Sub-admin role**. Its only purpose was deleting accidental events, which is
 covered by: *the creator of an event may delete it themselves at any time; Core Admins may delete
@@ -70,7 +70,7 @@ any event.* Either way it is a soft delete that a Core Admin can undo from Archi
 
 ### 4.4 Capabilities and function tags
 - **Approver** (toggle, granted by a Core Admin): may approve, request changes on, and reopen
-  assets. Core Admins have it implicitly.
+  assets. It is a switch on the user (Settings › Users); Core Admins do not have it implicitly.
 - **Function tags** (multi-select, informational, set by a Core Admin):
   **Central** (executives), **Publication** (writers), **Designer**.
   Tags route notifications and default assignees. Two things are gated by tag:

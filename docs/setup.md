@@ -106,7 +106,7 @@ approvals never go to chat: they would show a newcomer's name and email to the w
 |---|---|
 | Event published (lists format → designer, due dates) | the assigned designers |
 | Format assigned after publishing | the designer |
-| Design sent for review | approvers and the event creator |
+| Design sent for review | approvers (the switch in Settings → Users, separate from Core Admin) and the event creator |
 | Still waiting for review after a day (daily until decided) | approvers |
 | Approved | the designer (uploader / assignee) |
 | All formats approved 🎉 | event creator and Publication |

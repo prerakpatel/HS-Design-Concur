@@ -16,7 +16,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const ids = (events ?? []).map((e) => e.id);
   const { data: slots } = ids.length ? await supabase.from("slots").select("event_id,state,requested,assignee:assignee_id(name,email,avatar_url)").in("event_id", ids) : { data: [] as { event_id: string; state: string; requested: boolean; assignee: { name: string | null; email: string; avatar_url: string | null } | null }[] };
   const agg = new Map<string, { total: number; approved: number; people: { initials: string; avatar: string | null }[]; needsYou: boolean }>();
-  const canApprove = user.is_approver || user.role === "core_admin";
+  const canApprove = user.is_approver;
   for (const s of slots ?? []) {
     if (!s.requested) continue;
     const a = agg.get(s.event_id) ?? { total: 0, approved: 0, people: [], needsYou: false };

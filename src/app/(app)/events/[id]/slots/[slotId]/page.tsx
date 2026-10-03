@@ -57,7 +57,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
     // Groups sit in the same @ list; their chip id is group:<id> so a comment can be sent to a whole team's chat.
     ...groups.map((g) => ({ id: `group:${g.id}`, name: g.name, handle: groupHandle(g.name), avatar: null, kind: "group" as const })),
   ];
-  const canApprove = user.is_approver || user.role === "core_admin";
+  const canApprove = user.is_approver;
   const uploader = current?.uploader as unknown as { name: string | null; email: string } | null;
   const isPrint = fmt.class === "print";
   const print = isPrint && fmt.unit === "in" && fmt.width && fmt.height ? { bleedIn: Number(fmt.bleed_in ?? 0), safeIn: Number(fmt.safe_margin_in ?? 0), widthIn: Number(fmt.width), heightIn: Number(fmt.height) } : null;

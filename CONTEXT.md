@@ -18,7 +18,7 @@ Use these terms exactly. Avoid the synonyms listed.
 | **Reference** | The tiny post-purge image kept for the primary format only. | archive copy |
 | **Primary format** | The one format per event the other designs derive from; shown first, and the only one kept after purge. | master, hero |
 | **Group** | A set of people in an org with its own chat space/channel and a "hears about" rule (everything, its own designs, milestones only). Routes chat posts; grants no permissions. Mentionable in comments as @Group. | team, channel, audience |
-| **Approver** | A user with the Approve capability. Core Admins are Approvers implicitly. | reviewer, executive |
+| **Approver** | A user with the Approve switch on (Settings › Users). Independent of Core Admin: a Core Admin who is not an Approver is not notified about reviews and cannot approve. | reviewer, executive |
 | **Core Admin** | The only admin role. | admin, sub-admin, owner |
 | **Function tag** | Central, Publication, Designer. Informational; routes notifications. | role, department |
 | **Central** | Function tag for the executive team. | exec, leadership |

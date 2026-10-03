@@ -8,7 +8,7 @@ export const metadata = { title: "Profile" };
 export default async function ProfilePage() {
   const { user, org, orgs } = await requireActiveUser();
   // Most significant first; "Member" only when nothing else applies.
-  const roles = [user.role === "core_admin" ? "Core Admin" : null, user.is_approver || user.role === "core_admin" ? "Approver" : null, ...user.function_tags.map((t) => t[0].toUpperCase() + t.slice(1))].filter((r): r is string => !!r);
+  const roles = [user.role === "core_admin" ? "Core Admin" : null, user.is_approver ? "Approver" : null, ...user.function_tags.map((t) => t[0].toUpperCase() + t.slice(1))].filter((r): r is string => !!r);
   if (roles.length === 0) roles.push("Member");
   return (
     <>

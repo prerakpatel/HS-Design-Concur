@@ -36,7 +36,7 @@ export function UsersList({ users, orgs, groups = [], currentUserId }: { users: 
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:mt-0">
                   {u.role === "core_admin" ? <StateBadge state="in_review" label="Core Admin" /> : <StateBadge state="requested" label="Member" />}
-                  {(u.is_approver || u.role === "core_admin") && <StateBadge state="approved" label="Approver" />}
+                  {u.is_approver && <StateBadge state="approved" label="Approver" />}
                   <span className="ml-1 text-[13px] text-muted-foreground md:hidden">{u.function_tags.map(tagLabel).join(" · ") || "No function"}</span>
                 </div>
                 <div className="hidden flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-muted-foreground md:flex">
@@ -72,7 +72,7 @@ function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser
               <Field label="Role" hint="Core Admins approve access, manage people and can delete any event.">
                 <ChoiceChips name="role" defaultValue={user.role} options={[{ value: "member", label: "Member" }, { value: "core_admin", label: "Core Admin" }]} />
               </Field>
-              <ApproverRow defaultOn={user.is_approver || user.role === "core_admin"} lockedOn={user.role === "core_admin"} />
+              <ApproverRow defaultOn={user.is_approver} />
               <Field label="Function" hint="Routes notifications. Designers and Core Admins can edit the format catalog.">
                 <ChoiceChips name="tag" multiple defaultValue={user.function_tags} options={TAGS} />
               </Field>
@@ -103,13 +103,13 @@ function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser
   );
 }
 
-function ApproverRow({ defaultOn, lockedOn }: { defaultOn: boolean; lockedOn: boolean }) {
+function ApproverRow({ defaultOn }: { defaultOn: boolean }) {
   const [on, setOn] = useState(defaultOn);
   return (
     <label className="flex items-center justify-between gap-4 rounded-2xl border border-border p-4">
-      <span><span className="block text-sm font-medium">Can approve designs</span><span className="block text-sm text-muted-foreground">{lockedOn ? "Core Admins always can." : "Approvers sign off, request changes and reopen."}</span></span>
+      <span><span className="block text-sm font-medium">Can approve designs</span><span className="block text-sm text-muted-foreground">{on ? "Gets notified when designs are sent for review, and can approve, request changes and reopen." : "Not notified about reviews and cannot approve. Core Admins can run the app without being approvers."}</span></span>
       <input type="hidden" name="is_approver" value={on ? "on" : "off"} />
-      <Switch checked={lockedOn || on} onCheckedChange={setOn} disabled={lockedOn} />
+      <Switch checked={on} onCheckedChange={setOn} />
     </label>
   );
 }

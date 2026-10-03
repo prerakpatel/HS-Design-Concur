@@ -12,6 +12,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     supabase.from("changelog_posts").select("release_id"),
   ]);
   const changelog = { releases: RELEASES, unseen: user.changelog_seen !== LATEST_RELEASE.id, canShare: user.role === "core_admin", sharedIds: (shared ?? []).map((r) => r.release_id as string) };
-  const role = [user.role === "core_admin" ? "Core Admin" : "Member", user.is_approver || user.role === "core_admin" ? "Approver" : null].filter(Boolean).join(" · ");
+  const role = [user.role === "core_admin" ? "Core Admin" : "Member", user.is_approver ? "Approver" : null].filter(Boolean).join(" · ");
   return <AppShell org={org} orgs={orgs} user={{ name: user.name ?? user.email, role, initials: initials(user.name, user.email), avatar: user.avatar_url }} slots={{ used: count ?? 0, max: EVENT_CAP }} sidebarOpen={sidebarOpen} changelog={changelog}>{children}</AppShell>;
 }
