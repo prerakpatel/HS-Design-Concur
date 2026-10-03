@@ -14,6 +14,7 @@ export function errorMessage(e: unknown): string {
   const err = e as { digest?: string; message?: string } | null;
   if (err?.digest?.startsWith(PREFIX)) return err.digest.slice(PREFIX.length);
   const m = err?.message ?? "";
+  if (m === "NEXT_REDIRECT") return "Your session ended. Please sign in again.";
   if (!m || /Minified React error|Server Components render/.test(m)) return "Something went wrong. Please try again.";
   return m;
 }

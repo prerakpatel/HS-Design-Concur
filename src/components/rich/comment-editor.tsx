@@ -61,7 +61,12 @@ const ListEnter = Extension.create({
 function mentionSuggestion(members: EditorMember[]): Omit<SuggestionOptions<EditorMember>, "editor"> {
   return {
     char: "@",
-    items: ({ query }) => { const q = query.toLowerCase(); return members.filter((m) => m.name.toLowerCase().includes(q) || m.handle.includes(q)).slice(0, 5); },
+    items: ({ query }) => {
+      const q = query.toLowerCase();
+      // People first (name matches before handle matches), groups after; the list scrolls, so show plenty.
+      const rank = (m: EditorMember) => (m.kind === "group" ? 3 : 0) + (!q ? 0 : m.name.toLowerCase().startsWith(q) ? 0 : m.name.toLowerCase().includes(q) ? 1 : 2);
+      return members.filter((m) => !q || m.name.toLowerCase().includes(q) || m.handle.includes(q)).sort((a, b) => rank(a) - rank(b)).slice(0, 12);
+    },
     render: () => {
       let el: HTMLDivElement | null = null; let items: EditorMember[] = []; let index = 0; let command: SuggestionProps<EditorMember>["command"] | null = null;
       const paint = () => {
@@ -82,6 +87,7 @@ function mentionSuggestion(members: EditorMember[]): Omit<SuggestionOptions<Edit
           el!.appendChild(b);
         });
         el.style.display = items.length ? "block" : "none";
+        el.children[index]?.scrollIntoView({ block: "nearest" });
       };
       const place = (rect: (() => DOMRect | null) | null | undefined) => {
         const r = rect?.(); if (!el || !r) return;
@@ -93,7 +99,7 @@ function mentionSuggestion(members: EditorMember[]): Omit<SuggestionOptions<Edit
       return {
         onStart: (props) => {
           el = document.createElement("div");
-          el.className = "fixed z-50 overflow-hidden rounded-xl border border-border bg-card shadow-lg";
+          el.className = "fixed z-50 max-h-72 overflow-y-auto rounded-xl border border-border bg-card py-1 shadow-lg";
           document.body.appendChild(el);
           items = props.items; index = 0; command = props.command; paint(); place(props.clientRect);
         },

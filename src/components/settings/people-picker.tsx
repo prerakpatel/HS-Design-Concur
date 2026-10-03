@@ -18,7 +18,7 @@ export function PeoplePicker({ name, people, defaultValue = [], placeholder = "A
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const q = query.trim().toLowerCase();
   const rank = (p: PickablePerson) => { const n = p.name.toLowerCase(); return !q ? 0 : n.startsWith(q) ? 0 : n.includes(q) ? 1 : (p.hint ?? "").toLowerCase().includes(q) ? 2 : 3; };
-  const matches = people.filter((p) => !chosen.includes(p.id) && rank(p) < 3).sort((a, b) => rank(a) - rank(b)).slice(0, 8);
+  const matches = people.filter((p) => !chosen.includes(p.id) && rank(p) < 3).sort((a, b) => rank(a) - rank(b)).slice(0, 12);
   const add = (id: string) => { setChosen((c) => [...c, id]); setQuery(""); };
   return (
     <div className="space-y-2">
