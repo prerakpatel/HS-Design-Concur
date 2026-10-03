@@ -8,6 +8,7 @@ import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Extension, Mark, mergeAttributes } from "@tiptap/core";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
+import { autoUpdate, computePosition, flip, offset, shift, size } from "@floating-ui/dom";
 import { Icon } from "@/components/material-icon";
 import { TEXT_COLORS, type TextColor } from "@/lib/rich-text";
 import { cn } from "@/lib/utils";
@@ -69,13 +70,14 @@ function mentionSuggestion(members: EditorMember[]): Omit<SuggestionOptions<Edit
     },
     render: () => {
       let el: HTMLDivElement | null = null; let items: EditorMember[] = []; let index = 0; let command: SuggestionProps<EditorMember>["command"] | null = null;
-      let rectFn: (() => DOMRect | null) | null | undefined = null;
-      // The popup is position: fixed, so it must follow the caret whenever the page, a panel or the keyboard moves it.
-      const follow = () => place(rectFn);
-      const watch = () => { window.addEventListener("scroll", follow, true); window.addEventListener("resize", follow); window.visualViewport?.addEventListener("resize", follow); window.visualViewport?.addEventListener("scroll", follow); };
-      const unwatch = () => { window.removeEventListener("scroll", follow, true); window.removeEventListener("resize", follow); window.visualViewport?.removeEventListener("resize", follow); window.visualViewport?.removeEventListener("scroll", follow); };
+      let rectFn: (() => DOMRect | null) | null | undefined = null; let stop: (() => void) | null = null;
+      const lastRect = new DOMRect();
+      // The caret as a virtual element: Floating UI re-reads it every frame, so the popup stays glued to it whether the
+      // page, a panel, the keyboard or a layout shift moves it.
+      const reference = { getBoundingClientRect: () => rectFn?.() ?? lastRect };
       const paint = () => {
         if (!el) return;
+        const scrollTop = el.scrollTop;
         el.innerHTML = "";
         items.forEach((m, i) => {
           const b = document.createElement("button"); b.type = "button";
@@ -92,33 +94,43 @@ function mentionSuggestion(members: EditorMember[]): Omit<SuggestionOptions<Edit
           el!.appendChild(b);
         });
         el.style.display = items.length ? "block" : "none";
-        el.children[index]?.scrollIntoView({ block: "nearest" });
+        // Keep the highlighted row visible by scrolling the popup's own list. (scrollIntoView would also scroll the page.)
+        el.scrollTop = scrollTop;
+        const row = el.children[index] as HTMLElement | undefined;
+        if (row) { if (row.offsetTop < el.scrollTop) el.scrollTop = row.offsetTop; else if (row.offsetTop + row.offsetHeight > el.scrollTop + el.clientHeight) el.scrollTop = row.offsetTop + row.offsetHeight - el.clientHeight; }
       };
-      const place = (rect: (() => DOMRect | null) | null | undefined) => {
-        const r = rect?.(); if (!el || !r) return;
-        if (r.bottom < 0 || r.top > window.innerHeight) { el.style.display = "none"; return; } else if (items.length) el.style.display = "block";
-        const width = 240; const left = Math.min(r.left, window.innerWidth - width - 8);
-        const below = r.bottom + 4; const above = r.top - 4;
-        el.style.width = `${width}px`; el.style.left = `${Math.max(8, left)}px`;
-        if (below + 200 < window.innerHeight) { el.style.top = `${below}px`; el.style.bottom = "auto"; } else { el.style.bottom = `${window.innerHeight - above}px`; el.style.top = "auto"; }
+      const place = () => {
+        if (!el) return;
+        const r = reference.getBoundingClientRect();
+        // The caret has scrolled out of view: hide rather than float over unrelated content.
+        if (r.bottom < 0 || r.top > window.innerHeight) { el.style.visibility = "hidden"; return; }
+        el.style.visibility = "visible";
+        // Above the caret by default (the composer sits at the bottom of its panel); below only when there is no room above.
+        computePosition(reference, el, {
+          strategy: "fixed", placement: "top-start",
+          middleware: [offset(6), flip({ padding: 8, fallbackPlacements: ["bottom-start"] }), shift({ padding: 8 }), size({ padding: 8, apply({ availableHeight, elements }) { elements.floating.style.maxHeight = `${Math.max(96, Math.min(288, availableHeight))}px`; } })],
+        }).then(({ x, y }) => { if (el) { el.style.left = `${x}px`; el.style.top = `${y}px`; } });
       };
+      const close = () => { stop?.(); stop = null; el?.remove(); el = null; };
       return {
         onStart: (props) => {
           el = document.createElement("div");
-          el.className = "fixed z-50 max-h-72 overflow-y-auto rounded-xl border border-border bg-card py-1 shadow-lg";
+          el.className = "fixed left-0 top-0 z-50 max-h-72 overflow-y-auto rounded-xl border border-border bg-card py-1 shadow-lg";
+          el.style.width = "240px"; el.style.visibility = "hidden";
           document.body.appendChild(el);
-          items = props.items; index = 0; command = props.command; rectFn = props.clientRect; paint(); place(rectFn); watch();
+          items = props.items; index = 0; command = props.command; rectFn = props.clientRect; paint();
+          stop = autoUpdate(reference, el, place, { animationFrame: true });
         },
-        onUpdate: (props) => { items = props.items; index = Math.min(index, Math.max(0, items.length - 1)); command = props.command; rectFn = props.clientRect; paint(); place(rectFn); },
+        onUpdate: (props) => { items = props.items; index = Math.min(index, Math.max(0, items.length - 1)); command = props.command; rectFn = props.clientRect; paint(); },
         onKeyDown: ({ event }) => {
           if (!items.length) return false;
           if (event.key === "ArrowDown") { index = (index + 1) % items.length; paint(); return true; }
           if (event.key === "ArrowUp") { index = (index - 1 + items.length) % items.length; paint(); return true; }
           if (event.key === "Enter" || event.key === "Tab") { const m = items[index]; if (m) command?.({ id: m.id, label: m.name }); return true; }
-          if (event.key === "Escape") { el?.remove(); el = null; unwatch(); return true; }
+          if (event.key === "Escape") { close(); return true; }
           return false;
         },
-        onExit: () => { el?.remove(); el = null; unwatch(); },
+        onExit: close,
       };
     },
   };
