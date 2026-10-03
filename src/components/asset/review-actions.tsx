@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { approveVersion, requestChanges, reopenVersion, downloadLink, sendForReview } from "@/app/actions/reviews";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { errorMessage } from "@/lib/user-error";
 
 /**
  * The decision row. An unsent version shows Send for review to whoever may send it (uploader, assignee, Core
@@ -35,12 +36,12 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
     const a = document.createElement("a"); a.href = url; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
     toast.success(side === "back" ? "Downloading the back" : "Download started");
   };
-  const run = (fn: () => Promise<unknown>, done: string) => start(async () => { try { await fn(); close(); toast.success(done); router.refresh(); } catch (e) { toast.error((e as Error).message); } });
+  const run = (fn: () => Promise<unknown>, done: string) => start(async () => { try { await fn(); close(); toast.success(done); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } });
 
   const downloadButtons = (
     <>
-      <Button variant="secondary" disabled={pending} onClick={() => start(async () => { try { await download("front"); } catch (e) { toast.error((e as Error).message); } })}>Download{hasBack ? " front" : ""}</Button>
-      {hasBack && <Button variant="secondary" disabled={pending} onClick={() => start(async () => { try { await download("back"); } catch (e) { toast.error((e as Error).message); } })}>Download back</Button>}
+      <Button variant="secondary" disabled={pending} onClick={() => start(async () => { try { await download("front"); } catch (e) { toast.error(errorMessage(e)); } })}>Download{hasBack ? " front" : ""}</Button>
+      {hasBack && <Button variant="secondary" disabled={pending} onClick={() => start(async () => { try { await download("back"); } catch (e) { toast.error(errorMessage(e)); } })}>Download back</Button>}
     </>
   );
   const wrap = layout === "fill" ? "flex flex-col gap-2 [&>button]:w-full" : "flex flex-wrap gap-2";

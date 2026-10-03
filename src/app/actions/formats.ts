@@ -1,12 +1,13 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
+import { UserError } from "@/lib/user-error";
 
 const MIMES = ["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf"];
 
 async function requireCatalogEditor() {
   const ctx = await requireActiveUser();
-  if (ctx.user.role !== "core_admin" && !ctx.user.function_tags.includes("designer")) throw new Error("Designers and Core Admins only");
+  if (ctx.user.role !== "core_admin" && !ctx.user.function_tags.includes("designer")) throw new UserError("Designers and Core Admins only");
   return ctx;
 }
 
@@ -19,15 +20,15 @@ export async function saveFormat(formData: FormData) {
   const { supabase } = await requireCatalogEditor();
   const id = String(formData.get("id") ?? "") || null;
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) throw new Error("Name is required");
+  if (!name) throw new UserError("Name is required");
   const cls = formData.get("class") === "print" ? "print" : "digital";
   const unit = formData.get("unit") === "in" ? "in" : "px";
   const allow_custom_size = formData.get("allow_custom_size") === "on";
   const width = allow_custom_size ? null : num(formData, "width");
   const height = allow_custom_size ? null : num(formData, "height");
-  if (!allow_custom_size && (!width || !height)) throw new Error("Width and height are required unless the size is custom");
+  if (!allow_custom_size && (!width || !height)) throw new UserError("Width and height are required unless the size is custom");
   const mimes = formData.getAll("mime").map(String).filter((m) => MIMES.includes(m));
-  if (mimes.length === 0) throw new Error("Pick at least one file type");
+  if (mimes.length === 0) throw new UserError("Pick at least one file type");
   const row = {
     name, class: cls, unit, width, height, dpi: cls === "print" ? (num(formData, "dpi") ?? 300) : null,
     frame: String(formData.get("frame") ?? "flat"),
@@ -37,7 +38,7 @@ export async function saveFormat(formData: FormData) {
   };
   if (id) {
     const { error } = await supabase.from("formats").update(row).eq("id", id);
-    if (error) throw new Error(error.message);
+    if (error) throw new UserError(error.message);
   } else {
     const { data: last } = await supabase.from("formats").select("sort").order("sort", { ascending: false }).limit(1).maybeSingle();
     const base = slug(name); let key = base;
@@ -46,7 +47,7 @@ export async function saveFormat(formData: FormData) {
       if (!taken) break; key = `${base}_${n}`;
     }
     const { data: created, error } = await supabase.from("formats").insert({ ...row, key, sort: (last?.sort ?? 0) + 1 }).select("id").single();
-    if (error || !created) throw new Error(error?.message ?? "Could not create the format");
+    if (error || !created) throw new UserError(error?.message ?? "Could not create the format");
     const { data: open } = await supabase.from("events").select("id").neq("status", "archived").is("deleted_at", null);
     if (open?.length) await supabase.from("slots").upsert(open.map((e) => ({ event_id: e.id, format_id: created.id, requested: false })), { onConflict: "event_id,format_id", ignoreDuplicates: true });
   }

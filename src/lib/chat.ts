@@ -1,4 +1,5 @@
 export interface ChatImage { url: string; alt: string; href: string }
+import { UserError } from "@/lib/user-error";
 
 /**
  * Google Chat or Slack incoming webhook. Both take { text } with the same *bold* and <url|label> markup; with an
@@ -42,6 +43,6 @@ export function mention(u: ChatUser, platform: ChatPlatform) {
 export function normaliseSlackId(raw: string): string | null {
   const s = raw.trim().toUpperCase();
   if (!s) return null;
-  if (!/^[UW][A-Z0-9]{6,}$/.test(s)) throw new Error("A Slack member ID starts with U or W, like U0123ABCD");
+  if (!/^[UW][A-Z0-9]{6,}$/.test(s)) throw new UserError("A Slack member ID starts with U or W, like U0123ABCD");
   return s;
 }

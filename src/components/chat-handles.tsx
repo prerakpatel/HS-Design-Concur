@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Icon } from "@/components/material-icon";
 import { updateChatHandles, sendTestMention } from "@/app/actions/prefs";
+import { errorMessage } from "@/lib/user-error";
 
 // icons: check_circle schedule
 /**
@@ -19,7 +20,7 @@ export function ChatHandles({ slackId, gchatLinked, orgName }: { slackId: string
   return (
     <section>
       <h2 className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Chat mentions</h2>
-      <form className="space-y-4 rounded-2xl border border-border p-4" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await updateChatHandles(fd); toast.success("Saved"); } catch (err) { toast.error((err as Error).message); } }); }}>
+      <form className="space-y-4 rounded-2xl border border-border p-4" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await updateChatHandles(fd); toast.success("Saved"); } catch (err) { toast.error(errorMessage(err)); } }); }}>
         <div className="flex items-start gap-3 text-sm">
           <Icon name={gchatLinked ? "check_circle" : "schedule"} size={20} fill={gchatLinked} className={gchatLinked ? "text-success-text" : "text-muted-foreground"} />
           <p><span className="font-medium">Google Chat</span> <span className="text-muted-foreground">{gchatLinked ? "linked through your Google sign-in." : "links itself the next time you sign in."}</span></p>
@@ -31,7 +32,7 @@ export function ChatHandles({ slackId, gchatLinked, orgName }: { slackId: string
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={pending || !dirty}>{pending ? "Saving…" : "Save"}</Button>
-          <Button type="button" variant="outline" disabled={testing || dirty} onClick={() => startTest(async () => { try { await sendTestMention(); toast.success(`Sent to ${orgName}'s chat. Did it ping you?`); } catch (err) { toast.error((err as Error).message); } })}>{testing ? "Sending…" : "Send me a test mention"}</Button>
+          <Button type="button" variant="outline" disabled={testing || dirty} onClick={() => startTest(async () => { try { await sendTestMention(); toast.success(`Sent to ${orgName}'s chat. Did it ping you?`); } catch (err) { toast.error(errorMessage(err)); } })}>{testing ? "Sending…" : "Send me a test mention"}</Button>
         </div>
       </form>
     </section>

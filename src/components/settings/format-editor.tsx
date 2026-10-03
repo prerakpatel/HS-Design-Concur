@@ -14,6 +14,7 @@ import { Icon } from "@/components/material-icon";
 import { formatSize } from "@/lib/labels";
 import { saveFormat } from "@/app/actions/formats";
 import type { Format } from "@/lib/types";
+import { errorMessage } from "@/lib/user-error";
 
 const FRAMES: { value: Format["frame"]; label: string; hint: string }[] = [
   { value: "phone", label: "Phone", hint: "Shown inside a phone outline with the status bar" },
@@ -68,7 +69,7 @@ function FormatPanel({ format, onClose }: { format: Format | "new" | null; onClo
     <Dialog open={!!format} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex max-h-[calc(100dvh-1.5rem)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-h-[calc(100dvh-3rem)] sm:max-w-[520px]">
         {format && (
-          <form key={f?.id ?? "new"} className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await saveFormat(fd); toast.success(f ? "Format saved" : "Format added"); onClose(); router.refresh(); } catch (err) { toast.error((err as Error).message); } }); }}>
+          <form key={f?.id ?? "new"} className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await saveFormat(fd); toast.success(f ? "Format saved" : "Format added"); onClose(); router.refresh(); } catch (err) { toast.error(errorMessage(err)); } }); }}>
             {f && <input type="hidden" name="id" value={f.id} />}
             <input type="hidden" name="class" value={cls} />
             <input type="hidden" name="allow_custom_size" value={custom ? "on" : "off"} />

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { savePushSubscription, removePushSubscription, sendTestPush } from "@/app/actions/push";
+import { errorMessage } from "@/lib/user-error";
 
 // icons: notifications_active notifications_off ios_share
 type State = "checking" | "unsupported" | "ios-install" | "denied" | "off" | "on" | "unconfigured";
@@ -42,7 +43,7 @@ export function PushToggle({ publicKey }: { publicKey: string | null }) {
       const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
       await savePushSubscription({ endpoint: json.endpoint, keys: json.keys });
       setEndpoint(json.endpoint); setState("on"); toast.success("Notifications are on for this device");
-    } catch (e) { toast.error((e as Error).message); }
+    } catch (e) { toast.error(errorMessage(e)); }
   });
   const disable = () => start(async () => {
     try {
@@ -50,9 +51,9 @@ export function PushToggle({ publicKey }: { publicKey: string | null }) {
       if (sub) { await sub.unsubscribe(); await removePushSubscription(sub.endpoint); }
       else if (endpoint) await removePushSubscription(endpoint);
       setEndpoint(null); setState("off"); toast.success("Notifications are off for this device");
-    } catch (e) { toast.error((e as Error).message); }
+    } catch (e) { toast.error(errorMessage(e)); }
   });
-  const test = () => start(async () => { try { await sendTestPush(); toast.success("Sent. It should appear in a moment."); } catch (e) { toast.error((e as Error).message); } });
+  const test = () => start(async () => { try { await sendTestPush(); toast.success("Sent. It should appear in a moment."); } catch (e) { toast.error(errorMessage(e)); } });
 
   const copy: Record<State, { title: string; hint: string }> = {
     checking: { title: "Notify this device", hint: "Checking…" },

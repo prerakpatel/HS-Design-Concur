@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { errorMessage } from "@/lib/user-error";
 
 // icons: more_vert delete
 /** The event page ⋮: Delete for the creator or a Core Admin. Soft delete, restorable from Archive for 7 days. */
@@ -24,7 +25,7 @@ export function EventMenu({ title, isDraft, remove }: { title: string; isDraft: 
           <DialogHeader><DialogTitle>Delete “{title}”?</DialogTitle><DialogDescription>It leaves the Events list and frees its event slot. A Core Admin can restore it from Archive for 7 days; after that its files are removed for good.</DialogDescription></DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
-            <Button variant="destructive" disabled={pending} onClick={() => start(async () => { try { await remove(); } catch (e) { toast.error((e as Error).message); } })}>{pending ? "Deleting…" : "Delete"}</Button>
+            <Button variant="destructive" disabled={pending} onClick={() => start(async () => { try { await remove(); } catch (e) { toast.error(errorMessage(e)); } })}>{pending ? "Deleting…" : "Delete"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { errorMessage } from "@/lib/user-error";
 
 /** "Are you sure?" gate for approve / reopen / delete (PRD §6.2). Runs a server action after confirmation. */
 export function ConfirmButton({ action, title, description, label, confirmLabel, variant = "default", size = "default", withReason, reasonLabel, onDone, className }: {
@@ -28,7 +29,7 @@ export function ConfirmButton({ action, title, description, label, confirmLabel,
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
             <Button variant={variant === "destructive" ? "destructive" : "default"} disabled={pending || (withReason && !reason.trim())} onClick={() => start(async () => {
               try { await action(reason); setOpen(false); setReason(""); onDone?.(); router.refresh(); }
-              catch (e) { toast.error((e as Error).message); }
+              catch (e) { toast.error(errorMessage(e)); }
             })}>{pending ? "Working…" : (confirmLabel ?? label)}</Button>
           </DialogFooter>
         </DialogContent>

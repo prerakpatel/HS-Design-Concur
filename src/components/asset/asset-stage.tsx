@@ -18,6 +18,7 @@ import { RichBody } from "@/components/rich/rich-body";
 import { SelectField } from "@/components/ui/select-field";
 import { relativeTime } from "@/lib/labels";
 import { cn } from "@/lib/utils";
+import { errorMessage } from "@/lib/user-error";
 
 // icons: add_comment grid_on zoom_out_map check close arrow_upward more_vert upload sync flip delete replay edit chat_bubble
 export type Side = "front" | "back";
@@ -65,16 +66,16 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const stop = () => { setMode("view"); setDraft(null); setDraftText(""); setDraftEmpty(true); };
   const post = (body: string, pin: { side: Side; x: number; y: number } | null) => start(async () => {
     try { await addComment(versionId!, body, pin); setText(""); setTextEmpty(true); stop(); toast.success(pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
-    catch (e) { toast.error((e as Error).message); }
+    catch (e) { toast.error(errorMessage(e)); }
   });
-  const reassign = (userId: string) => start(async () => { try { await assignSlot(slotId, userId || null); toast.success(userId ? "Designer changed" : "Unassigned"); router.refresh(); } catch (e) { toast.error((e as Error).message); } });
+  const reassign = (userId: string) => start(async () => { try { await assignSlot(slotId, userId || null); toast.success(userId ? "Designer changed" : "Unassigned"); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } });
   const flag = (id: string, f: "addressed" | "unaddress" | "reopen") => start(async () => {
     try { await setCommentFlag(id, f); router.refresh(); if (f === "addressed") toast.success("Marked as done", { action: { label: "Undo", onClick: () => flag(id, "unaddress") }, duration: 8000 }); }
-    catch (e) { toast.error((e as Error).message); }
+    catch (e) { toast.error(errorMessage(e)); }
   });
   const removeVersion = (v: VersionChip) => start(async () => {
     if (!confirm(`Delete v${v.number}? Its files are removed for good.`)) return;
-    try { await deleteVersion(v.id); toast.success(`Version ${v.number} deleted`); router.replace(`/events/${eventId}/slots/${slotId}`); router.refresh(); } catch (e) { toast.error((e as Error).message); }
+    try { await deleteVersion(v.id); toast.success(`Version ${v.number} deleted`); router.replace(`/events/${eventId}/slots/${slotId}`); router.refresh(); } catch (e) { toast.error(errorMessage(e)); }
   });
 
   const hasGuides = sides.some((s) => { const g = guideGeometry(safe, print, s.width, s.height); return g.cut || g.safe.top + g.safe.right + g.safe.bottom + g.safe.left > 0; });
@@ -212,7 +213,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                             {(c.mine || canModerate) && <>
                               <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => setEditing({ id: c.id, text: c.body })}><Icon name="edit" />Edit</DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm text-destructive-text" onSelect={() => start(async () => { if (!confirm("Delete this comment?")) return; try { await deleteComment(c.id); toast.success("Comment deleted"); router.refresh(); } catch (err) { toast.error((err as Error).message); } })}><Icon name="delete" />Delete</DropdownMenuItem>
+                              <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm text-destructive-text" onSelect={() => start(async () => { if (!confirm("Delete this comment?")) return; try { await deleteComment(c.id); toast.success("Comment deleted"); router.refresh(); } catch (err) { toast.error(errorMessage(err)); } })}><Icon name="delete" />Delete</DropdownMenuItem>
                             </>}
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -221,7 +222,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                     {editing?.id === c.id ? (
                       <div className="space-y-2">
                         <CommentEditor value={editing.text} onChange={(h) => setEditing({ id: c.id, text: h })} members={members} autoFocus compact />
-                        <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending} onClick={() => start(async () => { try { await editComment(c.id, editing.text); setEditing(null); toast.success("Saved"); router.refresh(); } catch (e) { toast.error((e as Error).message); } })}>Save</Button></div>
+                        <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending} onClick={() => start(async () => { try { await editComment(c.id, editing.text); setEditing(null); toast.success("Saved"); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } })}>Save</Button></div>
                       </div>
                     ) : <RichBody body={c.body} />}
                     {!done && canComment && <button className="text-[13px] font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "addressed"); }} disabled={pending}>Mark as done</button>}

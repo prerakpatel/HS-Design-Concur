@@ -6,13 +6,14 @@ import { signedUrl, BUCKET } from "@/lib/storage";
 import { assetFilename } from "@/lib/labels";
 import { recomputeSlotState } from "@/lib/slot-state";
 import { sanitizeComment, plainText, mentionIds } from "@/lib/rich-text";
+import { UserError } from "@/lib/user-error";
 
 async function loadVersion(versionId: string) {
   const ctx = await requireActiveUser();
   const { data: v } = await ctx.supabase.from("versions").select("*,slots(id,event_id,assignee_id,state,formats(name),events(id,org_id,title,status,created_by))").eq("id", versionId).maybeSingle();
   const slot = v?.slots as unknown as { id: string; event_id: string; assignee_id: string | null; state: string; formats: { name: string }; events: { id: string; org_id: string; title: string; status: string; created_by: string } } | null;
-  if (!v || !slot || slot.events.org_id !== ctx.org.id) throw new Error("Version not found");
-  if (slot.events.status === "archived") throw new Error("This event is archived and read-only");
+  if (!v || !slot || slot.events.org_id !== ctx.org.id) throw new UserError("Version not found");
+  if (slot.events.status === "archived") throw new UserError("This event is archived and read-only");
   return { ...ctx, version: v, slot, event: slot.events, formatName: slot.formats?.name ?? "format" };
 }
 
@@ -26,9 +27,9 @@ type Loaded = Awaited<ReturnType<typeof loadVersion>>;
  */
 export async function sendForReview(versionId: string) {
   const { supabase, user, org, version, slot, event, formatName } = await loadVersion(versionId);
-  if (version.uploaded_by !== user.id && slot.assignee_id !== user.id && user.role !== "core_admin") throw new Error("Only the uploader, the assigned designer or a Core Admin can send this for review");
-  if (version.sent_at) throw new Error("This version is already with the approvers");
-  if (version.decision !== "pending") throw new Error("Only a pending version can be sent");
+  if (version.uploaded_by !== user.id && slot.assignee_id !== user.id && user.role !== "core_admin") throw new UserError("Only the uploader, the assigned designer or a Core Admin can send this for review");
+  if (version.sent_at) throw new UserError("This version is already with the approvers");
+  if (version.decision !== "pending") throw new UserError("Only a pending version can be sent");
   const now = new Date().toISOString();
   await supabase.from("versions").update({ decision: "superseded" }).eq("slot_id", slot.id).neq("id", versionId).in("decision", ["pending", "changes_requested"]);
   await supabase.from("versions").update({ sent_at: now }).eq("id", versionId);
@@ -44,9 +45,9 @@ export async function sendForReview(versionId: string) {
 async function approveOne(versionId: string): Promise<Loaded> {
   const ctx = await loadVersion(versionId);
   const { supabase, user, org, version, slot, event, formatName } = ctx;
-  if (!canApprove(user)) throw new Error("Only approvers can approve");
-  if (version.uploaded_by === user.id) throw new Error("You cannot approve a version you uploaded");
-  if (!version.sent_at) throw new Error("The designer has not sent this version for review yet");
+  if (!canApprove(user)) throw new UserError("Only approvers can approve");
+  if (version.uploaded_by === user.id) throw new UserError("You cannot approve a version you uploaded");
+  if (!version.sent_at) throw new UserError("The designer has not sent this version for review yet");
   const now = new Date().toISOString();
   await supabase.from("versions").update({ decision: "superseded" }).eq("slot_id", slot.id).neq("id", versionId).eq("decision", "approved");
   await supabase.from("versions").update({ decision: "approved", decided_by: user.id, decided_at: now }).eq("id", versionId);
@@ -75,9 +76,9 @@ export async function approveVersion(versionId: string) {
 
 export async function requestChanges(versionId: string, body: string) {
   const { supabase, user, org, version, slot, event, formatName } = await loadVersion(versionId);
-  if (!canApprove(user)) throw new Error("Only approvers can request changes");
-  if (!body.trim()) throw new Error("Say what needs to change");
-  if (!version.sent_at) throw new Error("The designer has not sent this version for review yet");
+  if (!canApprove(user)) throw new UserError("Only approvers can request changes");
+  if (!body.trim()) throw new UserError("Say what needs to change");
+  if (!version.sent_at) throw new UserError("The designer has not sent this version for review yet");
   const now = new Date().toISOString();
   await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: body.trim() });
   await supabase.from("versions").update({ decision: "changes_requested", decided_by: user.id, decided_at: now }).eq("id", versionId);
@@ -92,8 +93,8 @@ export async function requestChanges(versionId: string, body: string) {
 /** Pull an approved asset back to work-in-progress (PRD §6.2 Reopen). */
 export async function reopenVersion(versionId: string, reason: string) {
   const { supabase, user, org, version, slot, event, formatName } = await loadVersion(versionId);
-  if (!canApprove(user)) throw new Error("Only approvers can reopen");
-  if (version.decision !== "approved") throw new Error("Only an approved version can be reopened");
+  if (!canApprove(user)) throw new UserError("Only approvers can reopen");
+  if (version.decision !== "approved") throw new UserError("Only an approved version can be reopened");
   const now = new Date().toISOString();
   await supabase.from("versions").update({ decision: "changes_requested", reopen_reason: reason.trim() || null, decided_by: user.id, decided_at: now }).eq("id", versionId);
   await supabase.from("slots").update({ state: "changes_requested", updated_at: now }).eq("id", slot.id);
@@ -107,7 +108,7 @@ export async function reopenVersion(versionId: string, reason: string) {
 /** Comment with @mentions ("@Nikhil Joshi" or "@nikhil") and an optional pin. */
 export async function addComment(versionId: string, body: string, pin?: { x: number; y: number; side?: "front" | "back" } | null) {
   const { supabase, user, org, version, slot, event, formatName } = await loadVersion(versionId);
-  const html = sanitizeComment(body); const text = plainText(html); if (!text) throw new Error("Empty comment");
+  const html = sanitizeComment(body); const text = plainText(html); if (!text) throw new UserError("Empty comment");
   const { data: members } = await supabase.from("users").select("id,name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id);
   // Mentions come from the editor's @ chips; typed "@first" still counts for people who skip the popup.
   const mentions = new Set<string>(mentionIds(html).filter((id) => (members ?? []).some((m) => m.id === id)));
@@ -117,7 +118,7 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
     if ((name && lower.includes("@" + name)) || (first && new RegExp(`@${first}(\\b|$)`).test(lower)) || lower.includes("@" + handle)) mentions.add(m.id);
   }
   const { error } = await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: html, mentions: [...mentions], pin_x: pin?.x ?? null, pin_y: pin?.y ?? null, pin_side: pin?.side ?? "front" });
-  if (error) throw new Error(error.message);
+  if (error) throw new UserError(error.message);
   const payload = { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: text.slice(0, 200), excerptHtml: html };
   if (mentions.size) await notify(supabase, mentions, "comment.mention", payload, user.id, { orgId: org.id });
   else {
@@ -138,8 +139,8 @@ export async function setCommentFlag(commentId: string, flag: "addressed" | "una
     : { addressed_at: null, addressed_by: null, confirmed_at: null, confirmed_by: null };
   if (flag === "unaddress") {
     const { data: c } = await supabase.from("comments").select("confirmed_at").eq("id", commentId).maybeSingle();
-    if (c?.confirmed_at && !canApprove(user)) throw new Error("This comment was confirmed by an approver; ask them to reopen it");
-  } else if (flag === "confirmed" && !canApprove(user)) throw new Error("Only approvers can confirm a comment");
+    if (c?.confirmed_at && !canApprove(user)) throw new UserError("This comment was confirmed by an approver; ask them to reopen it");
+  } else if (flag === "confirmed" && !canApprove(user)) throw new UserError("Only approvers can confirm a comment");
   const { data } = await supabase.from("comments").update(patch).eq("id", commentId).select("versions(slots(id,event_id))").single();
   const s = (data?.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;
   if (s) revalidatePath(`/events/${s.event_id}/slots/${s.id}`);
@@ -171,25 +172,25 @@ export async function approveMany(versionIds: string[]) {
 /** Short-lived download link for an approved side, named year_event_format_vN. */
 export async function downloadLink(versionId: string, side: "front" | "back" = "front") {
   const { supabase, version, event, formatName } = await loadVersion(versionId);
-  if (version.decision !== "approved") throw new Error("Only approved versions can be downloaded");
+  if (version.decision !== "approved") throw new UserError("Only approved versions can be downloaded");
   const { data: s } = await supabase.from("version_sides").select("optimised_path").eq("version_id", versionId).eq("side", side).maybeSingle();
-  if (!s?.optimised_path) throw new Error("This file was removed after the event");
+  if (!s?.optimised_path) throw new UserError("This file was removed after the event");
   const { data: ev } = await supabase.from("events").select("event_date").eq("id", event.id).single();
   const url = await signedUrl(supabase, s.optimised_path, 120, assetFilename({ eventDate: ev?.event_date ?? null, eventTitle: event.title, formatName, side, number: version.number, path: s.optimised_path }));
-  if (!url) throw new Error("Could not create the download link");
+  if (!url) throw new UserError("Could not create the download link");
   return url;
 }
 
 /** Remove a version and its files. Uploader or Core Admin. The slot's state follows whatever version remains. */
 export async function deleteVersion(versionId: string) {
   const { supabase, user, version, slot, event, formatName, org } = await loadVersion(versionId);
-  if (version.uploaded_by !== user.id && user.role !== "core_admin") throw new Error("Only the uploader or a Core Admin can delete a version");
-  if (version.decision === "approved" && user.role !== "core_admin") throw new Error("An approved version can only be deleted by a Core Admin");
+  if (version.uploaded_by !== user.id && user.role !== "core_admin") throw new UserError("Only the uploader or a Core Admin can delete a version");
+  if (version.decision === "approved" && user.role !== "core_admin") throw new UserError("An approved version can only be deleted by a Core Admin");
   const { data: sides } = await supabase.from("version_sides").select("optimised_path,preview_path,thumb_path,reference_path").eq("version_id", versionId);
   const paths = (sides ?? []).flatMap((s) => [s.optimised_path, s.preview_path, s.thumb_path, s.reference_path]).filter((p): p is string => !!p);
   if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
   const { error } = await supabase.from("versions").delete().eq("id", versionId);
-  if (error) throw new Error(error.message);
+  if (error) throw new UserError(error.message);
   await recomputeSlotState(supabase, slot.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, actor_id: user.id, kind: "version.deleted", payload: { format: formatName, number: version.number } });
   revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`);
@@ -198,12 +199,12 @@ export async function deleteVersion(versionId: string) {
 
 export async function editComment(commentId: string, body: string) {
   const { supabase, user } = await requireActiveUser();
-  const html = sanitizeComment(body); if (!plainText(html)) throw new Error("Empty comment");
+  const html = sanitizeComment(body); if (!plainText(html)) throw new UserError("Empty comment");
   const { data: c } = await supabase.from("comments").select("author_id,versions(slots(id,event_id))").eq("id", commentId).maybeSingle();
-  if (!c) throw new Error("Comment not found");
-  if (c.author_id !== user.id && user.role !== "core_admin") throw new Error("You can only edit your own comments");
+  if (!c) throw new UserError("Comment not found");
+  if (c.author_id !== user.id && user.role !== "core_admin") throw new UserError("You can only edit your own comments");
   const { error } = await supabase.from("comments").update({ body: html, edited_at: new Date().toISOString() }).eq("id", commentId);
-  if (error) throw new Error(error.message);
+  if (error) throw new UserError(error.message);
   const s = (c.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;
   if (s) revalidatePath(`/events/${s.event_id}/slots/${s.id}`);
 }
@@ -211,10 +212,10 @@ export async function editComment(commentId: string, body: string) {
 export async function deleteComment(commentId: string) {
   const { supabase, user } = await requireActiveUser();
   const { data: c } = await supabase.from("comments").select("author_id,versions(slots(id,event_id))").eq("id", commentId).maybeSingle();
-  if (!c) throw new Error("Comment not found");
-  if (c.author_id !== user.id && user.role !== "core_admin") throw new Error("You can only delete your own comments");
+  if (!c) throw new UserError("Comment not found");
+  if (c.author_id !== user.id && user.role !== "core_admin") throw new UserError("You can only delete your own comments");
   const { error } = await supabase.from("comments").delete().eq("id", commentId);
-  if (error) throw new Error(error.message);
+  if (error) throw new UserError(error.message);
   const s = (c.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;
   if (s) revalidatePath(`/events/${s.event_id}/slots/${s.id}`);
 }

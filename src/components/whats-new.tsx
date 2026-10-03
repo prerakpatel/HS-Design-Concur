@@ -8,6 +8,7 @@ import { Icon } from "@/components/material-icon";
 import { markChangelogSeen, shareRelease } from "@/app/actions/changelog";
 import type { Release } from "@/config/changelog";
 import { cn } from "@/lib/utils";
+import { errorMessage } from "@/lib/user-error";
 
 // icons: auto_awesome check_circle
 export interface ChangelogState { releases: Release[]; unseen: boolean; canShare: boolean; sharedIds: string[] }
@@ -55,7 +56,7 @@ export function WhatsNewDialog({ state }: { state: ChangelogState }) {
           <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
             {state.canShare ? (state.sharedIds.includes(latest.id)
               ? <span className="text-sm text-muted-foreground">Shared in chat</span>
-              : <Button variant="outline" disabled={pending} onClick={() => start(async () => { try { await shareRelease(latest.id); toast.success("Posted to the team chat"); } catch (e) { toast.error((e as Error).message); } })}>Share in chat</Button>) : <span />}
+              : <Button variant="outline" disabled={pending} onClick={() => start(async () => { try { await shareRelease(latest.id); toast.success("Posted to the team chat"); } catch (e) { toast.error(errorMessage(e)); } })}>Share in chat</Button>) : <span />}
             <Button onClick={() => close(false)}>Got it</Button>
           </div>
         </div>

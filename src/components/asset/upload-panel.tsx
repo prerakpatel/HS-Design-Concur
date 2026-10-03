@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { createClient } from "@/lib/supabase/client";
 import { createUploadUrl } from "@/app/actions/uploads";
+import { errorMessage } from "@/lib/user-error";
 
 export interface UploadTarget { side: "front" | "back"; replaceVersionId: string | null }
 
@@ -29,7 +30,7 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
       if (!res.ok || done.error) throw new Error(done.error ?? `Processing failed (${res.status})`);
       toast.success(target.replaceVersionId ? `Version ${done.number} replaced` : target.side === "back" ? "Back side added" : `Version ${done.number} uploaded`, { description: target.side === "back" ? undefined : "Check it, then press Send for review when you're ready." });
       router.refresh();
-    } catch (e) { toast.error((e as Error).message); }
+    } catch (e) { toast.error(errorMessage(e)); }
     finally { setBusy(null); setTarget({ side: "front", replaceVersionId: null }); if (input.current) input.current.value = ""; }
   }
   const openWith = (t: UploadTarget) => { setTarget(t); input.current?.click(); };

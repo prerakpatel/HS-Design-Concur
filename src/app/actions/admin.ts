@@ -6,10 +6,11 @@ import { normaliseSlackId } from "@/lib/chat";
 import { matchSlackIds, slackConfigured } from "@/lib/slack";
 import type { FunctionTag } from "@/lib/types";
 import { EVENT_CAP, DELETE_RESTORE_DAYS } from "@/config/limits";
+import { UserError } from "@/lib/user-error";
 
 async function requireCoreAdmin() {
   const ctx = await requireActiveUser();
-  if (ctx.user.role !== "core_admin") throw new Error("Core Admins only");
+  if (ctx.user.role !== "core_admin") throw new UserError("Core Admins only");
   return ctx;
 }
 
@@ -22,7 +23,7 @@ export async function decideAccess(userId: string, formData: FormData) {
   const { supabase, user } = await requireCoreAdmin();
   const approve = formData.get("decision") === "approve";
   const orgIds = formData.getAll("org").map(String);
-  if (approve && orgIds.length === 0) throw new Error("Pick at least one organization");
+  if (approve && orgIds.length === 0) throw new UserError("Pick at least one organization");
   await supabase.from("users").update({ status: approve ? "active" : "removed" }).eq("id", userId);
   await supabase.from("access_requests").update({ decided_by: user.id, decided_at: new Date().toISOString(), decision: approve ? "approved" : "denied" }).eq("user_id", userId).is("decided_at", null);
   if (approve) {
@@ -39,14 +40,14 @@ export async function updateUser(userId: string, formData: FormData) {
   const is_approver = formData.get("is_approver") === "on";
   const function_tags = formData.getAll("tag").map(String).filter((t): t is FunctionTag => ["central", "publication", "designer"].includes(t));
   const orgIds = formData.getAll("org").map(String);
-  if (userId === user.id && role !== "core_admin") throw new Error("You cannot demote yourself");
+  if (userId === user.id && role !== "core_admin") throw new UserError("You cannot demote yourself");
   if (role !== "core_admin") {
     const { count } = await supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "core_admin").eq("status", "active").neq("id", userId);
-    if ((count ?? 0) === 0) throw new Error("There must be at least one Core Admin");
+    if ((count ?? 0) === 0) throw new UserError("There must be at least one Core Admin");
   }
   const slack_user_id = normaliseSlackId(String(formData.get("slack_user_id") ?? ""));
   const gchat_user_id = String(formData.get("gchat_user_id") ?? "").trim().replace(/^users\//, "") || null;
-  if (gchat_user_id && !/^\d{6,}$/.test(gchat_user_id)) throw new Error("A Google Chat user ID is a long number");
+  if (gchat_user_id && !/^\d{6,}$/.test(gchat_user_id)) throw new UserError("A Google Chat user ID is a long number");
   await supabase.from("users").update({ role, is_approver, function_tags, slack_user_id, gchat_user_id }).eq("id", userId);
   await setMemberships(supabase, userId, orgIds);
   revalidatePath("/settings");
@@ -54,9 +55,9 @@ export async function updateUser(userId: string, formData: FormData) {
 
 export async function removeUser(userId: string) {
   const { supabase, user } = await requireCoreAdmin();
-  if (userId === user.id) throw new Error("You cannot remove yourself");
+  if (userId === user.id) throw new UserError("You cannot remove yourself");
   const { count } = await supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "core_admin").eq("status", "active").neq("id", userId);
-  if ((count ?? 0) === 0) throw new Error("There must be at least one Core Admin");
+  if ((count ?? 0) === 0) throw new UserError("There must be at least one Core Admin");
   await supabase.from("users").update({ status: "removed" }).eq("id", userId);
   await supabase.from("org_memberships").delete().eq("user_id", userId);
   revalidatePath("/settings");
@@ -80,15 +81,15 @@ export async function updateOrgSettings(orgId: string, formData: FormData) {
     patch.logo_path = null;
   } else if (logo instanceof File && logo.size > 0) {
     const ext = LOGO_EXT[logo.type];
-    if (!ext) throw new Error("Logo must be PNG, SVG, WebP or JPG");
-    if (logo.size > 1_000_000) throw new Error("Logo must be under 1 MB");
+    if (!ext) throw new UserError("Logo must be PNG, SVG, WebP or JPG");
+    if (logo.size > 1_000_000) throw new UserError("Logo must be under 1 MB");
     const path = `${cur?.slug ?? orgId}/logo-${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("branding").upload(path, Buffer.from(await logo.arrayBuffer()), { contentType: logo.type, upsert: true });
-    if (error) throw new Error(error.message);
+    if (error) throw new UserError(error.message);
     patch.logo_path = path;
   }
   const { error } = await supabase.from("organisations").update(patch).eq("id", orgId);
-  if (error) throw new Error(error.message);
+  if (error) throw new UserError(error.message);
   if ("logo_path" in patch && cur?.logo_path && cur.logo_path !== patch.logo_path) await supabase.storage.from("branding").remove([cur.logo_path]);
   revalidatePath("/settings"); revalidatePath("/", "layout");
 }
@@ -97,29 +98,29 @@ export async function sendTestChat(orgId: string, channel: "chat" | "slack" = "c
   const { supabase, user } = await requireCoreAdmin();
   const { data: o } = await supabase.from("organisations").select("chat_webhook_url,slack_webhook_url,name").eq("id", orgId).maybeSingle();
   const hook = channel === "slack" ? o?.slack_webhook_url : o?.chat_webhook_url;
-  if (!hook) throw new Error("Save a webhook URL first");
+  if (!hook) throw new UserError("Save a webhook URL first");
   const { postChat, chat } = await import("@/lib/chat"); const { appUrl } = await import("@/lib/email");
   const r = await postChat(hook, `${chat.bold(`Design & Concur is connected to ${o!.name}.`)} Test sent by ${user.name ?? user.email}.\n${chat.link(appUrl("/events"), "Open Design & Concur")}`);
-  if ("error" in r) throw new Error(r.error);
+  if ("error" in r) throw new UserError(String(r.error));
 }
 
 export async function sendTestEmail() {
   const { user } = await requireCoreAdmin();
   const { sendEmail, appUrl, emailConfigured } = await import("@/lib/email");
-  if (!emailConfigured()) throw new Error("RESEND_API_KEY and EMAIL_FROM are not set on Vercel yet");
+  if (!emailConfigured()) throw new UserError("RESEND_API_KEY and EMAIL_FROM are not set on Vercel yet");
   const r = await sendEmail(user.email, "Design & Concur test email", { heading: "Email is working", body: `Sent to ${user.email} from the Settings page.`, cta: { label: "Open Design & Concur", href: appUrl("/events") } });
-  if ("error" in r) throw new Error(r.error);
+  if ("error" in r) throw new UserError(String(r.error));
 }
 
 /** Undo a soft delete within the restore window (PRD §8). Core Admins only. */
 export async function restoreEvent(eventId: string) {
   const { supabase, user, org } = await requireCoreAdmin();
   const { data: event } = await supabase.from("events").select("id,org_id,title,status,deleted_at").eq("id", eventId).maybeSingle();
-  if (!event || event.org_id !== org.id || !event.deleted_at) throw new Error("Nothing to restore");
-  if (Date.now() - new Date(event.deleted_at).getTime() > DELETE_RESTORE_DAYS * 86400_000) throw new Error("The restore window has passed");
+  if (!event || event.org_id !== org.id || !event.deleted_at) throw new UserError("Nothing to restore");
+  if (Date.now() - new Date(event.deleted_at).getTime() > DELETE_RESTORE_DAYS * 86400_000) throw new UserError("The restore window has passed");
   if (event.status === "active") {
     const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "active").is("deleted_at", null);
-    if ((count ?? 0) >= EVENT_CAP) throw new Error(`All ${EVENT_CAP} event slots are in use; free one before restoring.`);
+    if ((count ?? 0) >= EVENT_CAP) throw new UserError(`All ${EVENT_CAP} event slots are in use; free one before restoring.`);
   }
   await supabase.from("events").update({ deleted_at: null }).eq("id", event.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, actor_id: user.id, kind: "event.restored", payload: { title: event.title } });
@@ -129,7 +130,7 @@ export async function restoreEvent(eventId: string) {
 /** Core Admin: ask Slack for everyone's member ID by email, now rather than at their next sign-in. */
 export async function matchSlackMembers() {
   const { supabase } = await requireCoreAdmin();
-  if (!slackConfigured()) throw new Error("Add SLACK_BOT_TOKEN on Vercel first (docs/notifications.md → Slack).");
+  if (!slackConfigured()) throw new UserError("Add SLACK_BOT_TOKEN on Vercel first (docs/notifications.md → Slack).");
   const r = await matchSlackIds(supabase);
   revalidatePath("/settings"); revalidatePath("/profile");
   return r;

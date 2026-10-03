@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
 import { EVENT_CAP, MONTHS_AHEAD } from "@/config/limits";
 import { notify } from "@/lib/notify";
+import { UserError } from "@/lib/user-error";
 
 export type WizardStep = "event" | "formats" | "assign" | "review";
 const ORDER: WizardStep[] = ["event", "formats", "assign", "review"];
@@ -18,8 +19,8 @@ function horizonOk(eventDate: string | null) {
 async function ownEvent(eventId: string, opts?: { allowArchived?: boolean }) {
   const ctx = await requireActiveUser();
   const { data: event } = await ctx.supabase.from("events").select("*").eq("id", eventId).is("deleted_at", null).maybeSingle();
-  if (!event || event.org_id !== ctx.org.id) throw new Error("Event not found in this organization");
-  if (event.status === "archived" && !opts?.allowArchived) throw new Error("Archived events are read-only");
+  if (!event || event.org_id !== ctx.org.id) throw new UserError("Event not found in this organization");
+  if (event.status === "archived" && !opts?.allowArchived) throw new UserError("Archived events are read-only");
   return { ...ctx, event };
 }
 
@@ -34,8 +35,8 @@ function readEventForm(formData: FormData) {
   const str = (k: string) => String(formData.get(k) ?? "").trim() || null;
   const title = String(formData.get("title") ?? "").trim();
   const eventDate = str("event_date");
-  if (!title) throw new Error("Title is required");
-  if (!horizonOk(eventDate)) throw new Error(`Events can be at most ${MONTHS_AHEAD} months out`);
+  if (!title) throw new UserError("Title is required");
+  if (!horizonOk(eventDate)) throw new UserError(`Events can be at most ${MONTHS_AHEAD} months out`);
   return { title, eventDate, venue_name: str("venue_name"), venue_address: str("venue_address"), time_text: str("time_text"), description: str("description"), notes: str("notes") };
 }
 
@@ -44,7 +45,7 @@ export async function createDraftEvent(formData: FormData) {
   const { supabase, user, org } = await requireActiveUser();
   const f = readEventForm(formData);
   const { data, error } = await supabase.from("events").insert({ org_id: org.id, title: f.title, event_date: f.eventDate, venue: f.venue_name, created_by: user.id, status: "draft" }).select("id").single();
-  if (error) throw new Error(error.message);
+  if (error) throw new UserError(error.message);
   await supabase.from("briefs").insert({ event_id: data.id, description: f.description, time_text: f.time_text, venue_name: f.venue_name, venue_address: f.venue_address, notes: f.notes });
   const { data: formats } = await supabase.from("formats").select("id").eq("active", true);
   // Every catalog format gets a slot, all off; the Formats step turns on the ones this event needs.
@@ -65,7 +66,7 @@ export async function saveEvent(eventId: string, formData: FormData) {
   await supabase.from("events").update({ title: f.title, event_date: f.eventDate, venue: f.venue_name, last_edited_at: new Date().toISOString() }).eq("id", event.id);
   const briefPatch = locked ? { venue_name: f.venue_name } : { description: f.description, time_text: f.time_text, venue_name: f.venue_name, venue_address: f.venue_address, notes: f.notes };
   const { error } = await supabase.from("briefs").upsert({ event_id: event.id, ...briefPatch });
-  if (error) throw new Error(error.message);
+  if (error) throw new UserError(error.message);
   revalidatePath(`/events/${event.id}`);
   goto(event.id, formData, "formats");
 }
@@ -75,7 +76,7 @@ export async function saveFormats(eventId: string, formData: FormData) {
   const { data: slots } = await supabase.from("slots").select("id,format_id,versions(id)").eq("event_id", event.id);
   const requestedIds = new Set<string>();
   let primary = String(formData.get("primary") ?? "");
-  const fail = (e: { message: string } | null) => { if (e) throw new Error(e.message); };
+  const fail = (e: { message: string } | null) => { if (e) throw new UserError(e.message); };
 
   // Print items: a size change on an item that already has designs moves them to the new size. The empty slot
   // of the new size is dropped, the old slot takes the new format, and a fresh (off) slot keeps the old size in
@@ -86,7 +87,7 @@ export async function saveFormats(eventId: string, formData: FormData) {
     if (orig && orig !== pick) {
       const from = (slots ?? []).find((s) => s.id === orig); const to = (slots ?? []).find((s) => s.id === pick);
       if (from && to && (from.versions?.length ?? 0) > 0) {
-        if ((to.versions?.length ?? 0) > 0) throw new Error("Both print sizes already have designs. Turn one off instead of changing its size.");
+        if ((to.versions?.length ?? 0) > 0) throw new UserError("Both print sizes already have designs. Turn one off instead of changing its size.");
         fail((await supabase.from("slots").delete().eq("id", to.id)).error);
         fail((await supabase.from("slots").update({ format_id: to.format_id, updated_at: new Date().toISOString() }).eq("id", from.id)).error);
         fail((await supabase.from("slots").insert({ event_id: event.id, format_id: from.format_id, requested: false })).error);
@@ -137,14 +138,14 @@ export async function saveAssign(eventId: string, formData: FormData) {
 export async function publishEvent(eventId: string) {
   const { supabase, user, org, event } = await ownEvent(eventId);
   if (event.status !== "draft") redirect(`/events/${event.id}`);
-  if (!event.event_date) throw new Error("Set the event date before publishing");
-  if (!horizonOk(event.event_date)) throw new Error(`Events can be at most ${MONTHS_AHEAD} months out`);
+  if (!event.event_date) throw new UserError("Set the event date before publishing");
+  if (!horizonOk(event.event_date)) throw new UserError(`Events can be at most ${MONTHS_AHEAD} months out`);
   const { data: brief } = await supabase.from("briefs").select("description").eq("event_id", event.id).maybeSingle();
-  if (!brief?.description) throw new Error("Add the brief before publishing");
+  if (!brief?.description) throw new UserError("Add the brief before publishing");
   const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "active").is("deleted_at", null);
   if ((count ?? 0) >= EVENT_CAP) {
     const { data: oldest } = await supabase.from("events").select("title,event_date").eq("status", "active").is("deleted_at", null).order("event_date", { ascending: true }).limit(1).maybeSingle();
-    throw new Error(`All ${EVENT_CAP} event slots are in use. The oldest active event is "${oldest?.title}" (${oldest?.event_date}); it frees a slot a week after its date.`);
+    throw new UserError(`All ${EVENT_CAP} event slots are in use. The oldest active event is "${oldest?.title}" (${oldest?.event_date}); it frees a slot a week after its date.`);
   }
   await supabase.from("events").update({ status: "active", published_at: new Date().toISOString() }).eq("id", event.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, actor_id: user.id, kind: "event.published", payload: { title: event.title } });
@@ -161,9 +162,9 @@ export async function publishEvent(eventId: string) {
 /** Soft delete (PRD §8): Core Admins any event, everyone else only events they created. Restorable for 7 days from Archive. */
 export async function deleteEvent(eventId: string) {
   const { supabase, user, event } = await ownEvent(eventId, { allowArchived: true });
-  if (user.role !== "core_admin" && event.created_by !== user.id) throw new Error("Only the person who created this event or a Core Admin can delete it");
+  if (user.role !== "core_admin" && event.created_by !== user.id) throw new UserError("Only the person who created this event or a Core Admin can delete it");
   const { error } = await supabase.from("events").update({ deleted_at: new Date().toISOString() }).eq("id", event.id);
-  if (error) throw new Error(error.message);
+  if (error) throw new UserError(error.message);
   await supabase.from("activity").insert({ org_id: event.org_id, event_id: event.id, actor_id: user.id, kind: "event.deleted", payload: { title: event.title } });
   revalidatePath("/events");
   redirect("/events");
@@ -180,16 +181,16 @@ export async function assignSlot(slotId: string, userId: string | null) {
   const { supabase, user, org } = await requireActiveUser();
   const { data: slot } = await supabase.from("slots").select("id,assignee_id,event_id,formats(name),events(id,org_id,title,status,created_by)").eq("id", slotId).maybeSingle();
   const event = slot?.events as unknown as { id: string; org_id: string; title: string; status: string; created_by: string } | null;
-  if (!slot || !event || event.org_id !== org.id) throw new Error("Format not found");
-  if (event.status === "archived") throw new Error("Archived events are read-only");
-  if (user.role !== "core_admin" && event.created_by !== user.id && !user.is_approver) throw new Error("Only Core Admins, approvers or the event creator can reassign a format");
+  if (!slot || !event || event.org_id !== org.id) throw new UserError("Format not found");
+  if (event.status === "archived") throw new UserError("Archived events are read-only");
+  if (user.role !== "core_admin" && event.created_by !== user.id && !user.is_approver) throw new UserError("Only Core Admins, approvers or the event creator can reassign a format");
   if (userId) {
     const { data: member } = await supabase.from("users").select("id,org_memberships!inner(org_id)").eq("id", userId).eq("status", "active").eq("org_memberships.org_id", org.id).maybeSingle();
-    if (!member) throw new Error("That person is not in this organization");
+    if (!member) throw new UserError("That person is not in this organization");
   }
   if ((slot.assignee_id ?? null) === (userId ?? null)) return;
   const { error } = await supabase.from("slots").update({ assignee_id: userId, updated_at: new Date().toISOString() }).eq("id", slotId);
-  if (error) throw new Error(error.message);
+  if (error) throw new UserError(error.message);
   const formatName = (slot.formats as unknown as { name: string } | null)?.name ?? "a format";
   if (userId && event.status === "active") await notify(supabase, [userId], "slot.assigned", { eventId: event.id, slotId, title: event.title, format: formatName, assignee: userId, by: user.name ?? user.email }, user.id, { orgId: org.id });
   revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slotId}`);
