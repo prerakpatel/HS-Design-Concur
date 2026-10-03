@@ -14,7 +14,7 @@ import type { AppUser, EventRow, Format, Slot } from "@/lib/types";
 
 export default async function SlotPage({ params, searchParams }: { params: Promise<{ id: string; slotId: string }>; searchParams: Promise<{ v?: string }> }) {
   const { id, slotId } = await params; const { v } = await searchParams;
-  const { supabase, org, user } = await requireActiveUser();
+  const { supabase, org, user, isApprover } = await requireActiveUser();
   const { data: event } = await supabase.from("events").select("*").eq("id", id).is("deleted_at", null).maybeSingle<EventRow>();
   if (!event || event.org_id !== org.id) notFound();
   const { data: slot } = await supabase.from("slots").select("*").eq("id", slotId).eq("event_id", id).maybeSingle<Slot>();
@@ -22,7 +22,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const [{ data: fmt }, { data: versions }, { data: members }, { data: siblings }] = await Promise.all([
     supabase.from("formats").select("*").eq("id", slot.format_id).single<Format>(),
     supabase.from("versions").select("*,version_sides(*),uploader:uploaded_by(name,email)").eq("slot_id", slotId).order("number", { ascending: false }),
-    supabase.from("users").select("id,name,email,avatar_url,role,is_approver,function_tags,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id),
+    supabase.from("users").select("id,name,email,avatar_url,role,function_tags,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id),
     supabase.from("slots").select("id,is_primary,formats(name,sort),versions(created_at)").eq("event_id", id).eq("requested", true),
   ]);
   if (!fmt) notFound();
@@ -48,16 +48,16 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
 
   // The whole conversation for this format, across versions: what was asked on v1 is the reason v2 exists.
   const versionNumber = new Map(vlist.map((x) => [x.id as string, x.number as number]));
-  const { data: comments } = vlist.length ? await supabase.from("comments").select("*,author:author_id(name,email,avatar_url,role,is_approver,function_tags)").in("version_id", vlist.map((x) => x.id)).order("created_at") : { data: [] as never[] };
-  const roleOf = (u: { role: string; is_approver: boolean; function_tags: string[] }) => u.role === "core_admin" ? "Core Admin" : u.is_approver ? "Approver" : u.function_tags?.[0] ? u.function_tags[0][0].toUpperCase() + u.function_tags[0].slice(1) : "Member";
-  const cviews: CommentView[] = (comments ?? []).map((c) => { const a = c.author as unknown as { name: string | null; email: string; avatar_url: string | null; role: string; is_approver: boolean; function_tags: string[] }; return { id: c.id, version: versionNumber.get(c.version_id) ?? 0, body: c.body, created_at: c.created_at, pin_x: c.pin_x, pin_y: c.pin_y, pin_side: (c.pin_side ?? "front") as "front" | "back", edited_at: c.edited_at, mine: c.author_id === user.id, addressed_at: c.addressed_at, confirmed_at: c.confirmed_at, author: { name: a?.name ?? a?.email ?? "Someone", initials: initials(a?.name ?? null, a?.email ?? "?"), avatar: a?.avatar_url ?? null, role: a ? roleOf(a) : "" } }; });
+  const { data: comments } = vlist.length ? await supabase.from("comments").select("*,author:author_id(name,email,avatar_url,role,function_tags)").in("version_id", vlist.map((x) => x.id)).order("created_at") : { data: [] as never[] };
+  const roleOf = (u: { role: string; function_tags: string[] }) => u.role === "core_admin" ? "Core Admin" : u.function_tags?.[0] ? u.function_tags[0][0].toUpperCase() + u.function_tags[0].slice(1) : "Member";
+  const cviews: CommentView[] = (comments ?? []).map((c) => { const a = c.author as unknown as { name: string | null; email: string; avatar_url: string | null; role: string; function_tags: string[] }; return { id: c.id, version: versionNumber.get(c.version_id) ?? 0, body: c.body, created_at: c.created_at, pin_x: c.pin_x, pin_y: c.pin_y, pin_side: (c.pin_side ?? "front") as "front" | "back", edited_at: c.edited_at, mine: c.author_id === user.id, addressed_at: c.addressed_at, confirmed_at: c.confirmed_at, author: { name: a?.name ?? a?.email ?? "Someone", initials: initials(a?.name ?? null, a?.email ?? "?"), avatar: a?.avatar_url ?? null, role: a ? roleOf(a) : "" } }; });
   const groups = await loadGroups(supabase, [org.id]);
   const mlist: Member[] = [
     ...((members ?? []) as unknown as Pick<AppUser, "id" | "name" | "email" | "avatar_url">[]).map((m) => ({ id: m.id, name: m.name ?? m.email.split("@")[0], handle: m.email.split("@")[0].toLowerCase(), avatar: m.avatar_url })),
     // Groups sit in the same @ list; their chip id is group:<id> so a comment can be sent to a whole team's chat.
     ...groups.map((g) => ({ id: `group:${g.id}`, name: g.name, handle: groupHandle(g.name), avatar: null, kind: "group" as const })),
   ];
-  const canApprove = user.is_approver;
+  const canApprove = isApprover;
   const uploader = current?.uploader as unknown as { name: string | null; email: string } | null;
   const isPrint = fmt.class === "print";
   const print = isPrint && fmt.unit === "in" && fmt.width && fmt.height ? { bleedIn: Number(fmt.bleed_in ?? 0), safeIn: Number(fmt.safe_margin_in ?? 0), widthIn: Number(fmt.width), heightIn: Number(fmt.height) } : null;
@@ -97,7 +97,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
           {stalePreviews.length > 0 && <PreviewRefresher sideIds={stalePreviews} />}
           <AssetStage versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} comments={cviews} members={mlist} canComment={!readOnly} canModerate={user.role === "core_admin"}
             versions={chips} currentVersionId={current?.id ?? null} eventId={id} slotId={slotId} upload={canUpload && !readOnly ? { accept: fmt.allowed_mimes, isPrint, nextNumber: (vlist[0]?.number ?? 0) + 1 } : null}
-            status={{ state: state as "requested" | "unsent", version: current?.number ?? null, uploader: purged ? (who ? `${who} (reference)` : "Reference") : who, uploadedAt: current?.created_at ?? null, assigneeId: slot.assignee_id, canAssign: user.role === "core_admin" || event.created_by === user.id || user.is_approver }} decision={decision} decisionBar={decisionRow} readOnly={readOnly} />
+            status={{ state: state as "requested" | "unsent", version: current?.number ?? null, uploader: purged ? (who ? `${who} (reference)` : "Reference") : who, uploadedAt: current?.created_at ?? null, assigneeId: slot.assignee_id, canAssign: user.role === "core_admin" || event.created_by === user.id || isApprover }} decision={decision} decisionBar={decisionRow} readOnly={readOnly} />
         </>
       )}
       </div>

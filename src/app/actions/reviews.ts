@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
-import { notify, eventParticipants, taggedMemberIds } from "@/lib/notify";
+import { notify, eventParticipants, taggedMemberIds, approverIds } from "@/lib/notify";
 import { signedUrl, BUCKET } from "@/lib/storage";
 import { assetFilename } from "@/lib/labels";
 import { recomputeSlotState } from "@/lib/slot-state";
@@ -17,8 +17,6 @@ async function loadVersion(versionId: string) {
   return { ...ctx, version: v, slot, event: slot.events, formatName: slot.formats?.name ?? "format" };
 }
 
-/** Approving is its own switch (users.is_approver). Core Admin does not imply it. */
-function canApprove(user: { is_approver: boolean }) { return user.is_approver; }
 
 type Loaded = Awaited<ReturnType<typeof loadVersion>>;
 
@@ -36,8 +34,8 @@ export async function sendForReview(versionId: string) {
   await supabase.from("versions").update({ sent_at: now }).eq("id", versionId);
   await supabase.from("slots").update({ state: "in_review", updated_at: now }).eq("id", slot.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.sent", payload: { format: formatName, number: version.number } });
-  const { data: approvers } = await supabase.from("users").select("id,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id).eq("is_approver", true);
-  await notify(supabase, [...(approvers ?? []).map((a) => a.id), event.created_by], "version.uploaded", { eventId: event.id, slotId: slot.id, versionId, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id });
+  const approvers = await approverIds(supabase, org.id);
+  await notify(supabase, [...approvers, event.created_by], "version.uploaded", { eventId: event.id, slotId: slot.id, versionId, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id });
   revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`);
   return { ok: true };
 }
@@ -45,8 +43,8 @@ export async function sendForReview(versionId: string) {
 /** The database side of an approval; notifications are the caller's job so bulk approvals can post once. */
 async function approveOne(versionId: string): Promise<Loaded> {
   const ctx = await loadVersion(versionId);
-  const { supabase, user, org, version, slot, event, formatName } = ctx;
-  if (!canApprove(user)) throw new UserError("Only approvers can approve");
+  const { supabase, user, org, version, slot, event, formatName, isApprover } = ctx;
+  if (!isApprover) throw new UserError("Only approvers of this organization can approve");
   if (version.uploaded_by === user.id) throw new UserError("You cannot approve a version you uploaded");
   if (!version.sent_at) throw new UserError("The designer has not sent this version for review yet");
   const now = new Date().toISOString();
@@ -76,8 +74,8 @@ export async function approveVersion(versionId: string) {
 }
 
 export async function requestChanges(versionId: string, body: string) {
-  const { supabase, user, org, version, slot, event, formatName } = await loadVersion(versionId);
-  if (!canApprove(user)) throw new UserError("Only approvers can request changes");
+  const { supabase, user, org, version, slot, event, formatName, isApprover } = await loadVersion(versionId);
+  if (!isApprover) throw new UserError("Only approvers of this organization can request changes");
   if (!body.trim()) throw new UserError("Say what needs to change");
   if (!version.sent_at) throw new UserError("The designer has not sent this version for review yet");
   const now = new Date().toISOString();
@@ -93,8 +91,8 @@ export async function requestChanges(versionId: string, body: string) {
 
 /** Pull an approved asset back to work-in-progress (PRD §6.2 Reopen). */
 export async function reopenVersion(versionId: string, reason: string) {
-  const { supabase, user, org, version, slot, event, formatName } = await loadVersion(versionId);
-  if (!canApprove(user)) throw new UserError("Only approvers can reopen");
+  const { supabase, user, org, version, slot, event, formatName, isApprover } = await loadVersion(versionId);
+  if (!isApprover) throw new UserError("Only approvers of this organization can reopen");
   if (version.decision !== "approved") throw new UserError("Only an approved version can be reopened");
   const now = new Date().toISOString();
   await supabase.from("versions").update({ decision: "changes_requested", reopen_reason: reason.trim() || null, decided_by: user.id, decided_at: now }).eq("id", versionId);
@@ -136,15 +134,15 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
 
 /** addressed ("done") and reopen: anyone on the event. confirmed: approvers. */
 export async function setCommentFlag(commentId: string, flag: "addressed" | "unaddress" | "confirmed" | "reopen") {
-  const { supabase, user } = await requireActiveUser();
+  const { supabase, user, isApprover } = await requireActiveUser();
   const now = new Date().toISOString();
   const patch = flag === "addressed" ? { addressed_at: now, addressed_by: user.id }
     : flag === "confirmed" ? { confirmed_at: now, confirmed_by: user.id }
     : { addressed_at: null, addressed_by: null, confirmed_at: null, confirmed_by: null };
   if (flag === "unaddress") {
     const { data: c } = await supabase.from("comments").select("confirmed_at").eq("id", commentId).maybeSingle();
-    if (c?.confirmed_at && !canApprove(user)) throw new UserError("This comment was confirmed by an approver; ask them to reopen it");
-  } else if (flag === "confirmed" && !canApprove(user)) throw new UserError("Only approvers can confirm a comment");
+    if (c?.confirmed_at && !isApprover) throw new UserError("This comment was confirmed by an approver; ask them to reopen it");
+  } else if (flag === "confirmed" && !isApprover) throw new UserError("Only approvers can confirm a comment");
   const { data } = await supabase.from("comments").update(patch).eq("id", commentId).select("versions(slots(id,event_id))").single();
   const s = (data?.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;
   if (s) revalidatePath(`/events/${s.event_id}/slots/${s.id}`);

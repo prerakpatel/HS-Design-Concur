@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendEmail, appUrl, emailConfigured } from "@/lib/email";
 import { notificationText, notificationHref } from "@/lib/labels";
-import { notify, subjectFor, type NotificationKind } from "@/lib/notify";
+import { notify, subjectFor, approverIds, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
 import { refreshStalePreviews } from "@/lib/uploads/refresh-preview";
 import { pruneAllSlots } from "@/lib/uploads/prune";
@@ -55,8 +55,8 @@ export async function GET(req: Request) {
     const payload = { eventId: slot.event_id, slotId: slot.id, versionId: v.id, title: slot.events.title, format: slot.formats.name, number: v.number, by: up?.name ?? up?.email, since: v.sent_at, days, day: today };
     const { data: dup } = await db.from("notifications").select("id").eq("kind", "review.waiting").contains("payload", { versionId: v.id, day: today }).limit(1);
     if (dup?.length) continue;
-    const { data: approvers } = await db.from("users").select("id,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", slot.events.org_id).eq("is_approver", true);
-    await notify(db, (approvers ?? []).map((a) => a.id), "review.waiting", payload, v.uploaded_by, { orgId: slot.events.org_id });
+    const approvers = await approverIds(db, slot.events.org_id);
+    await notify(db, approvers, "review.waiting", payload, v.uploaded_by, { orgId: slot.events.org_id });
     report.waiting = ((report.waiting as number) ?? 0) + 1;
   }
 

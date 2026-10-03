@@ -178,12 +178,12 @@ export async function toggleSlotRequested(slotId: string, requested: boolean) {
 
 /** Change who designs a format from the asset page. Core Admins, the event creator and approvers may. */
 export async function assignSlot(slotId: string, userId: string | null) {
-  const { supabase, user, org } = await requireActiveUser();
+  const { supabase, user, org, isApprover } = await requireActiveUser();
   const { data: slot } = await supabase.from("slots").select("id,assignee_id,event_id,formats(name),events(id,org_id,title,status,created_by)").eq("id", slotId).maybeSingle();
   const event = slot?.events as unknown as { id: string; org_id: string; title: string; status: string; created_by: string } | null;
   if (!slot || !event || event.org_id !== org.id) throw new UserError("Format not found");
   if (event.status === "archived") throw new UserError("Archived events are read-only");
-  if (user.role !== "core_admin" && event.created_by !== user.id && !user.is_approver) throw new UserError("Only Core Admins, approvers or the event creator can reassign a format");
+  if (user.role !== "core_admin" && event.created_by !== user.id && !isApprover) throw new UserError("Only Core Admins, approvers or the event creator can reassign a format");
   if (userId) {
     const { data: member } = await supabase.from("users").select("id,org_memberships!inner(org_id)").eq("id", userId).eq("status", "active").eq("org_memberships.org_id", org.id).maybeSingle();
     if (!member) throw new UserError("That person is not in this organization");

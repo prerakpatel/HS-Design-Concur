@@ -62,15 +62,15 @@ with a switcher in the sidebar for users who belong to both. There is no unified
 | Role | Grants |
 |---|---|
 | **Member** | Everything below not marked otherwise. |
-| **Core Admin** | Approve/deny access, remove users, assign org membership, grant/revoke Approver, promote/demote Core Admins, delete any event, edit org notification settings. **Not an Approver unless the switch is on**: running the app and approving designs are separate duties, so a Core Admin can stay out of review notifications. |
+| **Core Admin** | Approve/deny access, remove users, assign org membership, grant/revoke Approver, promote/demote Core Admins, delete any event, edit org notification settings. **Not an Approver unless granted**: running the app and approving designs are separate duties, so a Core Admin can stay out of review notifications. |
 
 There is **no Sub-admin role**. Its only purpose was deleting accidental events, which is
 covered by: *the creator of an event may delete it themselves at any time; Core Admins may delete
 any event.* Either way it is a soft delete that a Core Admin can undo from Archive for 7 days.
 
 ### 4.4 Capabilities and function tags
-- **Approver** (toggle, granted by a Core Admin): may approve, request changes on, and reopen
-  assets. It is a switch on the user (Settings › Users); Core Admins do not have it implicitly.
+- **Approver** (granted by a Core Admin, **per organization**: someone can approve for one org and not the other): may approve, request changes on, and reopen
+  assets. It is set per organization on the user (Settings › Users); Core Admins do not have it implicitly.
 - **Function tags** (multi-select, informational, set by a Core Admin):
   **Central** (executives), **Publication** (writers), **Designer**.
   Tags route notifications and default assignees. Two things are gated by tag:
@@ -385,7 +385,7 @@ with dark foreground, never small text on white); all times displayed in America
 ```sql
 organisations(id, slug, name, chat_webhook_url, email_enabled bool, chat_enabled bool, accepting_signups bool)
 users(id ← auth.users, email, name, avatar_url, role enum('member','core_admin'),
-      is_approver bool, function_tags text[] /* central|publication|designer */,
+      is_approver bool /* legacy; approval now lives on org_memberships.is_approver */, function_tags text[] /* central|publication|designer */,
       status enum('pending','active','removed'), email_pref enum('instant','digest','off'))
 org_memberships(user_id, org_id)
 access_requests(id, user_id, requested_at, decided_by, decided_at, decision)

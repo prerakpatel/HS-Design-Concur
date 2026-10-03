@@ -174,3 +174,9 @@ export async function taggedMemberIds(supabase: SupabaseClient, orgId: string, t
   const { data } = await supabase.from("users").select("id,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", orgId).contains("function_tags", [tag]);
   return (data ?? []).map((u) => u.id as string);
 }
+
+/** Active approvers of one organization. Approving is per organization (org_memberships.is_approver). */
+export async function approverIds(supabase: SupabaseClient, orgId: string): Promise<string[]> {
+  const { data } = await supabase.from("org_memberships").select("user_id,users!inner(status)").eq("org_id", orgId).eq("is_approver", true).eq("users.status", "active");
+  return (data ?? []).map((m) => m.user_id as string);
+}

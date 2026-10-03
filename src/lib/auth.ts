@@ -18,16 +18,18 @@ export const getSession = cache(async () => {
   if (!uid) return null;
   const [{ data: user }, { data: memberships }, { data: orgs }] = await Promise.all([
     supabase.from("users").select("*").eq("id", uid).single<AppUser>(),
-    supabase.from("org_memberships").select("org_id").eq("user_id", uid),
+    supabase.from("org_memberships").select("org_id,is_approver").eq("user_id", uid),
     supabase.from("organisations").select("*").order("name").returns<Organization[]>(),
   ]);
   if (!user) return null;
   const memberOrgIds = new Set((memberships ?? []).map((m) => m.org_id));
+  // Approving is per organization: the flag sits on the membership, not on the person.
+  const approverOrgIds = new Set((memberships ?? []).filter((m) => m.is_approver).map((m) => m.org_id as string));
   const myOrgs = (orgs ?? []).filter((o) => memberOrgIds.has(o.id));
-  return { supabase, user, orgs: myOrgs };
+  return { supabase, user, orgs: myOrgs, approverOrgIds };
 });
 
-export type ActiveContext = NonNullable<Awaited<ReturnType<typeof getSession>>> & { org: Organization };
+export type ActiveContext = NonNullable<Awaited<ReturnType<typeof getSession>>> & { org: Organization; /** Can this person approve in the organization they are working in? */ isApprover: boolean };
 
 /** Active user with at least one org, or null. Route handlers use this and answer 401 themselves. */
 export async function getActiveUser(): Promise<ActiveContext | null> {
@@ -36,7 +38,7 @@ export async function getActiveUser(): Promise<ActiveContext | null> {
   const cookieStore = await cookies();
   const wanted = cookieStore.get(ORG_COOKIE)?.value ?? DEFAULT_ORG;
   const org = session.orgs.find((o) => o.slug === wanted) ?? session.orgs[0];
-  return { ...session, org };
+  return { ...session, org, isApprover: session.approverOrgIds.has(org.id) };
 }
 
 /** Active user with at least one org, or redirect (pages and server actions). */

@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { ChoiceChips } from "@/components/ui/choice-chips";
 import { UserAvatar } from "@/components/user-avatar";
 import { StateBadge } from "@/components/state-badge";
@@ -14,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { updateUser, removeUser } from "@/app/actions/admin";
 import { errorMessage } from "@/lib/user-error";
 
-export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; is_approver: boolean; function_tags: string[]; orgIds: string[]; groupIds?: string[]; email_pref?: "instant" | "digest" | "off"; slack_user_id?: string | null; gchat_user_id?: string | null }
+export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; approverOrgIds: string[]; function_tags: string[]; orgIds: string[]; groupIds?: string[]; email_pref?: "instant" | "digest" | "off"; slack_user_id?: string | null; gchat_user_id?: string | null }
 export interface OrgOption { id: string; label: string }
 const TAGS = [{ value: "central", label: "Central" }, { value: "publication", label: "Publication" }, { value: "designer", label: "Designer" }];
 const tagLabel = (t: string) => TAGS.find((x) => x.value === t)?.label ?? t;
@@ -36,7 +35,7 @@ export function UsersList({ users, orgs, groups = [], currentUserId }: { users: 
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:mt-0">
                   {u.role === "core_admin" ? <StateBadge state="in_review" label="Core Admin" /> : <StateBadge state="requested" label="Member" />}
-                  {u.is_approver && <StateBadge state="approved" label="Approver" />}
+                  {u.approverOrgIds.length > 0 && <StateBadge state="approved" label={u.approverOrgIds.length >= orgs.length ? "Approver" : `Approver · ${orgs.filter((o) => u.approverOrgIds.includes(o.id)).map((o) => o.label).join(", ")}`} />}
                   <span className="ml-1 text-[13px] text-muted-foreground md:hidden">{u.function_tags.map(tagLabel).join(" · ") || "No function"}</span>
                 </div>
                 <div className="hidden flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-muted-foreground md:flex">
@@ -72,7 +71,9 @@ function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser
               <Field label="Role" hint="Core Admins approve access, manage people and can delete any event.">
                 <ChoiceChips name="role" defaultValue={user.role} options={[{ value: "member", label: "Member" }, { value: "core_admin", label: "Core Admin" }]} />
               </Field>
-              <ApproverRow defaultOn={user.is_approver} />
+              <Field label="Can approve designs for" hint="Gets notified when designs are sent for review, and can approve, request changes and reopen, in these organizations only. Leave empty for none; only organizations they belong to count.">
+                <ChoiceChips name="approver_org" multiple defaultValue={user.approverOrgIds} options={orgs.map((o) => ({ value: o.id, label: o.label }))} />
+              </Field>
               <Field label="Function" hint="Routes notifications. Designers and Core Admins can edit the format catalog.">
                 <ChoiceChips name="tag" multiple defaultValue={user.function_tags} options={TAGS} />
               </Field>
@@ -100,17 +101,6 @@ function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser
         )}
       </DialogContent>
     </Dialog>
-  );
-}
-
-function ApproverRow({ defaultOn }: { defaultOn: boolean }) {
-  const [on, setOn] = useState(defaultOn);
-  return (
-    <label className="flex items-center justify-between gap-4 rounded-2xl border border-border p-4">
-      <span><span className="block text-sm font-medium">Can approve designs</span><span className="block text-sm text-muted-foreground">{on ? "Gets notified when designs are sent for review, and can approve, request changes and reopen." : "Not notified about reviews and cannot approve. Core Admins can run the app without being approvers."}</span></span>
-      <input type="hidden" name="is_approver" value={on ? "on" : "off"} />
-      <Switch checked={on} onCheckedChange={setOn} />
-    </label>
   );
 }
 

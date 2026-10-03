@@ -14,9 +14,9 @@ async function requireCoreAdmin() {
   return ctx;
 }
 
-async function setMemberships(supabase: Awaited<ReturnType<typeof requireCoreAdmin>>["supabase"], userId: string, orgIds: string[]) {
+async function setMemberships(supabase: Awaited<ReturnType<typeof requireCoreAdmin>>["supabase"], userId: string, orgIds: string[], approverOrgIds: string[]) {
   await supabase.from("org_memberships").delete().eq("user_id", userId);
-  if (orgIds.length) await supabase.from("org_memberships").insert(orgIds.map((org_id) => ({ user_id: userId, org_id })));
+  if (orgIds.length) await supabase.from("org_memberships").insert(orgIds.map((org_id) => ({ user_id: userId, org_id, is_approver: approverOrgIds.includes(org_id) })));
 }
 
 export async function decideAccess(userId: string, formData: FormData) {
@@ -27,7 +27,7 @@ export async function decideAccess(userId: string, formData: FormData) {
   await supabase.from("users").update({ status: approve ? "active" : "removed" }).eq("id", userId);
   await supabase.from("access_requests").update({ decided_by: user.id, decided_at: new Date().toISOString(), decision: approve ? "approved" : "denied" }).eq("user_id", userId).is("decided_at", null);
   if (approve) {
-    await setMemberships(supabase, userId, orgIds);
+    await setMemberships(supabase, userId, orgIds, []);
     const { data: who } = await supabase.from("users").select("name,email").eq("id", userId).maybeSingle();
     await notify(supabase, [userId], "access.approved", { by: user.name ?? user.email, name: who?.name ?? who?.email });
   }
@@ -37,9 +37,9 @@ export async function decideAccess(userId: string, formData: FormData) {
 export async function updateUser(userId: string, formData: FormData) {
   const { supabase, user, org } = await requireCoreAdmin();
   const role = formData.get("role") === "core_admin" ? "core_admin" : "member";
-  const is_approver = formData.get("is_approver") === "on";
   const function_tags = formData.getAll("tag").map(String).filter((t): t is FunctionTag => ["central", "publication", "designer"].includes(t));
   const orgIds = formData.getAll("org").map(String);
+  const approverOrgIds = formData.getAll("approver_org").map(String).filter((o) => orgIds.includes(o));
   if (userId === user.id && role !== "core_admin") throw new UserError("You cannot demote yourself");
   if (role !== "core_admin") {
     const { count } = await supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "core_admin").eq("status", "active").neq("id", userId);
@@ -48,8 +48,8 @@ export async function updateUser(userId: string, formData: FormData) {
   const slack_user_id = normaliseSlackId(String(formData.get("slack_user_id") ?? ""));
   const gchat_user_id = String(formData.get("gchat_user_id") ?? "").trim().replace(/^users\//, "") || null;
   if (gchat_user_id && !/^\d{6,}$/.test(gchat_user_id)) throw new UserError("A Google Chat user ID is a long number");
-  await supabase.from("users").update({ role, is_approver, function_tags, slack_user_id, gchat_user_id }).eq("id", userId);
-  await setMemberships(supabase, userId, orgIds);
+  await supabase.from("users").update({ role, function_tags, slack_user_id, gchat_user_id }).eq("id", userId);
+  await setMemberships(supabase, userId, orgIds, approverOrgIds);
   if (formData.get("groups_present")) {
     // Only this organization's groups are on the form; memberships in the other org's groups are left alone.
     const { data: own } = await supabase.from("groups").select("id").eq("org_id", org.id);

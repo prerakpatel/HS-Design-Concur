@@ -46,11 +46,11 @@ export const BRIEF_VIEW = { date: "2026-11-08", timeText: "10:30 AM EST onwards\
 export const BRIEF = "Annual Annakut darshan with over 1,000 food items offered to Thakorji. Invite families to darshan and evening aarti. Highlight free parking and the youth volunteer sign-up. Bilingual (English + Gujarati) where the format allows.";
 
 export const USERS: EditableUser[] = [
-  { id: "u-1", name: "Prerak Patel", email: "prerak@harisumiran.org", initials: "PP", role: "core_admin", is_approver: true, function_tags: ["central"], orgIds: ["org-hs", "org-acc"] },
-  { id: "u-2", name: "Mihir Shah", email: "mihir.shah@gmail.com", initials: "MS", role: "member", is_approver: false, function_tags: ["designer"], orgIds: ["org-hs"] },
-  { id: "u-3", name: "Kinjal Patel", email: "kinjal.p@gmail.com", initials: "KP", role: "member", is_approver: false, function_tags: ["designer", "publication"], orgIds: ["org-hs", "org-acc"] },
-  { id: "u-4", name: "Rina Desai", email: "rina.desai@gmail.com", initials: "RD", role: "member", is_approver: true, function_tags: ["publication"], orgIds: ["org-hs"] },
-  { id: "u-5", name: "Amit Joshi", email: "amit.joshi@gmail.com", initials: "AJ", role: "member", is_approver: false, function_tags: [], orgIds: ["org-acc"] },
+  { id: "u-1", name: "Prerak Patel", email: "prerak@harisumiran.org", initials: "PP", role: "core_admin", approverOrgIds: ["org-hs", "org-acc"], function_tags: ["central"], orgIds: ["org-hs", "org-acc"] },
+  { id: "u-2", name: "Mihir Shah", email: "mihir.shah@gmail.com", initials: "MS", role: "member", approverOrgIds: [], function_tags: ["designer"], orgIds: ["org-hs"] },
+  { id: "u-3", name: "Kinjal Patel", email: "kinjal.p@gmail.com", initials: "KP", role: "member", approverOrgIds: [], function_tags: ["designer", "publication"], orgIds: ["org-hs", "org-acc"] },
+  { id: "u-4", name: "Rina Desai", email: "rina.desai@gmail.com", initials: "RD", role: "member", approverOrgIds: ["org-hs"], function_tags: ["publication"], orgIds: ["org-hs"] },
+  { id: "u-5", name: "Amit Joshi", email: "amit.joshi@gmail.com", initials: "AJ", role: "member", approverOrgIds: [], function_tags: [], orgIds: ["org-acc"] },
 ];
 export const PENDING: PendingUser[] = [
   { id: "p-1", name: "Neha Trivedi", email: "neha.trivedi@gmail.com", initials: "NT", requested_at: ago(5) },

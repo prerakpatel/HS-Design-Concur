@@ -29,7 +29,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const tab = isAdmin ? (requested === "notifications" ? "orgs" : requested) : "formats";
   const [{ data: users }, { data: memberships }, { data: orgs }, { data: formats }, { data: requests }, groups] = await Promise.all([
     supabase.from("users").select("*").order("name").returns<AppUser[]>(),
-    supabase.from("org_memberships").select("user_id,org_id"),
+    supabase.from("org_memberships").select("user_id,org_id,is_approver"),
     supabase.from("organisations").select("*").order("name").returns<Organization[]>(),
     supabase.from("formats").select("*").order("sort").returns<Format[]>(),
     supabase.from("access_requests").select("user_id,requested_at").is("decided_at", null),
@@ -39,6 +39,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   for (const g of groups) for (const m of g.members) groupsOf.set(m, [...(groupsOf.get(m) ?? []), g.id]);
   const orgsOf = new Map<string, string[]>();
   for (const m of memberships ?? []) orgsOf.set(m.user_id, [...(orgsOf.get(m.user_id) ?? []), m.org_id]);
+  const approverOrgsOf = new Map<string, string[]>();
+  for (const m of memberships ?? []) if (m.is_approver) approverOrgsOf.set(m.user_id, [...(approverOrgsOf.get(m.user_id) ?? []), m.org_id]);
   const askedAt = new Map((requests ?? []).map((r) => [r.user_id, r.requested_at]));
   const pending = (users ?? []).filter((u) => u.status === "pending");
   const active = (users ?? []).filter((u) => u.status === "active");
@@ -49,7 +51,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <PageHeader title="Settings" subtitle={isAdmin ? "People, access, the format catalog and notifications" : "Format catalog · Designers can edit"} />
       <nav className="mb-8 flex gap-6 overflow-x-auto border-b border-border text-sm font-medium">{tabs.map(([k, l]) => <Link key={k} href={`/settings?tab=${k}`} className={"-mb-px shrink-0 border-b-2 pb-3 " + (tab === k ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{l}</Link>)}</nav>
 
-      {tab === "users" && <UsersList currentUserId={user.id} orgs={orgOptions} users={active.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, role: u.role, is_approver: u.is_approver, function_tags: u.function_tags, orgIds: orgsOf.get(u.id) ?? [], groupIds: groupsOf.get(u.id) ?? [], email_pref: u.email_pref, slack_user_id: u.slack_user_id, gchat_user_id: u.gchat_user_id }))} groups={groups.map((g) => ({ id: g.id, label: g.name }))} />}
+      {tab === "users" && <UsersList currentUserId={user.id} orgs={orgOptions} users={active.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, role: u.role, approverOrgIds: approverOrgsOf.get(u.id) ?? [], function_tags: u.function_tags, orgIds: orgsOf.get(u.id) ?? [], groupIds: groupsOf.get(u.id) ?? [], email_pref: u.email_pref, slack_user_id: u.slack_user_id, gchat_user_id: u.gchat_user_id }))} groups={groups.map((g) => ({ id: g.id, label: g.name }))} />}
 
       {tab === "groups" && <GroupsEditor groups={groups} users={active.filter((u) => (orgsOf.get(u.id) ?? []).includes(org.id)).map((u) => ({ id: u.id, name: u.name ?? u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, hint: u.email }))} />}
 

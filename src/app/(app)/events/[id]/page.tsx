@@ -19,7 +19,7 @@ const VERB: Record<string, (p: Record<string, string>) => string> = { "event.cre
 
 export default async function EventPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ activity?: string }> }) {
   const { id } = await params; const showActivity = (await searchParams).activity === "1";
-  const { supabase, org, user } = await requireActiveUser();
+  const { supabase, org, user, isApprover } = await requireActiveUser();
   const { data: event } = await supabase.from("events").select("*").eq("id", id).is("deleted_at", null).maybeSingle<EventRow>();
   if (!event || event.org_id !== org.id) notFound();
   const [{ data: brief }, { data: slots }, { data: formats }, { data: activity }, { data: creator }] = await Promise.all([
@@ -49,7 +49,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
       <div className={showActivity ? "grid gap-10 lg:grid-cols-[1fr_280px]" : "grid gap-10"}>
         <div className="space-y-10">
           <BriefCard brief={{ date: event.event_date, timeText: brief?.time_text ?? null, inviteText: brief?.description ?? null, venueName: brief?.venue_name ?? event.venue ?? null, venueAddress: brief?.venue_address ?? null, notes: brief?.notes ?? null }} locked={!!event.brief_locked_at || event.status === "archived"} editHref={event.status === "archived" ? "#" : `/events/${id}/edit/event`} />
-          <FormatGrid eventId={id} cards={cards} downloadable={cards.filter((c) => c.requested && c.state === "approved" && c.thumb).length} canApprove={event.status !== "archived" && user.is_approver} meta={`${approved} approved · ${requested.length - approved} in progress · ${cards.length - requested.length} N/A`} />
+          <FormatGrid eventId={id} cards={cards} downloadable={cards.filter((c) => c.requested && c.state === "approved" && c.thumb).length} canApprove={event.status !== "archived" && isApprover} meta={`${approved} approved · ${requested.length - approved} in progress · ${cards.length - requested.length} N/A`} />
         </div>
         {showActivity && <ActivityFeed items={(activity ?? []).map((a) => { const who = a.actor as unknown as { name: string | null; email: string; avatar_url: string | null } | null; return { id: a.id, who: who?.name ?? who?.email ?? "Design & Concur", initials: initials(who?.name ?? null, who?.email ?? "?"), avatar: who?.avatar_url ?? null, what: (VERB[a.kind] ?? (() => a.kind))(a.payload as Record<string, string>), when: a.created_at }; })} />}
       </div>
