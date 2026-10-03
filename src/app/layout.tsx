@@ -27,7 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
         {children}
-        <Toaster position="bottom-center" />
+        {/* Bottom-left, clear of the phone tab bar and the asset page's fixed action bar. */}
+        <Toaster position="bottom-left" offset={{ bottom: 20, left: 20 }} mobileOffset={{ bottom: 92, left: 12, right: 12 }} />
       </body>
     </html>
   );
