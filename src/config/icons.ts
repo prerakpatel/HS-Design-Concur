@@ -61,7 +61,6 @@ export const ICON_NAMES = [
   "replay",
   "rule",
   "schedule",
-  "send",
   "settings",
   "sync",
   "text_format",

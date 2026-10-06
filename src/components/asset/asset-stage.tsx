@@ -20,7 +20,7 @@ import { relativeTime } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/user-error";
 
-// icons: forum send add_comment grid_on zoom_out_map check close arrow_upward more_vert upload sync flip delete replay edit chat_bubble
+// icons: forum add_comment grid_on zoom_out_map check close arrow_upward more_vert upload sync flip delete replay edit chat_bubble
 export type Side = "front" | "back";
 export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number }
 export interface CommentView { id: string; version: number; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; draft?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
@@ -259,11 +259,11 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
       {review && canComment && versionId && (
         <div role="region" aria-label="Review mode" className={cn("fixed z-40 inset-x-3 flex items-center gap-2 rounded-full bg-info p-1.5 pl-4 text-white shadow-md md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:gap-3 md:pl-5", decisionBar ? "bottom-[calc(env(safe-area-inset-bottom)+84px)] md:bottom-6" : "bottom-[max(env(safe-area-inset-bottom),16px)] md:bottom-6")}>
           <Icon name="forum" className="shrink-0 !text-[20px]" />
-          <p className="min-w-0 flex-1 whitespace-nowrap text-sm font-medium md:flex-none">
-            {unsent === 0 ? "Tap the design to comment" : `${unsent} comment${unsent === 1 ? "" : "s"}`}
+          <p className="min-w-0 flex-1 truncate text-sm font-medium md:flex-none">
+            {unsent === 0 ? "Tap to comment" : `${unsent} comment${unsent === 1 ? "" : "s"}`}
           </p>
           <button type="button" onClick={leaveReview} disabled={pending} className="h-10 shrink-0 rounded-full px-3.5 text-sm font-medium text-white/90 hover:bg-white/15 disabled:opacity-60">{unsent > 0 ? "Discard" : "Cancel"}</button>
-          <button type="button" onClick={sendReview} disabled={pending || unsent === 0} className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-semibold text-info-text shadow-sm transition-opacity hover:bg-white/90 disabled:opacity-50"><Icon name="send" className="!text-[18px]" />{sending ? "Sending…" : unsent > 1 ? `Send ${unsent}` : "Send"}</button>
+          <button type="button" onClick={sendReview} disabled={pending || unsent === 0} className="inline-flex h-10 shrink-0 items-center rounded-full bg-white px-5 text-sm font-semibold text-info-text shadow-sm transition-opacity hover:bg-white/90 disabled:opacity-50">{sending ? "Sending…" : unsent > 1 ? `Send ${unsent}` : "Send"}</button>
         </div>
       )}
       {/* Phones: the decision rides in a fixed bar */}
