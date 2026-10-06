@@ -7,6 +7,17 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: "2026-10-06",
+    title: "Review mode, per-org approvers and a maintenance hold",
+    items: [
+      "Review mode: tap Comment, leave as many comments as you need (pinned or general, to different people), then press Send. They go to Google Chat and Slack as one message instead of one each.",
+      "Comments you have not sent yet are private to you, marked “Not sent”, and wait for you if you leave the page.",
+      "Approving is now per organization: someone can approve for Harisumiran and not Atmiya Care, and only that org's approvers are notified.",
+      "Core Admins are no longer approvers automatically; turn Approver on per organization in Settings → Users.",
+      "Core Admins can put a “please hold” screen over the app during updates (Settings → Maintenance). Nobody loses what they were typing.",
+    ],
+  },
+  {
     id: "2026-10-03",
     title: "Groups, smarter Slack and clearer messages",
     items: [

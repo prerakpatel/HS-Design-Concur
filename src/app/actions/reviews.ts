@@ -79,6 +79,8 @@ export async function requestChanges(versionId: string, body: string) {
   if (!body.trim()) throw new UserError("Say what needs to change");
   if (!version.sent_at) throw new UserError("The designer has not sent this version for review yet");
   const now = new Date().toISOString();
+  // Anything queued in review mode goes out with the request, not as a second post.
+  await supabase.from("comments").update({ is_draft: false }).eq("version_id", versionId).eq("author_id", user.id).eq("is_draft", true);
   await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: body.trim() });
   await supabase.from("versions").update({ decision: "changes_requested", decided_by: user.id, decided_at: now }).eq("id", versionId);
   await supabase.from("slots").update({ state: "changes_requested", updated_at: now }).eq("id", slot.id);
@@ -105,8 +107,9 @@ export async function reopenVersion(versionId: string, reason: string) {
 }
 
 /** Comment with @mentions ("@Nikhil Joshi" or "@nikhil") and an optional pin. */
-export async function addComment(versionId: string, body: string, pin?: { x: number; y: number; side?: "front" | "back" } | null) {
-  const { supabase, user, org, version, slot, event, formatName } = await loadVersion(versionId);
+export async function addComment(versionId: string, body: string, pin?: { x: number; y: number; side?: "front" | "back" } | null, opts?: { draft?: boolean }) {
+  const ctx = await loadVersion(versionId);
+  const { supabase, user, org, slot } = ctx;
   const html = sanitizeComment(body); const text = plainText(html); if (!text) throw new UserError("Empty comment");
   const { data: members } = await supabase.from("users").select("id,name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id);
   // Mentions come from the editor's @ chips; typed "@first" still counts for people who skip the popup.
@@ -119,15 +122,58 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
     const lower = text.toLowerCase();
     if ((name && lower.includes("@" + name)) || (first && new RegExp(`@${first}(\\b|$)`).test(lower)) || lower.includes("@" + handle)) mentions.add(m.id);
   }
-  const { error } = await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: html, mentions: [...mentions], pin_x: pin?.x ?? null, pin_y: pin?.y ?? null, pin_side: pin?.side ?? "front" });
+  // Review mode: the comment is saved but stays private to its author until the batch is sent.
+  const { error } = await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: html, mentions: [...mentions], pin_x: pin?.x ?? null, pin_y: pin?.y ?? null, pin_side: pin?.side ?? "front", is_draft: !!opts?.draft });
   if (error) throw new UserError(error.message);
-  const payload = { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email, excerpt: text.slice(0, 200), excerptHtml: html, groups: groupIds };
-  if (mentions.size) await notify(supabase, mentions, "comment.mention", payload, user.id, { orgId: org.id });
-  else {
-    // No @mention: it is for the designer, the uploader and whoever has already spoken on this version.
-    const { data: prior } = await supabase.from("comments").select("author_id").eq("version_id", versionId);
-    await notify(supabase, [slot.assignee_id, version.uploaded_by, ...(prior ?? []).map((c) => c.author_id as string)], "comment.posted", payload, user.id, { orgId: org.id });
+  if (!opts?.draft) await announceComments(ctx, [{ html, mentions: [...mentions] }]);
+  revalidatePath(`/events/${ctx.event.id}/slots/${slot.id}`);
+  return { ok: true };
+}
+
+/**
+ * One chat post and one notification for a batch of comments. A single comment keeps the classic wording; several
+ * read as "N comments" with each one listed. People @mentioned in any comment are told; if a comment mentions no
+ * one it is also for the designer, the uploader and whoever has already spoken on this version.
+ */
+async function announceComments({ supabase, user, org, version, slot, event, formatName }: Loaded, rows: { html: string; mentions: string[] }[]) {
+  const mentioned = new Set(rows.flatMap((r) => r.mentions));
+  const groupIds = [...new Set(rows.flatMap((r) => groupMentionIds(r.html)))];
+  const texts = rows.map((r) => plainText(r.html));
+  const by = user.name ?? user.email;
+  const base = { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by, groups: groupIds };
+  const needsDefault = rows.some((r) => r.mentions.length === 0);
+  let defaults: (string | null)[] = [];
+  if (needsDefault) {
+    const { data: prior } = await supabase.from("comments").select("author_id").eq("version_id", version.id);
+    defaults = [slot.assignee_id, version.uploaded_by, ...(prior ?? []).map((c) => c.author_id as string)];
   }
+  if (rows.length === 1) {
+    const payload = { ...base, excerpt: texts[0].slice(0, 200), excerptHtml: rows[0].html };
+    if (mentioned.size) await notify(supabase, mentioned, "comment.mention", payload, user.id, { orgId: org.id });
+    else await notify(supabase, defaults, "comment.posted", payload, user.id, { orgId: org.id });
+    return;
+  }
+  const payload = { ...base, count: rows.length, items: rows.map((r) => r.html), excerpt: texts.map((t) => `• ${t}`).join("\n").slice(0, 300) };
+  await notify(supabase, [...mentioned, ...defaults], "comments.posted", payload, user.id, { orgId: org.id });
+}
+
+/** Send everything the caller has queued on this version as one notification. Returns how many went out. */
+export async function sendCommentBatch(versionId: string) {
+  const ctx = await loadVersion(versionId);
+  const { supabase, user, slot, event } = ctx;
+  const { data: drafts } = await supabase.from("comments").select("id,body,mentions").eq("version_id", versionId).eq("author_id", user.id).eq("is_draft", true).order("created_at");
+  if (!drafts?.length) throw new UserError("There are no unsent comments");
+  const { error } = await supabase.from("comments").update({ is_draft: false }).in("id", drafts.map((d) => d.id));
+  if (error) throw new UserError(error.message);
+  await announceComments(ctx, drafts.map((d) => ({ html: d.body as string, mentions: [...new Set([...((d.mentions as string[]) ?? []), ...mentionIds(d.body as string)])] })));
+  revalidatePath(`/events/${event.id}/slots/${slot.id}`);
+  return { ok: true, count: drafts.length };
+}
+
+/** Throw away the caller's unsent comments on this version. */
+export async function discardCommentBatch(versionId: string) {
+  const { supabase, user, slot, event } = await loadVersion(versionId);
+  await supabase.from("comments").delete().eq("version_id", versionId).eq("author_id", user.id).eq("is_draft", true);
   revalidatePath(`/events/${event.id}/slots/${slot.id}`);
   return { ok: true };
 }
@@ -202,10 +248,10 @@ export async function deleteVersion(versionId: string) {
 export async function editComment(commentId: string, body: string) {
   const { supabase, user } = await requireActiveUser();
   const html = sanitizeComment(body); if (!plainText(html)) throw new UserError("Empty comment");
-  const { data: c } = await supabase.from("comments").select("author_id,versions(slots(id,event_id))").eq("id", commentId).maybeSingle();
+  const { data: c } = await supabase.from("comments").select("author_id,is_draft,versions(slots(id,event_id))").eq("id", commentId).maybeSingle();
   if (!c) throw new UserError("Comment not found");
   if (c.author_id !== user.id && user.role !== "core_admin") throw new UserError("You can only edit your own comments");
-  const { error } = await supabase.from("comments").update({ body: html, edited_at: new Date().toISOString() }).eq("id", commentId);
+  const { error } = await supabase.from("comments").update(c.is_draft ? { body: html } : { body: html, edited_at: new Date().toISOString() }).eq("id", commentId);
   if (error) throw new UserError(error.message);
   const s = (c.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;
   if (s) revalidatePath(`/events/${s.event_id}/slots/${s.id}`);

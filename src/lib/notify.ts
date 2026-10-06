@@ -9,7 +9,7 @@ import { htmlToChat, mentionIds } from "@/lib/rich-text";
 import { loadGroups } from "@/lib/groups";
 
 export type NotificationKind =
-  | "access.requested" | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "comment.posted"
+  | "access.requested" | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "comment.posted" | "comments.posted" | "comments.unsent"
   | "version.uploaded" | "review.waiting" | "version.changes_requested" | "version.approved" | "versions.approved" | "version.reopened"
   | "event.all_approved" | "event.deleted" | "event.published" | "event.archived"
   | "draft.expiring" | "draft.swept" | "devices.refresh";
@@ -22,7 +22,7 @@ export type NotificationKind =
 const CHAT: Partial<Record<NotificationKind, "mention" | "channel">> = {
   // Access moments stay out of chat on purpose: they would show a newcomer's name and email to the whole channel.
   "slot.assigned": "mention", "slot.due": "mention",
-  "comment.mention": "mention", "comment.posted": "mention", "version.uploaded": "mention", "review.waiting": "mention",
+  "comment.mention": "mention", "comment.posted": "mention", "comments.posted": "mention", "version.uploaded": "mention", "review.waiting": "mention",
   "version.changes_requested": "mention", "version.approved": "channel", "versions.approved": "mention", "version.reopened": "mention",
   "event.all_approved": "mention", "event.published": "mention", "event.archived": "channel",
 };
@@ -37,6 +37,8 @@ const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> 
   "slot.due": (p) => `${p.when === "today" ? "Due today" : "Due in 3 days"}: ${p.format} for ${p.title}`,
   "comment.mention": (p) => `${p.by} mentioned you on ${p.format}`,
   "comment.posted": (p) => `${p.by} commented on ${p.format} · ${p.title}`,
+  "comments.posted": (p) => `${p.by} left ${p.count} comments on ${p.format} · ${p.title}`,
+  "comments.unsent": (p) => `You have unsent comments on ${p.format} · ${p.title}`,
   "version.uploaded": (p) => `Ready for review: ${p.format} v${p.number} · ${p.title}`,
   "review.waiting": (p) => `Still waiting: ${p.format} v${p.number} · ${p.title}`,
   "version.changes_requested": (p) => `Changes requested: ${p.format} v${p.number} · ${p.title}`,
@@ -124,16 +126,21 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
     const image = await previewImage(supabase, payload, head, href);
     const placeholderIds = [...body.matchAll(/\{@([0-9a-f-]{36})\}/g)].map((m) => m[1]);
     const excerptHtml = typeof payload.excerptHtml === "string" ? payload.excerptHtml : null;
-    const wanted = [...new Set([...mentions, ...placeholderIds, ...(excerptHtml ? mentionIds(excerptHtml) : [])])];
+    // A batch of comments carries each comment's HTML; they are listed as bullets in one post.
+    const items = Array.isArray(payload.items) ? (payload.items as string[]) : [];
+    const allHtml = excerptHtml ? [excerptHtml] : items;
+    const wanted = [...new Set([...mentions, ...placeholderIds, ...allHtml.flatMap(mentionIds)])];
     const people = new Map<string, ChatUser>();
     if (wanted.length) for (const u of ((await supabase.from("users").select("id,name,email,slack_user_id,gchat_user_id").in("id", wanted)).data as ChatUser[] | null) ?? []) people.set(u.id, u);
     const results = await Promise.all(hooks.map((hook) => {
       const platform = platformOf(hook);
       const at = (id: string) => { const u = people.get(id); return u ? mention(u, platform) : ""; };
       // A formatted comment keeps its bold, italics, bullets, links and mentions in the platform's own markup.
-      const rendered = excerptHtml ? chatLines(kind, { ...payload, excerpt: htmlToChat(excerptHtml, platform, (id, label) => at(id) || chat.bold(`@${label}`)) }).body : body;
+      const render = (html: string) => htmlToChat(html, platform, (id, label) => at(id) || chat.bold(`@${label}`));
+      const rendered = excerptHtml ? chatLines(kind, { ...payload, excerpt: render(excerptHtml) }).body
+        : items.length ? chatLines(kind, { ...payload, excerpt: items.map((h) => `• ${render(h).replace(/\n/g, "\n   ")}`).join("\n") }).body : body;
       const bodyText = rendered.replace(/\{@([0-9a-f-]{36})\}/g, (_, id) => at(id) || "someone");
-      const inlined = new Set([...placeholderIds, ...(excerptHtml ? mentionIds(excerptHtml) : [])]);
+      const inlined = new Set([...placeholderIds, ...allHtml.flatMap(mentionIds)]);
       const who = mentions.filter((id) => !inlined.has(id)).map(at).filter(Boolean).join(" ");
       return postChat(hook, [chat.bold(head), bodyText, who, chat.link(href, "Open in Design & Concur")].filter(Boolean).join("\n"), image);
     }));

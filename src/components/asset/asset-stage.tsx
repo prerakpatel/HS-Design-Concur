@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Lightbox } from "@/components/asset/lightbox";
 import { UploadPanel, requestUpload } from "@/components/asset/upload-panel";
 import { Guides, PinBubble, DraftMark, guideGeometry, type SafeArea, type Pin, type PrintGuides } from "@/components/asset/viewer";
-import { addComment, setCommentFlag, editComment, deleteComment, deleteVersion } from "@/app/actions/reviews";
+import { addComment, sendCommentBatch, discardCommentBatch, setCommentFlag, editComment, deleteComment, deleteVersion } from "@/app/actions/reviews";
 import { assignSlot } from "@/app/actions/events";
 import { CommentEditor } from "@/components/rich/comment-editor";
 import { RichBody } from "@/components/rich/rich-body";
@@ -20,10 +20,10 @@ import { relativeTime } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/user-error";
 
-// icons: add_comment grid_on zoom_out_map check close arrow_upward more_vert upload sync flip delete replay edit chat_bubble
+// icons: forum send add_comment grid_on zoom_out_map check close arrow_upward more_vert upload sync flip delete replay edit chat_bubble
 export type Side = "front" | "back";
 export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number }
-export interface CommentView { id: string; version: number; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
+export interface CommentView { id: string; version: number; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; draft?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
 export interface Member { id: string; name: string; handle: string; avatar?: string | null; kind?: "person" | "group" }
 export interface VersionChip { id: string; number: number; decision: string; canManage: boolean; hasBack: boolean; purged?: boolean }
 export interface StatusView { state: BadgeState; version: number | null; uploader: string | null; uploadedAt: string | null; assigneeId?: string | null; canAssign?: boolean }
@@ -43,7 +43,6 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
 }) {
   const [showGuides, setShowGuides] = useState(false);
   const [open, setOpen] = useState<Side | null>(null);
-  const [mode, setMode] = useState<"view" | "place">("view");
   const [draft, setDraft] = useState<{ side: Side; x: number; y: number } | null>(null);
   const [draftText, setDraftText] = useState(""); const [draftEmpty, setDraftEmpty] = useState(true);
   const [active, setActive] = useState<string | null>(null);
@@ -51,6 +50,12 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const [text, setText] = useState(""); const [textEmpty, setTextEmpty] = useState(true);
   const [pending, start] = useTransition();
   const router = useRouter();
+  // Review mode: comments are saved privately and go out together as one message when the reviewer sends them.
+  // It survives a refresh or a visit elsewhere because unsent comments live in the database.
+  const currentNo = versions.find((v) => v.id === currentVersionId)?.number ?? null;
+  const unsent = comments.filter((c) => c.draft && c.version === currentNo).length;
+  const [review, setReview] = useState(unsent > 0);
+  const mode = review ? "place" : "view";
 
   // Resolved comments stay: hidden by default, one tap away. Pins are drawn for the version on screen only.
   const [showResolved, setShowResolved] = useState(false);
@@ -59,13 +64,22 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const shown = useMemo(() => comments.filter((c) => showResolved || !isDone(c)), [comments, showResolved]);
   const numbered = useMemo(() => { let n = 0; return new Map(shown.filter((c) => c.version === currentNumber && c.pin_x != null && c.pin_y != null).map((c) => [c.id, ++n])); }, [shown, currentNumber]);
   const pinsFor = (side: Side): Pin[] => shown.filter((c) => numbered.has(c.id) && c.pin_side === side).map((c) => ({ id: c.id, n: numbered.get(c.id)!, x: c.pin_x!, y: c.pin_y! }));
-  const openCount = comments.filter((c) => !isDone(c)).length;
-  const resolvedCount = comments.length - openCount;
+  const openCount = comments.filter((c) => !isDone(c) && !c.draft).length;
+  const resolvedCount = comments.filter(isDone).length;
   useEffect(() => { if (active) document.getElementById(`comment-${active}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [active]);
 
-  const stop = () => { setMode("view"); setDraft(null); setDraftText(""); setDraftEmpty(true); };
+  const stop = () => { setDraft(null); setDraftText(""); setDraftEmpty(true); };
   const post = (body: string, pin: { side: Side; x: number; y: number } | null) => start(async () => {
-    try { await addComment(versionId!, body, pin); setText(""); setTextEmpty(true); stop(); toast.success(pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
+    try { await addComment(versionId!, body, pin, { draft: review }); setText(""); setTextEmpty(true); stop(); if (!review) toast.success(pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
+    catch (e) { toast.error(errorMessage(e)); }
+  });
+  const sendReview = () => start(async () => {
+    try { const r = await sendCommentBatch(versionId!); setReview(false); stop(); toast.success(r.count === 1 ? "Comment sent" : `${r.count} comments sent`); router.refresh(); }
+    catch (e) { toast.error(errorMessage(e)); }
+  });
+  const leaveReview = () => start(async () => {
+    if (unsent > 0 && !confirm(`Discard ${unsent === 1 ? "your unsent comment" : `your ${unsent} unsent comments`}?`)) return;
+    try { if (unsent > 0) await discardCommentBatch(versionId!); setReview(false); stop(); router.refresh(); }
     catch (e) { toast.error(errorMessage(e)); }
   });
   const reassign = (userId: string) => start(async () => { try { await assignSlot(slotId, userId || null); toast.success(userId ? "Designer changed" : "Unassigned"); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } });
@@ -111,14 +125,8 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
             </DropdownMenu>
           )}
           <div className="ml-auto flex items-center gap-2">
-            {mode === "place" ? (
-              <div className="flex h-10 items-center gap-2 rounded-full bg-foreground pl-4 pr-1 text-sm font-medium text-background"><span className="truncate">{draft ? "Describe the change" : "Click where the change is needed"}</span><button type="button" onClick={stop} aria-label="Cancel" className="flex size-8 items-center justify-center rounded-full hover:bg-background/15"><Icon name="close" className="!text-[18px]" /></button></div>
-            ) : (
-              <>
-                {canComment && versionId && <Button variant="outline" onClick={() => setMode("place")} className={iconPill} aria-label="Comment on the design"><Icon name="add_comment" /><span className="max-sm:hidden">Comment</span></Button>}
-                {hasGuides && <Button variant="outline" onClick={() => setShowGuides((v) => !v)} aria-pressed={showGuides} className={cn(iconPill, showGuides && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")} aria-label="Toggle guides"><Icon name="grid_on" /><span className="max-sm:hidden">Guides</span></Button>}
-              </>
-            )}
+            {canComment && versionId && !review && <Button variant="outline" onClick={() => setReview(true)} className={iconPill} aria-label="Start a review: comment on the design"><Icon name="add_comment" /><span className="max-sm:hidden">Comment</span></Button>}
+            {hasGuides && <Button variant="outline" onClick={() => setShowGuides((v) => !v)} aria-pressed={showGuides} className={cn(iconPill, showGuides && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")} aria-label="Toggle guides"><Icon name="grid_on" /><span className="max-sm:hidden">Guides</span></Button>}
           </div>
         </div>
 
@@ -140,8 +148,8 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                       <div className={cn("absolute z-10 w-[min(340px,calc(100vw-2rem))] rounded-2xl bg-card p-2 shadow-xl ring-1 ring-border", draft.y > 0.7 ? "-translate-y-[calc(100%+26px)]" : "translate-y-[26px]")} style={{ left: `clamp(0px, ${draft.x * 100}% - 24px, calc(100% - min(340px, calc(100vw - 2rem))))`, top: `${draft.y * 100}%` }} onClick={(e) => e.stopPropagation()}>
                         <CommentEditor value={draftText} onChange={(h, empty) => { setDraftText(h); setDraftEmpty(empty); }} onSubmit={() => { if (!draftEmpty && !pending) post(draftText, draft); }} placeholder="Describe the change · @ to mention" members={members} autoFocus compact className="border-0 focus-within:ring-0" />
                         <div className="flex justify-end gap-1">
-                          <Button type="button" variant="ghost" size="icon-sm" onClick={stop} aria-label="Cancel"><Icon name="close" className="!text-[18px]" /></Button>
-                          <Button type="button" size="icon-sm" disabled={draftEmpty || pending} onClick={() => post(draftText, draft)} aria-label="Post comment"><Icon name="check" className="!text-[18px]" /></Button>
+                          <Button type="button" variant="ghost" size="icon-sm" onClick={stop} aria-label="Cancel this comment"><Icon name="close" className="!text-[18px]" /></Button>
+                          <Button type="button" size="icon-sm" disabled={draftEmpty || pending} onClick={() => post(draftText, draft)} aria-label={review ? "Add to review" : "Post comment"}><Icon name="check" className="!text-[18px]" /></Button>
                         </div>
                       </div>
                     )}
@@ -196,20 +204,21 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                     <span className="h-px flex-1 bg-border" /><span>v{c.version}{c.version === currentNumber ? " · this version" : ""}</span><span className="h-px flex-1 bg-border" />
                   </li>
                 )}
-                <li id={`comment-${c.id}`} onClick={() => n && setActive(c.id)} className={cn("group/c flex gap-3 rounded-xl px-2 py-2.5 transition-colors", active === c.id && "bg-subtle", done && "opacity-60")}>
+                <li id={`comment-${c.id}`} onClick={() => n && setActive(c.id)} className={cn("group/c flex gap-3 rounded-xl px-2 py-2.5 transition-colors", active === c.id && "bg-subtle", done && "opacity-60", c.draft && "bg-info-soft/60 ring-1 ring-info/25")}>
                   <UserAvatar initials={c.author.initials} src={c.author.avatar} size={32} className="mt-0.5 shrink-0" />
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-start gap-2">
                       <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 text-sm">
                         <span className="font-medium">{c.author.name}</span>
                         <span className="text-xs text-muted-foreground">{relativeTime(c.created_at)}{c.edited_at ? " · edited" : ""}</span>
+                        {c.draft && <span className="rounded-full bg-info px-2 py-px text-[11px] font-medium text-white">Not sent</span>}
                         {n && <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground"><Icon name="chat_bubble" className="!text-[13px]" />{n}{sides.length > 1 ? ` · ${c.pin_side}` : ""}</span>}
                       </p>
                       {canComment && editing?.id !== c.id && (
                         <DropdownMenu>
                           <DropdownMenuTrigger aria-label="Comment options" className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-60 hover:bg-muted hover:opacity-100 group-hover/c:opacity-100"><Icon name="more_vert" className="!text-[18px]" /></DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44 rounded-xl p-1.5">
-                            {done ? <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "reopen")}><Icon name="replay" />Reopen</DropdownMenuItem> : <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "addressed")}><Icon name="check" />Mark as done</DropdownMenuItem>}
+                            {c.draft ? null : done ? <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "reopen")}><Icon name="replay" />Reopen</DropdownMenuItem> : <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "addressed")}><Icon name="check" />Mark as done</DropdownMenuItem>}
                             {(c.mine || canModerate) && <>
                               <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => setEditing({ id: c.id, text: c.body })}><Icon name="edit" />Edit</DropdownMenuItem>
                               <DropdownMenuSeparator />
@@ -225,7 +234,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                         <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending} onClick={() => start(async () => { try { await editComment(c.id, editing.text); setEditing(null); toast.success("Saved"); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } })}>Save</Button></div>
                       </div>
                     ) : <RichBody body={c.body} />}
-                    {!done && canComment && <button className="text-[13px] font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "addressed"); }} disabled={pending}>Mark as done</button>}
+                    {!done && !c.draft && canComment && <button className="text-[13px] font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "addressed"); }} disabled={pending}>Mark as done</button>}
                     {done && <span className="flex items-center gap-1 text-[13px] text-success-text"><Icon name="check" className="!text-[16px]" />Resolved{c.confirmed_at ? " · confirmed" : ""}</span>}
                   </div>
                 </li>
@@ -236,13 +245,24 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           {canComment && versionId && (
             <div className="relative border-t border-border p-3">
               <div className="flex items-end gap-2">
-                <CommentEditor value={text} onChange={(h, empty) => { setText(h); setTextEmpty(empty); }} onSubmit={() => { if (!textEmpty && !pending) post(text, null); }} placeholder="Write a comment… @ to mention" members={members} className="min-w-0 flex-1" />
-                <Button size="icon" disabled={pending || textEmpty} onClick={() => post(text, null)} aria-label="Post"><Icon name="arrow_upward" /></Button>
+                <CommentEditor value={text} onChange={(h, empty) => { setText(h); setTextEmpty(empty); }} onSubmit={() => { if (!textEmpty && !pending) post(text, null); }} placeholder={review ? "Add a general note to your review… @ to mention" : "Write a comment… @ to mention"} members={members} className="min-w-0 flex-1" />
+                <Button size="icon" disabled={pending || textEmpty} onClick={() => post(text, null)} aria-label={review ? "Add to review" : "Post"}><Icon name="arrow_upward" /></Button>
               </div>
             </div>
           )}
         </div>
       </div>
+      {/* Review mode bar: blue like the comment pins, so it reads as a mode you are in until you send. */}
+      {review && canComment && versionId && (
+        <div role="region" aria-label="Review mode" className={cn("fixed z-40 inset-x-3 flex items-center gap-2 rounded-full bg-info p-1.5 pl-4 text-white shadow-[0_8px_30px_rgba(37,99,235,.45)] ring-1 ring-white/20 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:gap-3 md:pl-5", decisionBar ? "bottom-[calc(env(safe-area-inset-bottom)+84px)] md:bottom-6" : "bottom-[max(env(safe-area-inset-bottom),16px)] md:bottom-6")}>
+          <Icon name="forum" className="shrink-0 !text-[20px]" />
+          <p className="min-w-0 flex-1 whitespace-nowrap text-sm font-medium md:flex-none">
+            {unsent === 0 ? "Review mode · tap the design to add a comment" : <>{unsent} comment{unsent === 1 ? "" : "s"} ready<span className="hidden text-white/80 md:inline"> · sent together as one message</span></>}
+          </p>
+          <button type="button" onClick={leaveReview} disabled={pending} className="h-10 shrink-0 rounded-full px-3.5 text-sm font-medium text-white/90 hover:bg-white/15 disabled:opacity-60">{unsent > 0 ? "Discard" : "Cancel"}</button>
+          <button type="button" onClick={sendReview} disabled={pending || unsent === 0} className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-semibold text-info-text shadow-sm transition-opacity hover:bg-white/90 disabled:opacity-50"><Icon name="send" className="!text-[18px]" />{pending ? "Sending…" : unsent > 1 ? `Send ${unsent}` : "Send"}</button>
+        </div>
+      )}
       {/* Phones: the decision rides in a fixed bar */}
       {decisionBar && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur md:hidden [&>div]:justify-end">{decisionBar}</div>}
     </div>

@@ -60,6 +60,20 @@ export async function GET(req: Request) {
     report.waiting = ((report.waiting as number) ?? 0) + 1;
   }
 
+  // 1c. Review-mode comments nobody sent: nudge their author (in-app and push only, never chat), once a day.
+  const { data: unsent } = await db.from("comments").select("author_id,version_id,versions!inner(number,slots!inner(id,event_id,formats(name),events(title,status,org_id)))").eq("is_draft", true).lte("created_at", new Date(Date.now() - 3 * 3600_000).toISOString());
+  const unsentBy = new Map<string, { author: string; row: NonNullable<typeof unsent>[number]; count: number }>();
+  for (const c of unsent ?? []) { const k = `${c.author_id}:${c.version_id}`; const e = unsentBy.get(k); if (e) e.count++; else unsentBy.set(k, { author: c.author_id as string, row: c, count: 1 }); }
+  report.unsent = 0;
+  for (const [, u] of unsentBy) {
+    const v = u.row.versions as unknown as { number: number; slots: { id: string; event_id: string; formats: { name: string }; events: { title: string; status: string } } };
+    if (v.slots.events.status !== "active") continue;
+    const { data: dup } = await db.from("notifications").select("id").eq("user_id", u.author).eq("kind", "comments.unsent").contains("payload", { versionId: u.row.version_id, day: today }).limit(1);
+    if (dup?.length) continue;
+    await notify(db, [u.author], "comments.unsent", { eventId: v.slots.event_id, slotId: v.slots.id, versionId: u.row.version_id, title: v.slots.events.title, format: v.slots.formats.name, number: v.number, count: u.count, day: today });
+    report.unsent = (report.unsent as number) + 1;
+  }
+
   // 2. Retention (+ tell the creator and the chat that an event was archived)
   const retention = await runRetention(db, { tz, today });
   for (const ev of retention.archivedEvents) await notify(db, [ev.created_by], "event.archived", { eventId: ev.id, title: ev.title }, undefined, { orgId: ev.org_id });

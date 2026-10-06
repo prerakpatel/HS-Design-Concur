@@ -20,6 +20,8 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
     case "version.reopened": return `${by} reopened ${f} v${p.number} for changes`;
     case "comment.mention": return `${by} mentioned you on ${f}: “${p.excerpt ?? ""}”`;
     case "comment.posted": return `${by} commented on ${f}: “${p.excerpt ?? ""}”`;
+    case "comments.posted": return `${by} left ${p.count} comments on ${f}`;
+    case "comments.unsent": return `You have ${p.count} unsent comment${p.count === 1 ? "" : "s"} on ${f} for ${t}. Open it to send or discard them.`;
     case "versions.approved": return `${by} approved ${p.count} designs for ${t}`;
     case "event.all_approved": return `All designs for ${t} are approved`;
     case "access.requested": return `${p.name ?? p.email} asked for access`;
@@ -63,6 +65,7 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
     case "version.reopened": return { head: `↩️ ${t} · ${f}${n}`, body: `Reopened by ${by}${q ? `: ${q}` : "."}` };
     case "comment.mention": return { head: `💬 ${t} · ${f}${n}`, body: `${by}: ${q}` };
     case "comment.posted": return { head: `💬 ${t} · ${f}${n}`, body: `${by} commented: ${q}` };
+    case "comments.posted": return { head: `💬 ${t} · ${f}${n}`, body: `${by} left ${p.count} comments:\n${String(p.excerpt ?? "")}` };
     case "access.requested": return { head: `🔑 ${p.name ?? p.email} asked for access`, body: `${p.email} · approve or deny in Settings → Requests.` };
     case "access.approved": return { head: `👋 ${p.name ?? "A new member"} joined`, body: `Approved by ${by}. Welcome!` };
     case "event.archived": return { head: `📦 ${t} archived`, body: "A week has passed since the event. One reference image was kept; the other files were removed." };

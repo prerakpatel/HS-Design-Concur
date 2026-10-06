@@ -143,3 +143,11 @@ export async function matchSlackMembers() {
   revalidatePath("/settings"); revalidatePath("/profile");
   return r;
 }
+
+/** The maintenance hold: everyone but Core Admins sees a "please hold" screen while it is on. */
+export async function setMaintenance(on: boolean, message: string) {
+  const { supabase, user } = await requireCoreAdmin();
+  const { error } = await supabase.from("app_settings").update({ maintenance: on, maintenance_message: on ? message.trim().slice(0, 300) || null : null, maintenance_at: on ? new Date().toISOString() : null, maintenance_by: on ? user.id : null }).eq("id", true);
+  if (error) throw new UserError(error.message);
+  revalidatePath("/settings");
+}

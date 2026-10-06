@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "@/components/ui/sonner";
+import { MaintenanceVeil } from "@/components/maintenance-veil";
+import { getMaintenance } from "@/lib/maintenance";
 import { ICON_NAMES } from "@/config/icons";
 import "./globals.css";
 
@@ -15,7 +17,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#ffffff", width: "device-width", initialScale: 1 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const maintenance = await getMaintenance();
   return (
     <html lang="en">
       <head>
@@ -27,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
         {children}
+        <MaintenanceVeil initial={maintenance} />
         {/* Bottom-left, clear of the phone tab bar and the asset page's fixed action bar. */}
         <Toaster position="bottom-left" offset={{ bottom: 20, left: 20 }} mobileOffset={{ bottom: 92, left: 12, right: 12 }} />
       </body>

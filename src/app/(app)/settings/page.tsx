@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { UsersList } from "@/components/settings/user-editor";
 import { AccessRequests } from "@/components/settings/access-requests";
 import { FormatsList } from "@/components/settings/format-editor";
+import { MaintenanceCard } from "@/components/settings/maintenance-card";
 import { GroupsEditor } from "@/components/settings/groups-editor";
 import { loadGroups } from "@/lib/groups";
 import { OrgMark } from "@/components/org-mark";
@@ -35,6 +36,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     supabase.from("access_requests").select("user_id,requested_at").is("decided_at", null),
     loadGroups(supabase, [org.id]),
   ]);
+  const maint = { on: false, message: null as string | null, since: null as string | null, by: null as string | null };
+  if (tab === "maintenance" && isAdmin) {
+    const { data: m } = await supabase.from("app_settings").select("maintenance,maintenance_message,maintenance_at,maintenance_by").eq("id", true).maybeSingle();
+    const who = m?.maintenance_by ? (await supabase.from("users").select("name,email").eq("id", m.maintenance_by).maybeSingle()).data : null;
+    Object.assign(maint, { on: !!m?.maintenance, message: m?.maintenance_message ?? null, since: m?.maintenance_at ?? null, by: who ? (who.name ?? who.email) : null });
+  }
   const groupsOf = new Map<string, string[]>();
   for (const g of groups) for (const m of g.members) groupsOf.set(m, [...(groupsOf.get(m) ?? []), g.id]);
   const orgsOf = new Map<string, string[]>();
@@ -45,7 +52,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const pending = (users ?? []).filter((u) => u.status === "pending");
   const active = (users ?? []).filter((u) => u.status === "active");
   const orgOptions = (orgs ?? []).map((o) => ({ id: o.id, label: o.short_name }));
-  const tabs: [string, string][] = isAdmin ? [["users", "Users"], ["groups", groups.length ? `Groups · ${groups.length}` : "Groups"], ["requests", pending.length ? `Requests · ${pending.length}` : "Requests"], ["formats", "Formats"], ["orgs", "Organizations"]] : [["formats", "Formats"]];
+  const tabs: [string, string][] = isAdmin ? [["users", "Users"], ["groups", groups.length ? `Groups · ${groups.length}` : "Groups"], ["requests", pending.length ? `Requests · ${pending.length}` : "Requests"], ["formats", "Formats"], ["orgs", "Organizations"], ["maintenance", "Maintenance"]] : [["formats", "Formats"]];
   return (
     <>
       <PageHeader title="Settings" subtitle={isAdmin ? "People, access, the format catalog and notifications" : "Format catalog · Designers can edit"} />
@@ -60,6 +67,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       {tab === "formats" && (
         <FormatsList formats={formats ?? []} />
       )}
+
+      {tab === "maintenance" && isAdmin && <MaintenanceCard on={maint.on} message={maint.message} since={maint.since} by={maint.by} />}
 
       {tab === "orgs" && (
         <div className="space-y-10">
