@@ -55,6 +55,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const currentNo = versions.find((v) => v.id === currentVersionId)?.number ?? null;
   const unsent = comments.filter((c) => c.draft && c.version === currentNo).length;
   const [review, setReview] = useState(unsent > 0);
+  const [sending, setSending] = useState(false);
   const mode = review ? "place" : "view";
 
   // Resolved comments stay: hidden by default, one tap away. Pins are drawn for the version on screen only.
@@ -74,8 +75,10 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
     catch (e) { toast.error(errorMessage(e)); }
   });
   const sendReview = () => start(async () => {
+    setSending(true);
     try { const r = await sendCommentBatch(versionId!); setReview(false); stop(); toast.success(r.count === 1 ? "Comment sent" : `${r.count} comments sent`); router.refresh(); }
     catch (e) { toast.error(errorMessage(e)); }
+    finally { setSending(false); }
   });
   const leaveReview = () => start(async () => {
     if (unsent > 0 && !confirm(`Discard ${unsent === 1 ? "your unsent comment" : `your ${unsent} unsent comments`}?`)) return;
@@ -204,7 +207,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                     <span className="h-px flex-1 bg-border" /><span>v{c.version}{c.version === currentNumber ? " · this version" : ""}</span><span className="h-px flex-1 bg-border" />
                   </li>
                 )}
-                <li id={`comment-${c.id}`} onClick={() => n && setActive(c.id)} className={cn("group/c flex gap-3 rounded-xl px-2 py-2.5 transition-colors", active === c.id && "bg-subtle", done && "opacity-60", c.draft && "bg-info-soft/60 ring-1 ring-info/25")}>
+                <li id={`comment-${c.id}`} onClick={() => n && setActive(c.id)} className={cn("group/c flex gap-3 rounded-xl px-2 py-2.5 transition-colors", active === c.id && "bg-subtle", done && "opacity-60", c.draft && "-mx-2 -mt-px rounded-none border-y border-info/15 bg-info-soft/60 px-4")}>
                   <UserAvatar initials={c.author.initials} src={c.author.avatar} size={32} className="mt-0.5 shrink-0" />
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-start gap-2">
@@ -254,13 +257,13 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
       </div>
       {/* Review mode bar: blue like the comment pins, so it reads as a mode you are in until you send. */}
       {review && canComment && versionId && (
-        <div role="region" aria-label="Review mode" className={cn("fixed z-40 inset-x-3 flex items-center gap-2 rounded-full bg-info p-1.5 pl-4 text-white shadow-[0_8px_30px_rgba(37,99,235,.45)] ring-1 ring-white/20 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:gap-3 md:pl-5", decisionBar ? "bottom-[calc(env(safe-area-inset-bottom)+84px)] md:bottom-6" : "bottom-[max(env(safe-area-inset-bottom),16px)] md:bottom-6")}>
+        <div role="region" aria-label="Review mode" className={cn("fixed z-40 inset-x-3 flex items-center gap-2 rounded-full bg-info p-1.5 pl-4 text-white shadow-md md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:gap-3 md:pl-5", decisionBar ? "bottom-[calc(env(safe-area-inset-bottom)+84px)] md:bottom-6" : "bottom-[max(env(safe-area-inset-bottom),16px)] md:bottom-6")}>
           <Icon name="forum" className="shrink-0 !text-[20px]" />
           <p className="min-w-0 flex-1 whitespace-nowrap text-sm font-medium md:flex-none">
-            {unsent === 0 ? "Review mode · tap the design to add a comment" : <>{unsent} comment{unsent === 1 ? "" : "s"} ready<span className="hidden text-white/80 md:inline"> · sent together as one message</span></>}
+            {unsent === 0 ? "Tap the design to comment" : `${unsent} comment${unsent === 1 ? "" : "s"}`}
           </p>
           <button type="button" onClick={leaveReview} disabled={pending} className="h-10 shrink-0 rounded-full px-3.5 text-sm font-medium text-white/90 hover:bg-white/15 disabled:opacity-60">{unsent > 0 ? "Discard" : "Cancel"}</button>
-          <button type="button" onClick={sendReview} disabled={pending || unsent === 0} className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-semibold text-info-text shadow-sm transition-opacity hover:bg-white/90 disabled:opacity-50"><Icon name="send" className="!text-[18px]" />{pending ? "Sending…" : unsent > 1 ? `Send ${unsent}` : "Send"}</button>
+          <button type="button" onClick={sendReview} disabled={pending || unsent === 0} className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-semibold text-info-text shadow-sm transition-opacity hover:bg-white/90 disabled:opacity-50"><Icon name="send" className="!text-[18px]" />{sending ? "Sending…" : unsent > 1 ? `Send ${unsent}` : "Send"}</button>
         </div>
       )}
       {/* Phones: the decision rides in a fixed bar */}
