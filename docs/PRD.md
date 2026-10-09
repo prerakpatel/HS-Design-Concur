@@ -1,6 +1,6 @@
 # Design & Concur by Harisumiran — Product Requirements Document
 
-**Status:** v1.0 — agreed after a five-round requirements interview on 2026-09-21
+**Status:** v1.0 — agreed after a five-round requirements interview on 2026-09-21 · v1.1 adds the Glossary (§16), proposed 2026-10-09
 **Owner:** Prerak Patel (Harisumiran)
 **Design source:** Sampark Design System (Figma `jiCKqA20PSMxOSZNJDROZ6`) · Harisumiran Creatives (Figma `9BO6rB9MqA2ugOIPer1YMX`, page Guidelines)
 **Repo:** `prerakpatel/HS-Design-Concur`
@@ -19,6 +19,10 @@ version, is optimised once, and carries a DRAFT watermark until an approver sign
 Approval notifies everyone and releases a clean download. Storage is capped by design so the
 app runs on free tiers indefinitely.
 
+From v1.1 the same app also hosts the **Glossary**: one approved spelling for every satsang
+word, maintained by the Publication team and available to designers in both organizations (§16).
+It is text only, so it sits outside the event cap and costs no storage.
+
 Guiding principle: **utmost minimalism**. One question per screen where possible, one obvious
 next action, nothing configurable that doesn't need to be.
 
@@ -31,6 +35,8 @@ next action, nothing configurable that doesn't need to be.
 5. Runs on Vercel + Supabase free tiers forever: hard event cap, aggressive optimisation,
    automatic purge after each event.
 6. Access is gated: Google sign-in, then Core Admin approval.
+7. One approved spelling for every satsang word, findable by typing it any way a person
+   would spell it (§16).
 
 ## 3. Non-goals (v1)
 
@@ -40,6 +46,8 @@ next action, nothing configurable that doesn't need to be.
 - Storing print-ready originals. Print production is an offline process.
 - Public links. Everything is behind login.
 - Slack integration (v1.1). Dark mode (tokens wired, not shipped).
+- Glossary: no paid or AI services, no scraping, no translation, no dictionary of meanings
+  beyond a short note per word (§16.9).
 
 ---
 
@@ -64,6 +72,10 @@ with a switcher in the sidebar for users who belong to both. There is no unified
 | **Member** | Everything below not marked otherwise. |
 | **Core Admin** | Approve/deny access, remove users, assign org membership, grant/revoke Approver, promote/demote Core Admins, delete any event, edit org notification settings. **Not an Approver unless granted**: running the app and approving designs are separate duties, so a Core Admin can stay out of review notifications. |
 
+Two further capabilities are independent of role and organization: **Approver** (per org, §4.4)
+and **Glossary steward** (global, §16.2). A Core Admin grants both; neither is implied by
+Core Admin.
+
 There is **no Sub-admin role**. Its only purpose was deleting accidental events, which is
 covered by: *the creator of an event may delete it themselves at any time; Core Admins may delete
 any event.* Either way it is a soft delete that a Core Admin can undo from Archive for 7 days.
@@ -71,6 +83,8 @@ any event.* Either way it is a soft delete that a Core Admin can undo from Archi
 ### 4.4 Capabilities and function tags
 - **Approver** (granted by a Core Admin, **per organization**: someone can approve for one org and not the other): may approve, request changes on, and reopen
   assets. It is set per organization on the user (Settings › Users); Core Admins do not have it implicitly.
+- **Glossary steward** (granted by a Core Admin, **global**, not tied to an organization): may
+  approve, edit, retire and import glossary entries (§16.2). Typically the Publication team.
 - **Function tags** (multi-select, informational, set by a Core Admin):
   **Central** (executives), **Publication** (writers), **Designer**.
   Tags route notifications and default assignees. Two things are gated by tag:
@@ -310,7 +324,8 @@ chat post.
    (opens a two-option sheet). Every approve/reopen passes an "Are you sure?" dialog.
 7. **Inbox**.
 8. **Archive** — read-only.
-9. **Settings** (Core Admin) — *Access requests* · *Users* (roles, tags, orgs, Approver) ·
+9. **Glossary** (everyone, both orgs) — §16.
+10. **Settings** (Core Admin) — *Access requests* · *Users* (roles, tags, orgs, Approver) ·
    *Formats* (in-line catalog) · *Notifications* (email on/off, Google Chat webhook + on/off,
    "not accepting new members") · *Storage* (slot usage, next purge dates).
 
@@ -347,9 +362,9 @@ Control/sm 12.8/16. Radius: sm 6 · md 8 · base 10 · lg 12 · xl 16 · 2xl 24 
 weight 400, filled only for active nav and the Approved badge.
 
 ### 12.3 Layout
-- ≥ 1024 px: 240 px sidebar (org switcher, Events, Inbox, Archive, Settings) + content ≤ 1200 px.
+- ≥ 1024 px: 240 px sidebar (org switcher, Events, Inbox, Archive, Glossary, Settings) + content ≤ 1320 px. Lists, grids and the Glossary use the full 1320 px; forms, the wizard and Profile stay narrow for readability; the Asset page runs to 1440 px.
 - 640–1023 px: icon rail.
-- < 640 px: bottom tab bar (Events, Inbox, Archive, Profile; Profile holds the org switcher, Settings and sign-out); **media is edge-to-edge**: the Event page shows format slots as a
+- < 640 px: bottom tab bar (Events, Inbox, Archive, Glossary, Profile; Profile holds the org switcher, Settings and sign-out); **media is edge-to-edge**: the Event page shows format slots as a
   2-column full-bleed media grid with 2 px gutters and overlaid state badges, the Asset page
   preview fills the viewport width, Archive reference strips run edge to edge, and lists use
   hairline dividers instead of boxed cards. The Asset page has a slide-up comment sheet and a
@@ -423,3 +438,132 @@ notifications(id, user_id, kind, payload jsonb, read_at, emailed_at, created_at)
 | 7 | Comments, @mentions, addressed/confirmed, approvals, reopen, bulk approve, confirmation dialogs |
 | 8 | Notifications: inbox, email, Google Chat; retention, draft sweep, device reminder crons |
 | 9 | Vercel project, env vars, first deploy, admin onboarding |
+
+
+---
+
+## 16. Glossary of satsang spellings (v1.1)
+
+A shared, approved spelling for every satsang word. Many of our words have more than one common
+English spelling (Swaminarayan / Swaminarayana, Aarti / Arti, Prasad / Prasadam). The glossary is
+the single place that says which one we print.
+
+### 16.1 Principles
+- **Text only.** Entries are database rows of a few hundred bytes. No files are stored, so the
+  glossary has **no effect on the 10-event cap or the storage budget** and is not an event.
+- **Spelling first.** Every entry has exactly one *approved spelling*. Meaning, native script and
+  usage notes are optional extras.
+- **Approved means reviewed by the Publication team.** New words are suggested, reviewed, then
+  published. Nothing is added to the live list without a steward's approval, except a steward's
+  bulk import of an existing list (§16.6).
+- **Both organizations, one list.** The glossary is not scoped to Harisumiran or Atmiya Care.
+- **Free to run.** Search is deterministic fuzzy matching over our own data (§16.5).
+
+### 16.2 Who can do what
+| Who | Can |
+|---|---|
+| Every active member (both orgs) | Read and search; **suggest** a new word, a new variant or a correction |
+| **Glossary steward** | Everything above, plus approve or decline suggestions, edit and retire entries, add variants, import and export |
+| Core Admin | Grant or revoke steward (Settings › Users). Not a steward unless granted |
+
+- A steward **cannot approve their own suggestion** while at least one other steward exists, so
+  every word gets a second pair of eyes ("shared with the small team, then approved").
+- Stewards can be in either organization or both; membership does not matter.
+- Removing steward does not delete anything they approved.
+
+### 16.3 Entry
+| Field | Notes |
+|---|---|
+| **Approved spelling** (`term`) | Required. Unique among approved entries, compared without case, spaces or hyphens. |
+| **Also written as** (variants) | Spellings people use or type. Each is either *variant* (acceptable alias that resolves to the term) or *avoid* (a known wrong spelling; search shows "use X instead"). |
+| Native script | Optional Gujarati / Devanagari, for reference. |
+| Meaning | Optional, one short line. |
+| Usage note | Optional ("capitalised when referring to the deity", "plural: Satsangis"). |
+| Category | Optional single tag (Deity, Ritual, Place, Festival, Person, Term, Prayer). Stewards manage the list. |
+| Pronunciation | Optional respelling ("SAHT-sung"). |
+
+### 16.4 States and flow
+`Suggested → Approved | Declined` and `Approved → Retired`.
+
+- **Suggest:** anyone enters a word with at least the spelling; it is *Suggested* and visible
+  only to the suggester and stewards.
+- **Review queue:** stewards see Suggested entries oldest first. Approve (optionally editing
+  first) or Decline with a reason. The suggester is told either way.
+- **Retire** (instead of delete) hides a word from default search but keeps it and its
+  variants so old spellings still resolve to the right current word. Stewards can restore it.
+- Every create, edit, decision and retirement is written to the activity log with who and when.
+- **Notifications:** a new suggestion notifies stewards (in-app and push, **never chat**, to avoid
+  noise); a decision notifies the suggester. A daily reminder nudges stewards while the queue is
+  non-empty, like the review reminder for designs.
+
+### 16.5 Search ("find the right spelling")
+- One box at the top of the Glossary page, available on first release. Type a word **any way you
+  would spell it** and get the approved spelling, with a **Copy** button, and the matching
+  variants.
+- **How it matches, in order:** exact term or variant → same *sound-alike key* → close by edit
+  distance → starts-with. Results show why ("You typed *Arti*; the approved spelling is
+  *Aarti*").
+- **Sound-alike key.** A small, Indic-aware normaliser applied to every term and variant and to
+  the query: lowercase, strip diacritics, collapse long vowels (aa→a, ee→i, oo→u), drop the
+  aspirate (th→t, dh→d, bh→b, kh→k, gh→g), v/w, sh/s, trailing a/h, doubled letters. It lives in
+  one shared module so the server and the browser agree. Generic phonetic algorithms such as
+  Metaphone are tuned for English and handle Sanskrit-origin names poorly, hence the custom one.
+- **Where it runs.** The approved list (a few thousand short rows at most) is sent to the
+  browser once and searched locally with a small open-source fuzzy library (Fuse.js, MIT).
+  No server call per keystroke, no cost, instant, and it can later work offline. If the list
+  ever outgrows that, Postgres `pg_trgm` is available on the free Supabase plan.
+- **Nothing found:** "Not in the glossary yet" with a **Suggest this word** button prefilled with
+  what was typed.
+- **No scraping and no AI.** The data is our own, so there is nothing to scrape; a language model
+  would add cost and could invent a spelling, which is exactly what a source of truth must not do.
+
+### 16.6 Import and export
+- **Import (stewards):** upload one or more Markdown files. A preview lists what will be added,
+  what already exists, and conflicts (same spelling, different details) *before* anything is
+  saved. Imported entries are *Approved* and tagged with their source file. Files are parsed and
+  then discarded; they are not stored.
+- **Accepted shapes** (finalised against the real files): a table with spelling, variants and
+  meaning columns; or one bullet per word, `**Spelling** (also: A, B) — meaning`; or a heading
+  per word with a short body.
+- **Export:** the approved list as one Markdown file, so the glossary is never locked in.
+
+### 16.7 Screens
+- **Glossary** (nav rail, beside Archive; fifth tab on phones). Search box, category filter,
+  alphabetical list, **Suggest a word**. Entry opens a panel with variants, notes, history.
+- **Review queue** (stewards, a tab or filter on the same page, with a count): Suggested entries,
+  Approve / Edit and approve / Decline.
+- **Import / Export** (stewards): a menu on the Glossary page.
+- Settings › Users gains a **Glossary steward** switch, global, beside the per-organization
+  Approver chips.
+
+### 16.8 Data model (draft)
+```sql
+glossary_entries(id, term, term_key, status enum('suggested','approved','declined','retired'),
+                 category, native_script, meaning, usage_note, pronunciation, source,
+                 suggested_by, suggested_at, decided_by, decided_at, decline_reason, updated_at)
+glossary_variants(id, entry_id, spelling, kind enum('variant','avoid'), sound_key)
+users.is_glossary_steward bool
+```
+RLS: any active user reads Approved and Retired entries and their own Suggested ones;
+any active user inserts a *Suggested* entry as themselves; only stewards update or delete.
+`term_key` and `sound_key` are computed by the shared normaliser on write.
+
+### 16.9 Out of scope for v1.1
+Translation, pronunciation audio, a general dictionary, per-organization lists, automatic
+correction while typing, and any paid or AI service.
+
+### 16.10 Later (not committed)
+1. **Quick lookup anywhere:** a small "Spelling" button in the rail that opens the search box
+   as a popover from any screen, so a designer never leaves the artwork page.
+2. **Hints in comments and the brief:** a gentle "Approved spelling: Aarti" nudge when someone
+   types a known *avoid* spelling.
+3. A steward digest of what changed this week.
+
+### 16.11 Delivery
+| Step | Deliverable |
+|---|---|
+| G1 | Migration (tables, RLS, steward flag), shared normaliser with tests |
+| G2 | Glossary page: list, search, entry panel; nav rail and phone tab |
+| G3 | Suggest, review queue, notifications, steward switch in Settings |
+| G4 | Markdown import (preview then commit) and export |
+| G5 | Quick-lookup popover (§16.10 item 1) |
