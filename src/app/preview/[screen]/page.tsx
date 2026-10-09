@@ -19,6 +19,7 @@ import { AssetHeader } from "@/components/asset/asset-header";
 import { ReviewActions } from "@/components/asset/review-actions";
 import { relativeTime } from "@/lib/labels";
 import { PushToggle } from "@/components/push-toggle";
+import { GlossaryView } from "@/components/glossary/glossary-view";
 import { MaintenanceVeil } from "@/components/maintenance-veil";
 import { MaintenanceCard } from "@/components/settings/maintenance-card";
 import { ProfileView } from "@/components/profile-view";
@@ -26,7 +27,7 @@ import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
 
 export const dynamic = "force-dynamic";
-const SCREENS = ["events", "event", "slot", "slot-review", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
+const SCREENS = ["events", "event", "slot", "slot-review", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
 
 /** Design preview harness. Renders real components with fixture data so screens can be reviewed without a database. */
 export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
@@ -69,6 +70,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     </div>
   </div>);
 
+  if (screen === "glossary") return shell(<GlossaryView entries={F.GLOSSARY} canEdit />);
   if (screen === "hold") return shell(<><PageHeader title="Events" /><div className="h-96 rounded-2xl bg-subtle" /><MaintenanceVeil initial={{ on: true, message: null, since: null, admin: false }} /></>);
   if (screen === "maintenance") return shell(<><PageHeader title="Settings" /><MaintenanceCard on={false} message={null} since={null} by={null} /></>);
 

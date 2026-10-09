@@ -19,6 +19,7 @@ const NAV = [
   { href: "/events", label: "Events", icon: "event" },
   { href: "/inbox", label: "Inbox", icon: "notifications" },
   { href: "/archive", label: "Archive", icon: "inventory_2" },
+  { href: "/glossary", label: "Glossary", icon: "menu_book" },
 ];
 
 /** Desktop sidebar. Fixed to the viewport; collapses to a 64px icon rail (button at the bottom, the edge, or ⌘/Ctrl+B). */

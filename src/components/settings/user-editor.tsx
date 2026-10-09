@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { ChoiceChips } from "@/components/ui/choice-chips";
 import { UserAvatar } from "@/components/user-avatar";
+import { Switch } from "@/components/ui/switch";
 import { StateBadge } from "@/components/state-badge";
 import { Icon } from "@/components/material-icon";
 import { ConfirmButton } from "@/components/confirm-button";
@@ -13,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { updateUser, removeUser } from "@/app/actions/admin";
 import { errorMessage } from "@/lib/user-error";
 
-export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; approverOrgIds: string[]; function_tags: string[]; orgIds: string[]; groupIds?: string[]; email_pref?: "instant" | "digest" | "off"; slack_user_id?: string | null; gchat_user_id?: string | null }
+export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; approverOrgIds: string[]; glossarySteward: boolean; function_tags: string[]; orgIds: string[]; groupIds?: string[]; email_pref?: "instant" | "digest" | "off"; slack_user_id?: string | null; gchat_user_id?: string | null }
 export interface OrgOption { id: string; label: string }
 const TAGS = [{ value: "central", label: "Central" }, { value: "publication", label: "Publication" }, { value: "designer", label: "Designer" }];
 const tagLabel = (t: string) => TAGS.find((x) => x.value === t)?.label ?? t;
@@ -35,6 +36,7 @@ export function UsersList({ users, orgs, groups = [], currentUserId }: { users: 
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:mt-0">
                   {u.role === "core_admin" ? <StateBadge state="in_review" label="Core Admin" /> : <StateBadge state="requested" label="Member" />}
+                  {u.glossarySteward && <StateBadge state="in_review" label="Glossary" />}
                   {u.approverOrgIds.length > 0 && <StateBadge state="approved" label={u.approverOrgIds.length >= orgs.length ? "Approver" : `Approver · ${orgs.filter((o) => u.approverOrgIds.includes(o.id)).map((o) => o.label).join(", ")}`} />}
                   <span className="ml-1 text-[13px] text-muted-foreground md:hidden">{u.function_tags.map(tagLabel).join(" · ") || "No function"}</span>
                 </div>
@@ -74,6 +76,7 @@ function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser
               <Field label="Can approve designs for" hint="Gets notified when designs are sent for review, and can approve, request changes and reopen, in these organizations only. Leave empty for none; only organizations they belong to count.">
                 <ChoiceChips name="approver_org" multiple defaultValue={user.approverOrgIds} options={orgs.map((o) => ({ value: o.id, label: o.label }))} />
               </Field>
+              <GlossaryRow defaultOn={user.glossarySteward} />
               <Field label="Function" hint="Routes notifications. Designers and Core Admins can edit the format catalog.">
                 <ChoiceChips name="tag" multiple defaultValue={user.function_tags} options={TAGS} />
               </Field>
@@ -101,6 +104,17 @@ function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function GlossaryRow({ defaultOn }: { defaultOn: boolean }) {
+  const [on, setOn] = useState(defaultOn);
+  return (
+    <label className="flex items-center justify-between gap-4 rounded-2xl border border-border p-4">
+      <span><span className="block text-sm font-medium">Glossary steward</span><span className="block text-sm text-muted-foreground">Can add, edit, delete and import words in the Glossary, in either organization. Everyone can read and search it.</span></span>
+      <input type="hidden" name="glossary_steward" value={on ? "on" : "off"} />
+      <Switch checked={on} onCheckedChange={setOn} />
+    </label>
   );
 }
 

@@ -17,7 +17,8 @@ the `Icon` component (`src/components/material-icon.tsx`).
   signed-in, active user call `requireActiveUser()` from `src/lib/auth.ts`.
 - `"use server"` modules export async functions only; constants live in `src/config/*`.
 - Schema changes are new files under `supabase/migrations/`; the applied history is in Supabase.
-- Before pushing: `npm run lint`, `npx tsc --noEmit`, `npm run build`.
+- Before pushing: `npm run lint`, `npx tsc --noEmit`, `npm test`, `npm run build`.
+- Workflow for new features: build and check locally, push to the working branch for review, and only merge to `main` when the owner says so.
 - After roughly four shipped features, add a release to `src/config/changelog.ts` (date id, title, plain bullets);
   that alone drives the "What's new" dialog, the sidebar sparkle and the chat announcement.
 

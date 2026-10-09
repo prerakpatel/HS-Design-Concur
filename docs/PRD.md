@@ -444,126 +444,119 @@ notifications(id, user_id, kind, payload jsonb, read_at, emailed_at, created_at)
 
 ## 16. Glossary of satsang spellings (v1.1)
 
-A shared, approved spelling for every satsang word. Many of our words have more than one common
-English spelling (Swaminarayan / Swaminarayana, Aarti / Arti, Prasad / Prasadam). The glossary is
-the single place that says which one we print.
+One list of the spellings we print for satsang words, with an optional meaning. Many of our
+words have more than one common English spelling (Swaminarayan / Swaminarayana, Aarti / Arti,
+Prasad / Prasadam); the glossary says which one we use, and lets anyone find it by typing the word
+however they would spell it.
 
 ### 16.1 Principles
-- **Text only.** Entries are database rows of a few hundred bytes. No files are stored, so the
-  glossary has **no effect on the 10-event cap or the storage budget** and is not an event.
-- **Spelling first.** Every entry has exactly one *approved spelling*. Meaning, native script and
-  usage notes are optional extras.
-- **Approved means reviewed by the Publication team.** New words are suggested, reviewed, then
-  published. Nothing is added to the live list without a steward's approval, except a steward's
-  bulk import of an existing list (§16.6).
-- **Both organizations, one list.** The glossary is not scoped to Harisumiran or Atmiya Care.
-- **Free to run.** Search is deterministic fuzzy matching over our own data (§16.5).
+- **A list kept by a small team.** The Publication team and Core Admins add and edit words
+  directly, by hand or by importing Markdown. There is no suggestion or approval workflow;
+  designers who spot a missing word ask a steward in chat. (Suggesting words can be added later.)
+- **Text only.** Rows of a few hundred bytes. No files are stored, so the glossary has **no effect
+  on the 10-event cap or the storage budget** and is not an event.
+- **Both organizations, one list.** It is not scoped to Harisumiran or Atmiya Care and sits in the
+  main nav, not in Settings.
+- **Free to run.** Search is deterministic matching over our own data (§16.5): no AI, no paid
+  service, no scraping.
 
 ### 16.2 Who can do what
 | Who | Can |
 |---|---|
-| Every active member (both orgs) | Read and search; **suggest** a new word, a new variant or a correction |
-| **Glossary steward** | Everything above, plus approve or decline suggestions, edit and retire entries, add variants, import and export |
+| Every active member (both orgs) | Read and search; copy a spelling |
+| **Glossary steward** | Everything above, plus add, edit and delete words, import and export |
 | Core Admin | Grant or revoke steward (Settings › Users). Not a steward unless granted |
 
-- A steward **cannot approve their own suggestion** while at least one other steward exists, so
-  every word gets a second pair of eyes ("shared with the small team, then approved").
-- Stewards can be in either organization or both; membership does not matter.
-- Removing steward does not delete anything they approved.
+- Steward is a **global switch on the person**, like Approver but not per organization. It is
+  independent of role: a Publication-only person needs no Core Admin rights.
+- Every account needs **one** organization membership to use the app at all (without one it
+  shows "Awaiting access"). A person who only does glossary work is added to whichever
+  organization is convenient, once. They do **not** need to be in both, because the glossary is
+  not organization-scoped. They will also see that organization's events list.
+- The database enforces this: only stewards can write, and a member cannot grant themselves
+  steward (the self-update policy checks the column).
+- First stewards: Pushpak Patel, Ronak Patel, Pushkar Patel, Anand Shah.
 
 ### 16.3 Entry
 | Field | Notes |
 |---|---|
-| **Approved spelling** (`term`) | Required. Unique among approved entries, compared without case, spaces or hyphens. |
-| **Also written as** (variants) | Spellings people use or type. Each is either *variant* (acceptable alias that resolves to the term) or *avoid* (a known wrong spelling; search shows "use X instead"). |
-| Native script | Optional Gujarati / Devanagari, for reference. |
-| Meaning | Optional, one short line. |
-| Usage note | Optional ("capitalised when referring to the deity", "plural: Satsangis"). |
-| Category | Optional single tag (Deity, Ritual, Place, Festival, Person, Term, Prayer). Stewards manage the list. |
-| Pronunciation | Optional respelling ("SAHT-sung"). |
+| **Approved spelling** (`term`) | Required. Written exactly as we print it (case kept: *Bhagwan*, *aarti*). Unique, compared without case, spaces or hyphens. |
+| **Meaning** | Optional free text, a sentence or two, as in the books' glossaries. |
+| **Also written as** | Optional other spellings. Searching any of them finds this word. A spelling may not be the approved spelling of another word. |
+| Source | Set by import (the file name). Not shown. |
+| Created / updated by, when | Kept for reference. |
 
-### 16.4 States and flow
-`Suggested → Approved | Declined` and `Approved → Retired`.
+Not in v1.1: categories, native script, pronunciation (add later if wanted).
 
-- **Suggest:** anyone enters a word with at least the spelling; it is *Suggested* and visible
-  only to the suggester and stewards.
-- **Review queue:** stewards see Suggested entries oldest first. Approve (optionally editing
-  first) or Decline with a reason. The suggester is told either way.
-- **Retire** (instead of delete) hides a word from default search but keeps it and its
-  variants so old spellings still resolve to the right current word. Stewards can restore it.
-- Every create, edit, decision and retirement is written to the activity log with who and when.
-- **Notifications:** a new suggestion notifies stewards (in-app and push, **never chat**, to avoid
-  noise); a decision notifies the suggester. A daily reminder nudges stewards while the queue is
-  non-empty, like the review reminder for designs.
+### 16.4 Screens
+- **Glossary** (nav rail, beside Archive; fifth tab on phones). A search box on top; below it
+  the alphabetical list, grouped by letter: word, meaning, other spellings, a copy button.
+- **Search result:** if what was typed is not the approved spelling, a banner says "You typed
+  *arti*. The approved spelling is **aarti**" with a **Copy** button. Nothing found shows "Not in
+  the glossary yet" (stewards get an **Add** button prefilled with the typed word).
+- **Stewards additionally see:** **Add word**, an edit button on each row (edit and delete), and a
+  menu with **Import from Markdown** and **Export as Markdown**.
+- **Add / edit dialog:** word, meaning, other spellings. While typing the word it warns if the
+  word already exists or sounds like an existing one ("Same word? Add it as a spelling there
+  instead").
+- Settings › Users gains a **Glossary steward** switch.
 
 ### 16.5 Search ("find the right spelling")
-- One box at the top of the Glossary page, available on first release. Type a word **any way you
-  would spell it** and get the approved spelling, with a **Copy** button, and the matching
-  variants.
-- **How it matches, in order:** exact term or variant → same *sound-alike key* → close by edit
-  distance → starts-with. Results show why ("You typed *Arti*; the approved spelling is
-  *Aarti*").
-- **Sound-alike key.** A small, Indic-aware normaliser applied to every term and variant and to
-  the query: lowercase, strip diacritics, collapse long vowels (aa→a, ee→i, oo→u), drop the
-  aspirate (th→t, dh→d, bh→b, kh→k, gh→g), v/w, sh/s, trailing a/h, doubled letters. It lives in
-  one shared module so the server and the browser agree. Generic phonetic algorithms such as
-  Metaphone are tuned for English and handle Sanskrit-origin names poorly, hence the custom one.
-- **Where it runs.** The approved list (a few thousand short rows at most) is sent to the
-  browser once and searched locally with a small open-source fuzzy library (Fuse.js, MIT).
-  No server call per keystroke, no cost, instant, and it can later work offline. If the list
-  ever outgrows that, Postgres `pg_trgm` is available on the free Supabase plan.
-- **Nothing found:** "Not in the glossary yet" with a **Suggest this word** button prefilled with
-  what was typed.
-- **No scraping and no AI.** The data is our own, so there is nothing to scrape; a language model
-  would add cost and could invent a spelling, which is exactly what a source of truth must not do.
+- Everything is searched in the browser: the whole list (a few thousand short rows at most) is
+  sent once with the page. No request per keystroke, no cost, instant.
+- **Ranking, best first:** the exact spelling → an "also written as" spelling → words that sound
+  the same → starts-with → one or two letters off → a word in the meaning ("ego" finds
+  *ahamkar*). With a confident match, near misses are hidden.
+- **Sound-alike key.** A small Indic-aware normaliser (`src/lib/glossary/sound.ts`) turns each
+  spelling into a key so that spellings people use interchangeably collapse together: lowercase,
+  accents stripped, long vowels shortened (aa→a, ee→i, oo→u), aspirates dropped (th, dh, bh, kh,
+  gh, ph), w→v, sh→s, gn/gy/jn alike, doubled letters collapsed, a trailing a or h dropped.
+  Aarti = Arti, Bhagwan = Bhagvan = Bhagwaan, Pooja = Puja, Gnaan = Gyan = Jnana,
+  Satsang = Satsangh. English phonetic codes (Metaphone, Soundex) do this badly, hence a custom
+  one, covered by unit tests (`npm test`).
+- Two real words can share a key (*maan* "ego" and *man* "mind"). That is fine: search shows
+  both, the exact spelling first.
+- **No AI.** The data is ours and the answer must be one we approved; a language model could
+  invent a spelling.
 
 ### 16.6 Import and export
-- **Import (stewards):** upload one or more Markdown files. A preview lists what will be added,
-  what already exists, and conflicts (same spelling, different details) *before* anything is
-  saved. Imported entries are *Approved* and tagged with their source file. Files are parsed and
-  then discarded; they are not stored.
-- **Accepted shapes** (finalised against the real files): a table with spelling, variants and
-  meaning columns; or one bullet per word, `**Spelling** (also: A, B) — meaning`; or a heading
-  per word with a short body.
-- **Export:** the approved list as one Markdown file, so the glossary is never locked in.
+- **Import (stewards):** upload a `.md` / `.txt` file or paste text. A **preview** lists what will
+  happen before anything is saved: new words, words already there, words already there with a
+  *different meaning* (shown side by side), repeats within the file, and any lines it could not
+  read. Then **Add N words**; a checkbox replaces existing meanings with the file's. Existing
+  words are never overwritten silently. The file is read and discarded, not stored.
+- **Accepted shapes:** a bullet per word, `- **aarti** – A ritual of light`, optionally
+  `**aarti** (also: arti, arthi) – …` or `**Pooja / Puja**`; a table with Word, Also written as
+  and Meaning columns; or a heading per word with its meaning underneath. The BSA book glossary
+  (205 words, bullets) parses cleanly.
+- **Export:** the whole list as one Markdown file in the same bullet shape, so it can be re-imported
+  and is never locked in.
 
-### 16.7 Screens
-- **Glossary** (nav rail, beside Archive; fifth tab on phones). Search box, category filter,
-  alphabetical list, **Suggest a word**. Entry opens a panel with variants, notes, history.
-- **Review queue** (stewards, a tab or filter on the same page, with a count): Suggested entries,
-  Approve / Edit and approve / Decline.
-- **Import / Export** (stewards): a menu on the Glossary page.
-- Settings › Users gains a **Glossary steward** switch, global, beside the per-organization
-  Approver chips.
-
-### 16.8 Data model (draft)
+### 16.7 Data model
 ```sql
-glossary_entries(id, term, term_key, status enum('suggested','approved','declined','retired'),
-                 category, native_script, meaning, usage_note, pronunciation, source,
-                 suggested_by, suggested_at, decided_by, decided_at, decline_reason, updated_at)
-glossary_variants(id, entry_id, spelling, kind enum('variant','avoid'), sound_key)
-users.is_glossary_steward bool
+glossary_entries(id, term, term_key unique, sound_key, definition, source,
+                 created_by, updated_by, created_at, updated_at)
+glossary_variants(id, entry_id → glossary_entries on delete cascade, spelling, spelling_key, sound_key,
+                  unique(entry_id, spelling_key))
+users.is_glossary_steward bool default false
 ```
-RLS: any active user reads Approved and Retired entries and their own Suggested ones;
-any active user inserts a *Suggested* entry as themselves; only stewards update or delete.
-`term_key` and `sound_key` are computed by the shared normaliser on write.
+RLS: any active user reads both tables; only `is_glossary_steward()` writes. `term_key` and
+`sound_key` are computed by the shared normaliser whenever a word is saved or imported.
 
-### 16.9 Out of scope for v1.1
-Translation, pronunciation audio, a general dictionary, per-organization lists, automatic
-correction while typing, and any paid or AI service.
+### 16.8 Later (not committed)
+1. **Quick lookup anywhere:** a small "Spelling" button that opens the search box as a popover on
+   any screen, so a designer never leaves the artwork page.
+2. **Suggestions:** let designers propose a word for a steward to approve (the original,
+   crowd-sourced idea), with a review queue.
+3. **Hints while typing:** a gentle "Approved spelling: aarti" when someone types a known
+   alternate spelling in a comment or the brief.
+4. Category, native script and pronunciation fields.
 
-### 16.10 Later (not committed)
-1. **Quick lookup anywhere:** a small "Spelling" button in the rail that opens the search box
-   as a popover from any screen, so a designer never leaves the artwork page.
-2. **Hints in comments and the brief:** a gentle "Approved spelling: Aarti" nudge when someone
-   types a known *avoid* spelling.
-3. A steward digest of what changed this week.
-
-### 16.11 Delivery
-| Step | Deliverable |
-|---|---|
-| G1 | Migration (tables, RLS, steward flag), shared normaliser with tests |
-| G2 | Glossary page: list, search, entry panel; nav rail and phone tab |
-| G3 | Suggest, review queue, notifications, steward switch in Settings |
-| G4 | Markdown import (preview then commit) and export |
-| G5 | Quick-lookup popover (§16.10 item 1) |
+### 16.9 Delivery
+| Step | Deliverable | State |
+|---|---|---|
+| G1 | Migration (tables, RLS, steward flag), shared normaliser with tests | done |
+| G2 | Glossary page: list, search, nav rail and phone tab | done |
+| G3 | Steward tools: add, edit, delete, Markdown import and export; steward switch in Settings | done |
+| G4 | Import the BSA glossary (by a steward, from the app) | next |
+| G5 | Quick-lookup popover (§16.8 item 1) | later |

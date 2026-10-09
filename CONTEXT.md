@@ -24,9 +24,9 @@ Use these terms exactly. Avoid the synonyms listed.
 | **Central** | Function tag for the executive team. | exec, leadership |
 | **Publication** | Function tag for the content/writing team. | publisher, writer |
 | **Reopen** | Approver action that pulls an approved slot back to *Changes requested*. | un-approve, revoke |
-| **Glossary** | The approved spellings of satsang words, shared by both orgs. Text only; outside the event cap. See PRD §16. | dictionary, lexicon, wordlist |
-| **Glossary steward** | A user (any org, granted by a Core Admin) who approves, edits, retires and imports glossary entries. Global, independent of Approver and Core Admin. | editor, moderator |
-| **Approved spelling** | The one spelling of a word we print. Other spellings are *variants* (resolve to it) or *avoid* (flagged as wrong). | canonical, standard form |
+| **Glossary** | The list of approved spellings of satsang words (with an optional meaning), shared by both orgs, in the main nav. Text only; outside the event cap. Kept by stewards. See PRD §16. | dictionary, lexicon, wordlist |
+| **Glossary steward** | A user (any org) who can add, edit, delete and import glossary words. A global switch granted by a Core Admin, independent of Approver and Core Admin. | editor, moderator |
+| **Approved spelling** | The one spelling of a word we print (the glossary entry's term). Other spellings are *also written as* and resolve to it. | canonical, standard form |
 | **Review mode** | | Started with the Comment button. Comments are saved as private drafts (`comments.is_draft`, visible only to their author, marked "Not sent") and go out together as one chat/in-app notification when the author presses Send. One comment keeps the classic wording; Request changes publishes any queued comments with it. | batch, pending review |
 | **Maintenance hold** | Core Admin switch (Settings › Maintenance, `app_settings.maintenance`) that puts a "please hold" veil over the app for everyone but Core Admins. Pages stay mounted underneath so typed work survives; open pages poll `/api/status`. | maintenance mode, lockout |
 | **Addressed / Confirmed** | Comment flags: addressed by the designer, confirmed by an approver. | resolved, closed |

@@ -21,6 +21,7 @@ export const ICON_NAMES = [
   "chevron_right",
   "close",
   "construction",
+  "content_copy",
   "delete",
   "devices",
   "done_all",
@@ -51,6 +52,7 @@ export const ICON_NAMES = [
   "link_off",
   "logout",
   "menu",
+  "menu_book",
   "more_vert",
   "notifications",
   "notifications_active",
@@ -61,10 +63,12 @@ export const ICON_NAMES = [
   "replay",
   "rule",
   "schedule",
+  "search",
   "settings",
   "sync",
   "text_format",
   "unfold_more",
   "upload",
+  "upload_file",
   "zoom_out_map"
 ] as const;

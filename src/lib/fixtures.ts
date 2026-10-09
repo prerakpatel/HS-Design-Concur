@@ -46,11 +46,11 @@ export const BRIEF_VIEW = { date: "2026-11-08", timeText: "10:30 AM EST onwards\
 export const BRIEF = "Annual Annakut darshan with over 1,000 food items offered to Thakorji. Invite families to darshan and evening aarti. Highlight free parking and the youth volunteer sign-up. Bilingual (English + Gujarati) where the format allows.";
 
 export const USERS: EditableUser[] = [
-  { id: "u-1", name: "Prerak Patel", email: "prerak@harisumiran.org", initials: "PP", role: "core_admin", approverOrgIds: ["org-hs", "org-acc"], function_tags: ["central"], orgIds: ["org-hs", "org-acc"] },
-  { id: "u-2", name: "Mihir Shah", email: "mihir.shah@gmail.com", initials: "MS", role: "member", approverOrgIds: [], function_tags: ["designer"], orgIds: ["org-hs"] },
-  { id: "u-3", name: "Kinjal Patel", email: "kinjal.p@gmail.com", initials: "KP", role: "member", approverOrgIds: [], function_tags: ["designer", "publication"], orgIds: ["org-hs", "org-acc"] },
-  { id: "u-4", name: "Rina Desai", email: "rina.desai@gmail.com", initials: "RD", role: "member", approverOrgIds: ["org-hs"], function_tags: ["publication"], orgIds: ["org-hs"] },
-  { id: "u-5", name: "Amit Joshi", email: "amit.joshi@gmail.com", initials: "AJ", role: "member", approverOrgIds: [], function_tags: [], orgIds: ["org-acc"] },
+  { id: "u-1", name: "Prerak Patel", email: "prerak@harisumiran.org", initials: "PP", role: "core_admin", approverOrgIds: ["org-hs", "org-acc"], glossarySteward: true, function_tags: ["central"], orgIds: ["org-hs", "org-acc"] },
+  { id: "u-2", name: "Mihir Shah", email: "mihir.shah@gmail.com", initials: "MS", role: "member", approverOrgIds: [], glossarySteward: false, function_tags: ["designer"], orgIds: ["org-hs"] },
+  { id: "u-3", name: "Kinjal Patel", email: "kinjal.p@gmail.com", initials: "KP", role: "member", approverOrgIds: [], glossarySteward: false, function_tags: ["designer", "publication"], orgIds: ["org-hs", "org-acc"] },
+  { id: "u-4", name: "Rina Desai", email: "rina.desai@gmail.com", initials: "RD", role: "member", approverOrgIds: ["org-hs"], glossarySteward: true, function_tags: ["publication"], orgIds: ["org-hs"] },
+  { id: "u-5", name: "Amit Joshi", email: "amit.joshi@gmail.com", initials: "AJ", role: "member", approverOrgIds: [], glossarySteward: false, function_tags: [], orgIds: ["org-acc"] },
 ];
 export const PENDING: PendingUser[] = [
   { id: "p-1", name: "Neha Trivedi", email: "neha.trivedi@gmail.com", initials: "NT", requested_at: ago(5) },
@@ -78,3 +78,20 @@ export const MEMBERS: Member[] = USERS.map((u) => ({ id: u.id, name: u.name, han
 export const FORMAT_ROWS: FormatRow[] = CARDS.map((c) => ({ slotId: c.slotId, name: c.name, size: c.size, kind: c.name.startsWith("Print") || c.name.startsWith("Banner") ? "print" : "digital", requested: c.requested, isPrimary: c.slotId === "s-3", notes: c.slotId === "s-3" ? "Gujarati headline" : "", customSize: c.slotId === "s-5", w: c.slotId === "s-5" ? 3840 : null, h: c.slotId === "s-5" ? 1152 : null }));
 export const ASSIGN_ROWS: AssignRow[] = CARDS.filter((c) => c.requested).map((c) => ({ slotId: c.slotId, name: c.name, assignee: c.assignee?.name === "Mihir Shah" ? "u-2" : c.assignee ? "u-3" : "", due: c.due ?? "" }));
 export const PEOPLE: Person[] = [{ id: "u-2", label: "Mihir Shah · Designer" }, { id: "u-3", label: "Kinjal Patel · Designer" }, { id: "u-1", label: "Prerak Patel" }, { id: "u-4", label: "Rina Desai" }];
+
+export const GLOSSARY: { id: string; term: string; definition: string | null; variants: string[] }[] = [
+  { id: "g1", term: "aarti", definition: "A religious ritual in which one waves an oil lamp burning with ghee in a clockwise motion, starting from the feet to the face of Thakorji", variants: ["arti", "arthi"] },
+  { id: "g2", term: "aasan", definition: "A dedicated seat or location for sitting (e.g. Guruhari Swamiji’s aasan)", variants: [] },
+  { id: "g3", term: "ahamkar", definition: "Ego", variants: [] },
+  { id: "g4", term: "Akshardham", definition: "Abode where God resides; the soul’s final destination", variants: [] },
+  { id: "g5", term: "Bhagwan", definition: "God", variants: ["Bhagvan"] },
+  { id: "g6", term: "bhakti", definition: "Devotion towards Bhagwan and His devotees; one of the five pillars of ekantik dharma", variants: [] },
+  { id: "g7", term: "gnaan", definition: "Knowledge", variants: ["gyan", "jnana"] },
+  { id: "g8", term: "maan", definition: "Ego", variants: [] },
+  { id: "g9", term: "man", definition: "mind", variants: [] },
+  { id: "g10", term: "maha-kaaran", definition: null, variants: [] },
+  { id: "g11", term: "pooja", definition: "A daily ritual of worship practiced by all devotees to immerse in Bhagwan, convey their prayers and ask for strength", variants: ["puja"] },
+  { id: "g12", term: "prasad", definition: "Consecrated item; an item offered to the Bhagwan first; usually refers to food", variants: ["prasadam"] },
+  { id: "g13", term: "satsang", definition: "Association with good or religious-minded people; good company", variants: [] },
+  { id: "g14", term: "seva", definition: "Service; performing mandir/satsang-related activities", variants: [] },
+];
