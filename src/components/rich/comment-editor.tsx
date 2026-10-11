@@ -215,20 +215,22 @@ function Tools({ editor, link, colorOpen, setColorOpen }: { editor: Editor; link
       </div>
     );
   }
+  if (colorOpen) {
+    // Like the link field, the palette takes the toolbar's place instead of floating over the text being edited.
+    return (
+      <div className="flex h-8 items-center gap-2.5 pl-1.5 pr-0.5" role="group" aria-label="Text colour">
+        <Swatch label="Default text" active={!color} className="swatch-default" onPick={() => { editor.chain().focus().unsetMark("colored").run(); setColorOpen(false); }} />
+        {TEXT_COLORS.map((c) => <Swatch key={c} label={c} active={color === c} className={`swatch-${c}`} onPick={() => { editor.chain().focus().setMark("colored", { color: c }).run(); setColorOpen(false); }} />)}
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setColorOpen(false)} aria-label="Close colours" className="ml-1 flex size-7 items-center justify-center rounded-lg hover:bg-current/10"><Icon name="close" className="!text-[18px]" /></button>
+      </div>
+    );
+  }
   return (
     <>
       <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleBold().run()} aria-label="Bold" aria-pressed={editor.isActive("bold")} className={btn(editor.isActive("bold"))}><Icon name="format_bold" className="!text-[20px]" /></button>
       <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleItalic().run()} aria-label="Italic" aria-pressed={editor.isActive("italic")} className={btn(editor.isActive("italic"))}><Icon name="format_italic" className="!text-[20px]" /></button>
       <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleUnderline().run()} aria-label="Underline" aria-pressed={editor.isActive("underline")} className={btn(editor.isActive("underline"))}><Icon name="format_underlined" className="!text-[20px]" /></button>
-      <span className="relative">
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setColorOpen(!colorOpen)} aria-label="Text colour" aria-expanded={colorOpen} className={btn(!!color)}><Icon name="format_color_text" className="!text-[20px]" /></button>
-        {colorOpen && (
-          <span className="absolute left-1/2 top-full z-30 mt-2 flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-foreground p-2.5 shadow-xl">
-            <Swatch label="Default text" active={!color} className="swatch-default" onPick={() => { editor.chain().focus().unsetMark("colored").run(); setColorOpen(false); }} />
-            {TEXT_COLORS.map((c) => <Swatch key={c} label={c} active={color === c} className={`swatch-${c}`} onPick={() => { editor.chain().focus().setMark("colored", { color: c }).run(); setColorOpen(false); }} />)}
-          </span>
-        )}
-      </span>
+      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setColorOpen(true)} aria-label="Text colour" aria-expanded={false} className={btn(!!color)}><Icon name="format_color_text" className="!text-[20px]" /></button>
       <span className="mx-0.5 h-5 w-px bg-current/25" />
       <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleBulletList().run()} aria-label="Bullet list" aria-pressed={editor.isActive("bulletList")} className={btn(editor.isActive("bulletList"))}><Icon name="format_list_bulleted" className="!text-[20px]" /></button>
       <span className="mx-0.5 h-5 w-px bg-current/25" />
@@ -238,5 +240,6 @@ function Tools({ editor, link, colorOpen, setColorOpen }: { editor: Editor; link
 }
 
 function Swatch({ label, active, className, onPick }: { label: string; active: boolean; className: string; onPick: () => void }) {
-  return <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onPick} aria-label={label} aria-pressed={active} className={cn("size-7 rounded-full shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.35)] ring-2 ring-offset-2 ring-offset-foreground transition-transform hover:scale-110", active ? "ring-background" : "ring-transparent", className)} />;
+  // The selected swatch gets an outline in the container's text colour, so it reads on both the light phone row and the dark desktop pill.
+  return <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onPick} aria-label={label} aria-pressed={active} className={cn("size-7 shrink-0 rounded-full shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.35)] transition-transform hover:scale-110", active && "outline-2 outline-offset-2 outline-current", className)} />;
 }
