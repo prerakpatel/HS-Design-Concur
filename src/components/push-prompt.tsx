@@ -50,17 +50,17 @@ export function PushPrompt() {
     } catch (e) { toast.error(errorMessage(e)); }
   });
   return (
-    <div role="dialog" aria-label="Turn on notifications" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-50 rounded-2xl bg-navy p-4 text-white shadow-xl md:inset-x-auto md:bottom-6 md:right-6 md:w-96">
+    <div role="dialog" aria-label="Turn on notifications" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-50 rounded-2xl bg-inverse-surface p-4 text-inverse-on-surface shadow-xl md:inset-x-auto md:bottom-6 md:right-6 md:w-96">
       <div className="flex items-start gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground"><Icon name="notifications_active" size={20} /></span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">Get notified when it matters</p>
-          <p className="mt-0.5 text-sm text-white/75">Mentions, approvals, assignments and due dates, even when the app is closed. You can change this any time in your Inbox.</p>
+          <p className="mt-0.5 text-sm text-inverse-on-surface/75">Mentions, approvals, assignments and due dates, even when the app is closed. You can change this any time in your Inbox.</p>
         </div>
       </div>
       <div className="mt-3 flex justify-end gap-2">
-        <Button type="button" variant="ghost" className="text-white hover:bg-white/10 hover:text-white" onClick={later} disabled={pending}>Not now</Button>
-        <Button type="button" className="bg-white text-navy hover:bg-white/90" onClick={turnOn} disabled={pending}>{pending ? "Turning on…" : "Turn on"}</Button>
+        <Button type="button" variant="ghost" className="text-inverse-on-surface hover:bg-white/10 hover:text-inverse-on-surface" onClick={later} disabled={pending}>Not now</Button>
+        <Button type="button" className="bg-inverse-on-surface text-inverse-surface hover:bg-inverse-on-surface/90" onClick={turnOn} disabled={pending}>{pending ? "Turning on…" : "Turn on"}</Button>
       </div>
     </div>
   );

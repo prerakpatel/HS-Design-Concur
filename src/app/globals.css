@@ -7,6 +7,8 @@
 @theme inline {
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-on-surface: var(--inverse-on-surface);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-soft-foreground: var(--brand-soft-foreground);
   --color-brand-soft: var(--brand-soft);
@@ -105,6 +107,9 @@
   --brand-hover: #b2613f;
   --brand-foreground: #ffffff;
   --brand-soft-foreground: #672d15;
+  /* Material 3 inverse surface: the dark slate used for snackbars and floating prompts. */
+  --inverse-surface: #2f3033;
+  --inverse-on-surface: #f1f0f4;
   --brand-soft: #fff0ec;
   --navy: #1e3a5f;
   --subtle: #fafafa;
