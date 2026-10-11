@@ -5,6 +5,7 @@ import { MobileNav } from "@/components/mobile-nav";
 import { MainFrame } from "@/components/main-frame";
 import { AppBadge } from "@/components/app-badge";
 import { PushPrompt } from "@/components/push-prompt";
+import { InstallNudge } from "@/components/install-nudge";
 import { WhatsNewDialog, type ChangelogState } from "@/components/whats-new";
 import { Suspense } from "react";
 import type { Organization } from "@/lib/types";
@@ -18,6 +19,7 @@ export function AppShell({ org, orgs, user, slots, sidebarOpen = true, changelog
     <SidebarProvider defaultOpen={sidebarOpen} style={{ "--sidebar-width": "17rem" } as React.CSSProperties}>
       <AppBadge />
       <PushPrompt />
+      <InstallNudge />
       <AppSidebar org={org} orgs={orgs} user={user} slots={slots} whatsNewUnseen={changelog.unseen} />
       <Suspense><WhatsNewDialog state={changelog} /></Suspense>
       <SidebarInset className="min-h-dvh bg-background">

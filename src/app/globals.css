@@ -205,3 +205,8 @@
 .rich [data-color="gray"] { color: var(--comment-gray); }
 .swatch-default { background: var(--foreground); } .swatch-red { background: var(--comment-red); } .swatch-blue { background: var(--comment-blue); } .swatch-green { background: var(--comment-green); } .swatch-yellow { background: var(--comment-yellow); } .swatch-gray { background: var(--comment-gray); }
 .tiptap p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: color-mix(in oklch, var(--muted-foreground) 55%, transparent); pointer-events: none; height: 0; }
+
+/* A gentle nudge card: fades in while drifting a few pixels into place. */
+@keyframes nudge-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.animate-nudge { animation: nudge-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) { .animate-nudge { animation: none; } }
