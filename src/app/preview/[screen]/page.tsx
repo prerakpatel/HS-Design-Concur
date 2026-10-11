@@ -8,6 +8,8 @@ import { Icon } from "@/components/material-icon";
 import { EventList } from "@/components/events/event-list";
 import { BriefCard, ActivityFeed } from "@/components/events/event-detail";
 import { FormatGrid } from "@/components/events/format-grid";
+import { ArchivedReference } from "@/components/events/archived-reference";
+import { UploadProgress } from "@/components/asset/upload-panel";
 import { UsersList } from "@/components/settings/user-editor";
 import { AccessRequests } from "@/components/settings/access-requests";
 import { GroupsEditor } from "@/components/settings/groups-editor";
@@ -27,7 +29,7 @@ import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
 
 export const dynamic = "force-dynamic";
-const SCREENS = ["events", "event", "slot", "slot-review", "slot-versions", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
+const SCREENS = ["events", "event", "event-archived", "upload-progress", "slot", "slot-review", "slot-versions", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
 
 /** Design preview harness. Renders real components with fixture data so screens can be reviewed without a database. */
 export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
@@ -47,6 +49,14 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     {tabs([["upcoming", "Upcoming", 3], ["drafts", "Drafts", 1], ["past", "Past", 0]], "upcoming")}
     <EventList items={F.EVENTS.filter((e) => e.status === "active")} />
   </>);
+
+  if (screen === "event-archived") return shell(<>
+    <PageHeader title="Jal Jhilani Utsav" subtitle="Sun 27 Sep 2026 · Harisumiran Mandir" />
+    <div className="space-y-10"><BriefCard brief={{ ...F.BRIEF_VIEW, inviteText: F.BRIEF }} locked editHref="#" /><ArchivedReference src="/preview/flyer.webp" formatName="IG Post" approved={5} requested={5} /></div>
+  </>);
+  if (screen === "upload-progress") return shell(<div className="h-[60vh]">
+    <UploadProgress p={{ name: "annakut-mobile-v3.png", phase: "upload", pct: 42 }} cancel={noop} />
+  </div>);
 
   if (screen === "event") { const req = F.CARDS.filter((c) => c.requested); const ok = req.filter((c) => c.state === "approved").length; return shell(<>
     <PageHeader back={<Link href="#" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><Icon name="arrow_back" className="!text-[18px]" />Events</Link>} title="Diwali Annakut Darshan" subtitle="Sun 8 Nov 2026 · Harisumiran Mandir, Edison · Created by Rina Desai" actions={<Button asChild variant="secondary"><Link href="#">Edit event</Link></Button>} />

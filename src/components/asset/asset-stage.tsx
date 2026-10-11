@@ -9,7 +9,7 @@ import { Icon } from "@/components/material-icon";
 import { StateBadge, type BadgeState } from "@/components/state-badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Lightbox } from "@/components/asset/lightbox";
-import { UploadPanel, requestUpload } from "@/components/asset/upload-panel";
+import { UploadPanel, UploadDropArea, requestUpload } from "@/components/asset/upload-panel";
 import { Guides, PinBubble, DraftMark, guideGeometry, type SafeArea, type Pin, type PrintGuides } from "@/components/asset/viewer";
 import { addComment, sendCommentBatch, discardCommentBatch, setCommentFlag, editComment, deleteComment, deleteVersion } from "@/app/actions/reviews";
 import { assignSlot } from "@/app/actions/events";
@@ -143,6 +143,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           </div>
         </div>
 
+        <UploadDropArea enabled={!!upload && !readOnly}>
         <div className="flex flex-col items-center gap-8">
           {sides.map((s) => {
             const g = guideGeometry(safe, print, s.width, s.height);
@@ -174,6 +175,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
             );
           })}
         </div>
+        </UploadDropArea>
         {open && <Lightbox open onClose={() => setOpen(null)} src={sides.find((s) => s.side === open)?.src ?? null} caption={open} isGif={sides.find((s) => s.side === open)?.isGif} size={sides.find((s) => s.side === open)} />}
       </div>
 

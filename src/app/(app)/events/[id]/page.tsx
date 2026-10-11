@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { BriefCard, ActivityFeed } from "@/components/events/event-detail";
 import { FormatGrid, type FormatCardData } from "@/components/events/format-grid";
+import { ArchivedReference } from "@/components/events/archived-reference";
 import { EventMenu } from "@/components/events/event-menu";
 import { deleteEvent } from "@/app/actions/events";
 import { orderSlots } from "@/lib/slot-order";
@@ -49,7 +50,9 @@ export default async function EventPage({ params, searchParams }: { params: Prom
       <div className={showActivity ? "grid gap-10 lg:grid-cols-[1fr_280px]" : "grid gap-10"}>
         <div className="space-y-10">
           <BriefCard brief={{ date: event.event_date, timeText: brief?.time_text ?? null, inviteText: brief?.description ?? null, venueName: brief?.venue_name ?? event.venue ?? null, venueAddress: brief?.venue_address ?? null, notes: brief?.notes ?? null }} locked={!!event.brief_locked_at || event.status === "archived"} editHref={event.status === "archived" ? "#" : `/events/${id}/edit/event`} />
-          <FormatGrid eventId={id} event={{ title: event.title, date: event.event_date }} cards={cards} downloadable={cards.filter((c) => c.requested && c.state === "approved" && c.thumb).length} canApprove={event.status !== "archived" && isApprover} meta={`${approved} approved · ${requested.length - approved} in progress · ${cards.length - requested.length} N/A`} />
+          {event.status === "archived" && event.purged_at
+            ? (() => { const ref = cards.find((c) => c.thumb && c.isPrimary) ?? cards.find((c) => c.thumb); return <ArchivedReference src={ref?.thumb ?? null} formatName={ref?.name ?? null} approved={approved} requested={requested.length} />; })()
+            : <FormatGrid eventId={id} event={{ title: event.title, date: event.event_date }} cards={cards} downloadable={cards.filter((c) => c.requested && c.state === "approved" && c.thumb).length} canApprove={event.status !== "archived" && isApprover} meta={`${approved} approved · ${requested.length - approved} in progress · ${cards.length - requested.length} N/A`}  />}
         </div>
         {showActivity && <ActivityFeed items={(activity ?? []).map((a) => { const who = a.actor as unknown as { name: string | null; email: string; avatar_url: string | null } | null; return { id: a.id, who: who?.name ?? who?.email ?? "Design & Concur", initials: initials(who?.name ?? null, who?.email ?? "?"), avatar: who?.avatar_url ?? null, what: (VERB[a.kind] ?? (() => a.kind))(a.payload as Record<string, string>), when: a.created_at }; })} />}
       </div>

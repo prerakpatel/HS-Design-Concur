@@ -5,6 +5,9 @@ import { ratioFromSize } from "@/lib/aspect";
 import { mockupFor, MOCK_COLORS as C, type Mockup } from "@/config/mockups";
 import type { Format } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Icon } from "@/components/material-icon";
+
+// icons: chevron_left chevron_right
 
 /** iPhone 16 Pro screen, the phone mock's proportions (see src/config/devices.ts). */
 const SCREEN = 402 / 874;
@@ -12,28 +15,26 @@ const LIFT = "shadow-[0_1px_3px_rgba(0,0,0,.12),0_8px_20px_-8px_rgba(0,0,0,.22)]
 
 /**
  * The asset at its own aspect ratio inside a format tile, never cropped by the tile.
- * Formats with a mockup (phone, Instagram story, Sambandh event, TV, LED wall) get two dots:
- * tap to see the design in place. Sizes use container units so mocks scale with the tile.
+ * Formats with a mockup (phone, Instagram story, Sambandh event, TV, LED wall) get an arrow:
+ * tap it to see the design in place, and back. Sizes use container units so mocks scale with the tile.
  */
 export function FormatThumb({ src, size, formatKey, frame, event }: { src: string; size: string; formatKey?: string; frame?: Format["frame"]; event?: { title: string; date: string | null } }) {
   const r = ratioFromSize(size);
-  const mock = r ? mockupFor(formatKey, frame) : null;
+  const m = mockupFor(formatKey, frame);
+  // A full-screen phone needs no fixed size (the design is letterboxed); the other mocks do.
+  const mock = m === "phone" || r ? m : null;
   const [inPlace, setInPlace] = useState(false);
-  const pick = (v: boolean) => (e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); setInPlace(v); };
+  const flip = (e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); setInPlace((v) => !v); };
 
   return (
     <>
       <Layer on={!inPlace}><Plain src={src} r={r} frame={frame} /></Layer>
-      {mock && r && <Layer on={inPlace} tall={mock !== "tv" && mock !== "led"}><InPlace mock={mock} src={src} r={r} event={event} /></Layer>}
+      {mock && <Layer on={inPlace} tall={mock !== "tv" && mock !== "led"}><InPlace mock={mock} src={src} r={r ?? SCREEN} event={event} /></Layer>}
       {mock && (
-        <div className="absolute right-1 top-1/2 z-[1] flex -translate-y-1/2 flex-col items-center md:bottom-3.5 md:right-2 md:top-auto md:translate-y-0 md:flex-row" role="tablist" aria-label="Preview">
-          {[false, true].map((v) => (
-            <button key={String(v)} type="button" role="tab" aria-selected={inPlace === v} aria-label={v ? "Show in place" : "Show design"} onClick={pick(v)}
-              className="flex size-5 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <span className={cn("size-1.5 rounded-full bg-foreground transition-opacity", inPlace === v ? "opacity-70" : "opacity-20")} />
-            </button>
-          ))}
-        </div>
+        <button type="button" onClick={flip} aria-pressed={inPlace} aria-label={inPlace ? "Show the design" : "Show it in place"}
+          className={cn("absolute top-1/2 z-[1] flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-[0_1px_4px_rgba(0,0,0,.18)] ring-1 ring-black/5 transition hover:bg-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", inPlace ? "left-2" : "right-2")}>
+          <Icon name={inPlace ? "chevron_left" : "chevron_right"} className="!text-[20px]" />
+        </button>
       )}
     </>
   );
@@ -87,14 +88,11 @@ function InPlace({ mock, src, r, event }: { mock: Mockup; src: string; r: number
   );
 }
 
-/** A minimal phone: dark bezel, Dynamic Island. Children fill the screen; units are % of the phone width (cqw). */
+/** A plain portrait phone: thin dark bezel, gently rounded corners. Children fill the screen; units are % of the screen (cqw/cqh). */
 function Phone({ children }: { children: ReactNode }) {
   return (
-    <div className="relative rounded-[13cqmin] bg-neutral-900 p-[1.6cqmin] shadow-[0_10px_28px_-10px_rgba(0,0,0,.5)] ring-1 ring-black/20" style={fit(SCREEN)}>
-      <div className="relative size-full overflow-hidden rounded-[11.5cqmin] bg-black" style={{ containerType: "size" }}>
-        {children}
-        <span className="absolute left-1/2 top-[1.4cqh] h-[3.2cqh] w-[30cqw] -translate-x-1/2 rounded-full bg-black" />
-      </div>
+    <div className="relative rounded-[3.5cqmin] bg-neutral-900 p-[1.4cqmin] shadow-[0_10px_28px_-10px_rgba(0,0,0,.5)]" style={fit(SCREEN)}>
+      <div className="relative size-full overflow-hidden rounded-[2.2cqmin] bg-black" style={{ containerType: "size" }}>{children}</div>
     </div>
   );
 }

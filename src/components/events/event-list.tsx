@@ -8,6 +8,7 @@ export interface EventListItem { id: string; title: string; venue: string | null
 
 function badgeFor(e: EventListItem): { state: BadgeState; label?: string } {
   if (e.status === "draft") return { state: "draft" };
+  if (e.status === "archived") return { state: "requested", label: "Archived" };
   if (e.needsYou) return { state: "needs_you" };
   if (e.total && e.approved === e.total) return { state: "approved", label: "All approved" };
   if (e.approved === 0) return { state: "requested", label: "Not started" };

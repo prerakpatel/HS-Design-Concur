@@ -8,6 +8,7 @@ const BY_KEY: Record<string, Mockup> = { mobile: "phone", ig_story: "instagram",
 
 export function mockupFor(key: string | undefined, frame: Format["frame"] | undefined): Mockup | null {
   if (key && BY_KEY[key]) return BY_KEY[key];
+  if (key?.startsWith("mobile")) return "phone"; // "Mobile" also exists as a custom-size format (mobile_2)
   return frame === "phone" || frame === "tv" || frame === "led" ? frame : null;
 }
 

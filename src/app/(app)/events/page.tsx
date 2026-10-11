@@ -11,7 +11,7 @@ export const metadata = { title: "Events" };
 export default async function EventsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab = "upcoming" } = await searchParams;
   const { supabase, org, user, isApprover } = await requireActiveUser();
-  const { data: events } = await supabase.from("events").select("*").eq("org_id", org.id).is("deleted_at", null).neq("status", "archived").order("event_date", { ascending: true, nullsFirst: false }).returns<EventRow[]>();
+  const { data: events } = await supabase.from("events").select("*").eq("org_id", org.id).is("deleted_at", null).order("event_date", { ascending: true, nullsFirst: false }).returns<EventRow[]>();
   const { count: used } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "active").is("deleted_at", null);
   const ids = (events ?? []).map((e) => e.id);
   const { data: slots } = ids.length ? await supabase.from("slots").select("event_id,state,requested,assignee:assignee_id(name,email,avatar_url)").in("event_id", ids) : { data: [] as { event_id: string; state: string; requested: boolean; assignee: { name: string | null; email: string; avatar_url: string | null } | null }[] };
@@ -26,7 +26,8 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   }
   const today = new Date().toLocaleDateString("en-CA");
   const all: EventListItem[] = (events ?? []).map((e) => ({ id: e.id, title: e.title, venue: e.venue, event_date: e.event_date, status: e.status, ...(agg.get(e.id) ?? { total: 0, approved: 0, people: [], needsYou: false }) }));
-  const groups = { upcoming: all.filter((e) => e.status === "active" && (!e.event_date || e.event_date >= today)), drafts: all.filter((e) => e.status === "draft"), past: all.filter((e) => e.status === "active" && e.event_date && e.event_date < today) };
+  const groups = { upcoming: all.filter((e) => e.status === "active" && (!e.event_date || e.event_date >= today)), drafts: all.filter((e) => e.status === "draft"), // Past keeps archived events too (one reference image each), newest first.
+    past: all.filter((e) => e.status === "archived" || (e.status === "active" && e.event_date && e.event_date < today)).sort((a, b) => (b.event_date ?? "").localeCompare(a.event_date ?? "")) };
   const items = groups[tab as keyof typeof groups] ?? groups.upcoming;
   return (
     <>
