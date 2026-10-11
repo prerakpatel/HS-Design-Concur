@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { isIOS, standalone } from "@/lib/push-client";
 
-// icons: ios_share install_mobile install_desktop close
+// icons: ios_share close
 interface InstallEvent extends Event { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> }
 const KEY = "dc.installNudge";
 const COOLDOWN_DAYS = 30;
@@ -47,20 +47,25 @@ export function InstallNudge() {
   };
   const phone = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
   return (
-    <div role="region" aria-label="Add Design & Concur as an app" className="animate-nudge fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40 rounded-2xl border border-border bg-card p-4 shadow-xl md:inset-x-auto md:bottom-6 md:right-6 md:w-[22rem]">
-      <button type="button" onClick={later} aria-label="Dismiss" className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><Icon name="close" className="!text-[18px]" /></button>
-      <div className="flex items-start gap-3 pr-6">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-foreground"><Icon name={phone ? "install_mobile" : "install_desktop"} size={20} /></span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{phone ? "Add this to your home screen" : "Install Design & Concur"}</p>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {mode === "ios-safari" && <>Tap <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> Share, then <span className="font-medium text-foreground">Add to Home Screen</span>. It opens like an app and can notify you.</>}
-            {mode === "ios-other" && <>Tap the <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> share icon, then <span className="font-medium text-foreground">Add to Home Screen</span>. It opens like an app and can notify you.</>}
-            {mode === "install" && (phone ? "Use it like an app: one tap to open, and it can notify you when something needs you." : "Open it in its own window, one click from your dock or taskbar, and get notified when something needs you.")}
+    <div role="region" aria-label="Add Design & Concur as an app" className="animate-nudge fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40 overflow-hidden rounded-2xl border border-border/60 bg-card/55 shadow-xl backdrop-blur-xl md:inset-x-auto md:bottom-6 md:right-6 md:w-[22rem]">
+      {/* Slow drifting colour under the frost, to catch the eye without shouting. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <span className="aurora-a absolute -left-10 -top-12 size-48 rounded-full bg-brand/45 blur-3xl" />
+        <span className="aurora-b absolute -bottom-14 right-0 size-52 rounded-full bg-info/35 blur-3xl" />
+        <span className="aurora-c absolute left-1/3 top-1/3 size-36 rounded-full bg-warning/30 blur-3xl" />
+      </div>
+      <div className="relative p-4">
+        <button type="button" onClick={later} aria-label="Dismiss" className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-foreground/5"><Icon name="close" className="!text-[18px]" /></button>
+        <div className="pr-8">
+          <p className="text-[15px] font-semibold">{mode === "install" && !phone ? "Install as an app" : "Add to your home screen"}</p>
+          <p className="mt-0.5 text-sm text-foreground/70">
+            {mode === "ios-safari" && <>Tap <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> Share, then Add to Home Screen.</>}
+            {mode === "ios-other" && <>Tap the <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> share icon, then Add to Home Screen.</>}
+            {mode === "install" && (phone ? "Open it like an app." : "Open it in its own window.")}
           </p>
         </div>
+        {mode === "install" && <div className="mt-3 flex justify-end gap-2"><Button type="button" variant="ghost" onClick={later}>Not now</Button><Button type="button" onClick={install}>{phone ? "Add" : "Install"}</Button></div>}
       </div>
-      {mode === "install" && <div className="mt-3 flex justify-end gap-2"><Button type="button" variant="ghost" onClick={later}>Not now</Button><Button type="button" onClick={install}>{phone ? "Add to home screen" : "Install"}</Button></div>}
     </div>
   );
 }
