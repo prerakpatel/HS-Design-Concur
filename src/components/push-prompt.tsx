@@ -52,7 +52,7 @@ export function PushPrompt() {
   return (
     <div role="dialog" aria-label="Turn on notifications" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-50 rounded-2xl border border-border bg-card p-4 shadow-xl md:inset-x-auto md:bottom-6 md:right-6 md:w-96">
       <div className="flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-foreground"><Icon name="notifications_active" size={20} /></span>
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-soft-foreground"><Icon name="notifications_active" size={20} /></span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">Get notified when it matters</p>
           <p className="mt-0.5 text-sm text-muted-foreground">Mentions, approvals, assignments and due dates, even when the app is closed. You can change this any time in your Inbox.</p>

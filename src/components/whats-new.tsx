@@ -38,7 +38,7 @@ export function WhatsNewDialog({ state }: { state: ChangelogState }) {
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl p-0 sm:max-w-[520px]">
         <div className="bg-[linear-gradient(135deg,var(--brand-soft),var(--cream,#F9F6E2))] px-7 pb-6 pt-8">
           <DialogHeader className="text-left">
-            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-brand-foreground"><Icon name="auto_awesome" className="!text-[16px]" fill />What&apos;s new</p>
+            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-brand-soft-foreground"><Icon name="auto_awesome" className="!text-[16px]" fill />What&apos;s new</p>
             <DialogTitle className="mt-2 text-[24px] font-semibold leading-8 tracking-[-0.02em] text-foreground">{latest.title}</DialogTitle>
             <DialogDescription className="text-sm text-foreground/70">{fmtDate(latest.id)}</DialogDescription>
           </DialogHeader>
@@ -70,7 +70,7 @@ export function WhatsNewButton({ unseen, collapsed, variant = "sidebar" }: { uns
   if (variant === "row") {
     return (
       <button type="button" onClick={openWhatsNew} className="flex h-14 w-full items-center gap-4 px-4 text-left text-sm hover:bg-subtle">
-        <Icon name="auto_awesome" fill={unseen} className={cn(unseen && "shimmer text-brand")} /><span className="flex-1 font-medium">What&apos;s new</span>{unseen && <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-medium text-brand-foreground">New</span>}<Icon name="chevron_right" className="text-muted-foreground" />
+        <Icon name="auto_awesome" fill={unseen} className={cn(unseen && "shimmer text-brand")} /><span className="flex-1 font-medium">What&apos;s new</span>{unseen && <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-medium text-brand-soft-foreground">New</span>}<Icon name="chevron_right" className="text-muted-foreground" />
       </button>
     );
   }

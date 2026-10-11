@@ -111,7 +111,7 @@ function RowExtras({ row, primary, onPrimary, noteOpen, onOpenNote }: { row: For
       <div className="flex items-center justify-between gap-4">
         <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] font-medium">
           <Switch size="sm" checked={isPrimary} onCheckedChange={() => onPrimary(row.slotId)} aria-label={`Make ${row.name} the primary format`} className="data-checked:bg-brand" />
-          <span className={isPrimary ? "text-brand-foreground" : "text-muted-foreground"}>Primary</span>
+          <span className={isPrimary ? "text-brand-soft-foreground" : "text-muted-foreground"}>Primary</span>
         </label>
         {!noteOpen && <button type="button" onClick={() => onOpenNote(row.slotId)} className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">+ Add note</button>}
       </div>

@@ -11,7 +11,7 @@ const STYLES: Record<BadgeState, string> = {
   approved: "bg-success-soft text-success-text",
   na: "border border-dashed border-border text-muted-foreground",
   draft: "bg-warning-soft text-warning-text",
-  needs_you: "bg-brand-soft text-brand-foreground",
+  needs_you: "bg-brand-soft text-brand-soft-foreground",
   unsent: "bg-warning-soft text-warning-text",
 };
 

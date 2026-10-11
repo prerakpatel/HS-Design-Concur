@@ -84,7 +84,7 @@ function mentionSuggestion(members: EditorMember[]): Omit<SuggestionOptions<Edit
           b.className = "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-muted" + (i === index ? " bg-muted" : "");
           // Avatar (photo, initials, or a group glyph) and name; groups also carry a small "group" tag.
           const av = document.createElement(m.avatar ? "img" : "span");
-          av.className = "flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[10px] font-medium text-brand-foreground";
+          av.className = "flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[10px] font-medium text-brand-soft-foreground";
           if (av instanceof HTMLImageElement) { av.src = m.avatar!; av.alt = ""; av.className += " object-cover"; av.referrerPolicy = "no-referrer"; }
           else av.textContent = m.kind === "group" ? "👥" : m.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
           const name = document.createElement("span"); name.className = "min-w-0 flex-1 truncate"; name.textContent = m.name;
