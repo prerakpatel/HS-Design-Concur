@@ -66,10 +66,7 @@ export function InstallNudge() {
     </>
   );
   return (
-    <div className="animate-nudge fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40 md:inset-x-auto md:bottom-6 md:right-6 md:w-[24rem]">
-      {/* Two quiet layers peek out underneath, like a stack of notifications. */}
-      <span aria-hidden className="absolute inset-x-5 -bottom-2 h-6 rounded-b-3xl border border-white/60 bg-white/40 shadow-md backdrop-blur-md" />
-      <span aria-hidden className="absolute inset-x-9 -bottom-3.5 h-6 rounded-b-3xl border border-white/40 bg-white/25 backdrop-blur-md" />
+    <div className="animate-nudge fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),12px)+84px)] z-40 md:inset-x-auto md:bottom-6 md:right-6 md:w-[24rem]">
       <div role="region" aria-label="Add Design & Concur as an app" className="relative overflow-hidden rounded-3xl border-2 border-brand/35 bg-white/60 p-4 text-foreground shadow-[0_18px_50px_-12px_rgba(20,30,60,0.35)] backdrop-blur-2xl">
         {/* Big soft pastel-orange light drifting through the frost. */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
