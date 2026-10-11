@@ -66,10 +66,10 @@ export function InstallNudge() {
     <div role="region" aria-label="Add Design & Concur as an app" className="animate-nudge fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40 overflow-hidden rounded-2xl border border-brand/25 bg-card shadow-[0_6px_20px_-6px_rgb(0_0_0/0.16)] md:inset-x-auto md:bottom-6 md:right-6 md:w-[22rem]">
       {/* Soft, bright colour drifting behind the card. Pastel tints only (peach, butter, sky, mint), so the navy text always has a light ground. */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <span className="aurora-a absolute -left-8 -top-12 size-44 rounded-full bg-brand/30 blur-2xl" />
-        <span className="aurora-b absolute -bottom-14 -right-6 size-48 rounded-full bg-warning-soft blur-2xl" />
-        <span className="aurora-d absolute -top-10 right-10 size-32 rounded-full bg-success-soft blur-2xl" />
-        <span className="aurora-c absolute -bottom-10 left-1/4 size-40 rounded-full bg-info-soft blur-2xl" />
+        <span className="aurora-a absolute -left-6 -top-10 size-56 rounded-full bg-brand/45 blur-2xl" />
+        <span className="aurora-b absolute -bottom-12 -right-4 size-60 rounded-full bg-warning/45 blur-2xl" />
+        <span className="aurora-d absolute -top-8 right-8 size-44 rounded-full bg-success/30 blur-2xl" />
+        <span className="aurora-c absolute -bottom-8 left-1/4 size-48 rounded-full bg-info/35 blur-2xl" />
       </div>
       {tappable
         ? <button type="button" onClick={mode === "install" ? install : openShare} className="relative block w-full p-4 pr-12 text-left transition-transform active:scale-[0.99]">{body}</button>
