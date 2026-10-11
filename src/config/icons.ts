@@ -44,6 +44,8 @@ export const ICON_NAMES = [
   "hourglass_top",
   "how_to_reg",
   "info",
+  "install_desktop",
+  "install_mobile",
   "inventory_2",
   "ios_share",
   "keyboard_double_arrow_left",
