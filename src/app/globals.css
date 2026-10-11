@@ -221,5 +221,4 @@
 .aurora-b { animation: aurora-b 8s ease-in-out infinite alternate; }
 .aurora-d { animation: aurora-b 7s ease-in-out infinite alternate; }
 .aurora-c { animation: aurora-c 9s ease-in-out infinite alternate; }
-@media (prefers-reduced-motion: reduce) { .aurora-a, .aurora-b, .aurora-d { animation: aurora-b 7s ease-in-out infinite alternate; }
-.aurora-c { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .aurora-a, .aurora-b, .aurora-c, .aurora-d { animation: none; } }
