@@ -7,6 +7,18 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: "2026-10-11",
+    title: "Glossary, design previews in place and drag-and-drop uploads",
+    items: [
+      "Glossary: one shared list of approved spellings (Gujarati and Sanskrit words, names, places) with sound-alike search, kept by the Publications team.",
+      "Event pages show each design whole at its own shape; tap the arrow to see it on a phone, an Instagram story, the Sambandh app, a TV or the LED wall.",
+      "Drag a file anywhere onto a format page to upload it; a thin bar shows progress, lets you cancel and says Done.",
+      "Past events stay in Events → Past with one small reference image of the main design.",
+      "Each organization now has its own 10 event slots.",
+      "Version history tucks older versions behind the newest two, and phones get a History button.",
+    ],
+  },
+  {
     id: "2026-10-06",
     title: "Review mode, per-org approvers and a maintenance hold",
     items: [

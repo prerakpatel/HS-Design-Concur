@@ -106,8 +106,9 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const iconPill = "rounded-full max-sm:size-10 max-sm:px-0";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-      <UploadDropArea enabled={!!upload && !readOnly} className="min-w-0">
+    // The whole page takes a dropped file as a new version (no outline until a file is dragged over it).
+    <UploadDropArea enabled={!!upload && !readOnly} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="min-w-0">
         {/* Toolbar: what changes the file on the left, how everyone looks at it on the right */}
         <div className="mb-4 flex items-center gap-2">
           {versions.length > 1 && (
@@ -125,7 +126,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
               })}
             </div>
           )}
-          {upload && !readOnly && <UploadPanel slotId={slotId} accept={upload.accept} isPrint={upload.isPrint} nextNumber={upload.nextNumber} variant="pill" label="Upload" compactOnPhone className={iconPill} />}
+          {upload && !readOnly && <UploadPanel slotId={slotId} accept={upload.accept} isPrint={upload.isPrint} nextNumber={upload.nextNumber} variant="pill" label="Upload" compactOnPhone className={iconPill} title="Upload a new version, or drop a file anywhere on this page" />}
           {manage && current && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={`More for v${current.number}`}><Icon name="more_vert" /></Button></DropdownMenuTrigger>
@@ -175,7 +176,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           })}
         </div>
         {open && <Lightbox open onClose={() => setOpen(null)} src={sides.find((s) => s.side === open)?.src ?? null} caption={open} isGif={sides.find((s) => s.side === open)?.isGif} size={sides.find((s) => s.side === open)} />}
-      </UploadDropArea>
+      </div>
 
       <div className="flex flex-col gap-4">
         {/* Status: what everyone needs to know; approvers also decide here on desktop */}
@@ -278,7 +279,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
       )}
       {/* Phones: the decision rides in a fixed bar */}
       {decisionBar && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur md:hidden [&>div]:justify-end">{decisionBar}</div>}
-    </div>
+    </UploadDropArea>
   );
 }
 

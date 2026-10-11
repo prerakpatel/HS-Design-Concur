@@ -12,7 +12,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const { tab = "upcoming" } = await searchParams;
   const { supabase, org, user, isApprover } = await requireActiveUser();
   const { data: events } = await supabase.from("events").select("*").eq("org_id", org.id).is("deleted_at", null).order("event_date", { ascending: true, nullsFirst: false }).returns<EventRow[]>();
-  const { count: used } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "active").is("deleted_at", null);
+  const { count: used } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("org_id", org.id).eq("status", "active").is("deleted_at", null);
   const ids = (events ?? []).map((e) => e.id);
   const { data: slots } = ids.length ? await supabase.from("slots").select("event_id,state,requested,assignee:assignee_id(name,email,avatar_url)").in("event_id", ids) : { data: [] as { event_id: string; state: string; requested: boolean; assignee: { name: string | null; email: string; avatar_url: string | null } | null }[] };
   const agg = new Map<string, { total: number; approved: number; people: { initials: string; avatar: string | null }[]; needsYou: boolean }>();

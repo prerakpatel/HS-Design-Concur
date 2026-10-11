@@ -128,7 +128,7 @@ export async function restoreEvent(eventId: string) {
   if (!event || event.org_id !== org.id || !event.deleted_at) throw new UserError("Nothing to restore");
   if (Date.now() - new Date(event.deleted_at).getTime() > DELETE_RESTORE_DAYS * 86400_000) throw new UserError("The restore window has passed");
   if (event.status === "active") {
-    const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "active").is("deleted_at", null);
+    const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("org_id", org.id).eq("status", "active").is("deleted_at", null);
     if ((count ?? 0) >= EVENT_CAP) throw new UserError(`All ${EVENT_CAP} event slots are in use; free one before restoring.`);
   }
   await supabase.from("events").update({ deleted_at: null }).eq("id", event.id);

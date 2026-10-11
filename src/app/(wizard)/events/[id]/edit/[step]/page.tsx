@@ -65,7 +65,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
   const brief = briefRow;
   const [{ data: slots }, { count }] = await Promise.all([
     supabase.from("slots").select("*,formats(name),users:assignee_id(name,email)").eq("event_id", id).eq("requested", true),
-    supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "active").is("deleted_at", null),
+    supabase.from("events").select("id", { count: "exact", head: true }).eq("org_id", org.id).eq("status", "active").is("deleted_at", null),
   ]);
   const allIssues = event.status === "draft" && (count ?? 0) >= EVENT_CAP ? [...issues, { text: `All ${EVENT_CAP} event slots are in use; publishing is blocked until one frees up.`, step: "event" as const, blocking: true }] : issues;
   return (

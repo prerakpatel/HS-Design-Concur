@@ -8,7 +8,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { supabase, user, orgs, org, isApprover } = await requireActiveUser();
   const sidebarOpen = (await cookies()).get("sidebar_state")?.value !== "false";
   const [{ count }, { data: shared }] = await Promise.all([
-    supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "active").is("deleted_at", null),
+    supabase.from("events").select("id", { count: "exact", head: true }).eq("org_id", org.id).eq("status", "active").is("deleted_at", null),
     supabase.from("changelog_posts").select("release_id"),
   ]);
   const changelog = { releases: RELEASES, unseen: user.changelog_seen !== LATEST_RELEASE.id, canShare: user.role === "core_admin", sharedIds: (shared ?? []).map((r) => r.release_id as string) };

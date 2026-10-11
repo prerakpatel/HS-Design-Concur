@@ -30,7 +30,7 @@ Use these terms exactly. Avoid the synonyms listed.
 | **Review mode** | | Started with the Comment button. Comments are saved as private drafts (`comments.is_draft`, visible only to their author, marked "Not sent") and go out together as one chat/in-app notification when the author presses Send. One comment keeps the classic wording; Request changes publishes any queued comments with it. | batch, pending review |
 | **Maintenance hold** | Core Admin switch (Settings › Maintenance, `app_settings.maintenance`) that puts a "please hold" veil over the app for everyone but Core Admins. Pages stay mounted underneath so typed work survives; open pages poll `/api/status`. | maintenance mode, lockout |
 | **Addressed / Confirmed** | Comment flags: addressed by the designer, confirmed by an approver. | resolved, closed |
-| **Event cap** | 10 non-draft, non-archived events across both orgs. | quota |
+| **Event cap** | 10 non-draft, non-archived events per org (20 across both). | quota |
 | **Purge** | Nightly job 7 days after an event date: keep references, delete everything else, archive the event. | cleanup, GC |
 | **Draft sweep** | Nightly deletion of drafts untouched for 30 days (warning at day 23). | expiry |
 | **Restore window** | The 7 days after a delete in which a Core Admin can undo it. | undelete |

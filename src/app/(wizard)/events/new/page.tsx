@@ -9,7 +9,7 @@ export const metadata = { title: "New event" };
 
 export default async function NewEventPage() {
   const { supabase, org } = await requireActiveUser();
-  const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "active").is("deleted_at", null);
+  const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("org_id", org.id).eq("status", "active").is("deleted_at", null);
   const full = (count ?? 0) >= EVENT_CAP;
   return (
     <WizardShell eventId={null} step="event" title="Tell us about the event" subtitle={`The basics and the words that go on the designs. Anyone in ${org.name} can pick this up later if you save and exit.`}>

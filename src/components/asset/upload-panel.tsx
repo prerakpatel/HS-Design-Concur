@@ -11,7 +11,7 @@ import { errorMessage } from "@/lib/user-error";
 export interface UploadTarget { side: "front" | "back"; replaceVersionId: string | null }
 
 /** Hidden file input + the upload flow. Renders a single Upload button; `openWith` lets a menu start a replace or back-side upload. */
-export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "button", label, compactOnPhone, className }: { slotId: string; accept: string[]; isPrint: boolean; nextNumber: number; variant?: "button" | "dropzone" | "pill"; label?: string; compactOnPhone?: boolean; className?: string }) {
+export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "button", label, compactOnPhone, className, title }: { slotId: string; title?: string; accept: string[]; isPrint: boolean; nextNumber: number; variant?: "button" | "dropzone" | "pill"; label?: string; compactOnPhone?: boolean; className?: string }) {
   const [busy, setBusy] = useState<string | null>(null);
   // Progress lives in a small shared store: the drop zone / design overlay shows it inside the section.
   const setProgress = (next: Progress | null | ((p: Progress | null) => Progress | null)) => uploadState.set(typeof next === "function" ? next(uploadState.get()) : next);
@@ -64,7 +64,7 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
 
   return (
     <div className="contents" data-upload-panel>
-      <Button onClick={() => openWith({ side: "front", replaceVersionId: null })} disabled={!!busy} variant={variant === "pill" ? "default" : "secondary"} className={className} aria-label={compactOnPhone ? (label ?? "Upload") : undefined}>
+      <Button onClick={() => openWith({ side: "front", replaceVersionId: null })} disabled={!!busy} variant={variant === "pill" ? "default" : "secondary"} className={className} title={title} aria-label={compactOnPhone ? (label ?? "Upload") : undefined}>
         <Icon name="upload" /><span className={compactOnPhone && !busy ? "hidden sm:inline" : undefined}>{busy ?? label ?? (nextNumber === 1 ? "Upload design" : "Upload new version")}</span>
       </Button>
       {bridge}

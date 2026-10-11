@@ -142,9 +142,9 @@ export async function publishEvent(eventId: string) {
   if (!horizonOk(event.event_date)) throw new UserError(`Events can be at most ${MONTHS_AHEAD} months out`);
   const { data: brief } = await supabase.from("briefs").select("description").eq("event_id", event.id).maybeSingle();
   if (!brief?.description) throw new UserError("Add the brief before publishing");
-  const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "active").is("deleted_at", null);
+  const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("org_id", org.id).eq("status", "active").is("deleted_at", null);
   if ((count ?? 0) >= EVENT_CAP) {
-    const { data: oldest } = await supabase.from("events").select("title,event_date").eq("status", "active").is("deleted_at", null).order("event_date", { ascending: true }).limit(1).maybeSingle();
+    const { data: oldest } = await supabase.from("events").select("title,event_date").eq("org_id", org.id).eq("status", "active").is("deleted_at", null).order("event_date", { ascending: true }).limit(1).maybeSingle();
     throw new UserError(`All ${EVENT_CAP} event slots are in use. The oldest active event is "${oldest?.title}" (${oldest?.event_date}); it frees a slot a week after its date.`);
   }
   await supabase.from("events").update({ status: "active", published_at: new Date().toISOString() }).eq("id", event.id);

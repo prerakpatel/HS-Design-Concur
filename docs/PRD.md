@@ -221,7 +221,7 @@ All versions are kept until the event purge; with files this small no pruning is
 
 | Rule | Behaviour |
 |---|---|
-| **Event cap** | At most **10 non-draft, non-archived events** across both orgs combined. Each org view shows the shared count ("7 of 10 event slots used across Harisumiran"). |
+| **Event cap** | At most **10 non-draft, non-archived events per org** (20 across both). Each org view shows its own count ("7 of 10 event slots in use"). |
 | **Horizon** | An event date may not be more than **6 months** in the future. |
 | **Cap reached** | Creating (or publishing a draft as) the 11th event is **blocked** with a message naming the oldest event and its date. |
 | **Auto-archive + purge** | Nightly: for events whose date is **≥ 7 days** past: the **primary** format (or, if none was marked, the first approved format) keeps one `reference` image per side from its approved version; every other file, in every other format, is deleted. Text (brief, comments, decisions, activity) is kept. The event becomes **archived** (read-only) in the same pass, which frees its event slot. *(v1.1: the separate 6-month archive rule was folded into this one; it was redundant once archiving happens at purge time.)* |
