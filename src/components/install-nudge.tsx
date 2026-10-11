@@ -17,7 +17,7 @@ const dismissals = () => { try { const n = Number(localStorage.getItem(COUNT_KEY
 const dismiss = () => { const n = dismissals() + 1; write(String(Date.now())); try { localStorage.setItem(COUNT_KEY, String(n)); } catch { /* private mode */ } };
 
 /**
- * A quiet card, a few seconds after the app opens in a browser, saying it can be added as an app. Chrome and Edge
+ * A quiet card (top right on desktop, next to the browser's install icon; above the tab bar on phones), a few seconds after the app opens in a browser, saying it can be added as an app. Chrome and Edge
  * (Android and desktop) can install with one tap, so tapping the card installs. iPhone and iPad cannot be
  * asked programmatically, so the card says where to tap. On Chrome/Edge the whole card is the tap target; the close button hides it for a week; after a second dismissal it stays away.
  * Never shown inside the installed app.
@@ -66,7 +66,7 @@ export function InstallNudge() {
     </>
   );
   return (
-    <div className="animate-nudge fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),12px)+80px)] z-40 md:inset-x-auto md:bottom-6 md:right-6 md:w-[24rem]">
+    <div className="animate-nudge fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),12px)+80px)] z-40 md:inset-x-auto md:bottom-auto md:right-6 md:top-4 md:w-[24rem]">
       <div role="region" aria-label="Add Design & Concur as an app" className="relative overflow-hidden rounded-3xl border-2 border-brand/35 bg-white/60 p-4 text-foreground shadow-[0_18px_50px_-12px_rgba(20,30,60,0.35)] backdrop-blur-2xl">
         {/* Big soft pastel-orange light drifting through the frost. */}
         <div aria-hidden className="pointer-events-none absolute inset-0">

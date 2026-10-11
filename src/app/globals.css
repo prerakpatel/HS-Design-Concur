@@ -101,8 +101,8 @@
   --sidebar-ring: #18181b;
   --chart-1: #ff5a52; --chart-2: #2563eb; --chart-3: #15803d; --chart-4: #d97706; --chart-5: #52525b;
   /* app-specific */
-  --brand: #b96445;
-  --brand-hover: #a55639;
+  --brand: #c47050;
+  --brand-hover: #b2613f;
   --brand-foreground: #ffffff;
   --brand-soft-foreground: #672d15;
   --brand-soft: #fff0ec;
@@ -212,7 +212,10 @@
 
 /* A gentle nudge card: fades in while drifting a few pixels into place. */
 @keyframes nudge-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes nudge-in-down { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
 .animate-nudge { animation: nudge-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+/* On desktop the card sits at the top right, under the browser's install icon, so it drops in from above. */
+@media (min-width: 768px) { .animate-nudge { animation-name: nudge-in-down; } }
 @media (prefers-reduced-motion: reduce) { .animate-nudge { animation: none; } }
 
 /* Drifting colour behind a frosted card (the install nudge). Transform-only, so it stays smooth. */
