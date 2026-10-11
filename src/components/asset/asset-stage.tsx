@@ -295,10 +295,10 @@ function VersionStack({ earlier, eventId, slotId, commentCount, children }: { ea
   const layers = Math.min(2, earlier.length);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <div className="relative" style={{ marginLeft: layers * 8 }} onMouseEnter={show} onMouseLeave={hide}>
-        {layers >= 2 && <span aria-hidden className="absolute -left-4 inset-y-[7px] right-4 rounded-full border border-border bg-card opacity-60" />}
-        {layers >= 1 && <span aria-hidden className="absolute -left-2 inset-y-[3px] right-2 rounded-full border border-border bg-card" />}
-        <PopoverTrigger asChild><button type="button" aria-label={`${earlier.length} earlier version${earlier.length === 1 ? "" : "s"}`} className="absolute inset-y-0 -left-5 z-[1] w-6 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring" /></PopoverTrigger>
+      <div className="relative" style={{ marginLeft: layers * 7 }} onMouseEnter={show} onMouseLeave={hide}>
+        {layers >= 2 && <span aria-hidden className="absolute inset-y-0 -left-[14px] right-[14px] rounded-full border border-border bg-card opacity-60" />}
+        {layers >= 1 && <span aria-hidden className="absolute inset-y-0 -left-[7px] right-[7px] rounded-full border border-border bg-card" />}
+        <PopoverTrigger asChild><button type="button" aria-label={`${earlier.length} earlier version${earlier.length === 1 ? "" : "s"}`} className="absolute inset-y-0 -left-4 z-[1] w-5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring" /></PopoverTrigger>
         <div className="relative z-[2]">{children}</div>
       </div>
       <PopoverContent align="start" className="w-72 rounded-xl p-2" onMouseEnter={show} onMouseLeave={hide}>
