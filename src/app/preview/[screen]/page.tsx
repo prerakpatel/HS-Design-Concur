@@ -53,7 +53,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     <div className="grid gap-10 lg:grid-cols-[1fr_280px]">
       <div className="space-y-10">
         <BriefCard brief={{ ...F.BRIEF_VIEW, inviteText: F.BRIEF }} locked editHref="#" />
-        <FormatGrid eventId="e-1" cards={F.CARDS} canApprove meta={`${ok} approved · ${req.length - ok} in progress · ${F.CARDS.length - req.length} N/A`} />
+        <FormatGrid eventId="e-1" event={{ title: "Diwali Annakut Darshan", date: F.BRIEF_VIEW.date }} cards={F.CARDS} canApprove meta={`${ok} approved · ${req.length - ok} in progress · ${F.CARDS.length - req.length} N/A`} />
       </div>
       <ActivityFeed items={F.ACTIVITY} />
     </div>
