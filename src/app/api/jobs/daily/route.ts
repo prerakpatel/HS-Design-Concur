@@ -133,9 +133,11 @@ export async function GET(req: Request) {
     }
     report.openComments = (report.openComments as number) + all.length;
   }
+  // The whole-channel ping goes out on alternate days; the post itself is daily.
+  const pingToday = Math.floor(new Date(`${today}T00:00:00Z`).getTime() / 86400_000) % 2 === 0;
   for (const [orgId, byAsset] of assetsByOrg) {
     const assets = [...byAsset.values()].sort((x, y) => y.open - x.open).slice(0, 15);
-    await notify(db, [], "comments.pending", { assets, total: byAsset.size, day: today, orgId, pingAll: true, ...(assets.length === 1 ? { eventId: assets[0].eventId, slotId: assets[0].slotId } : {}) }, undefined, { orgId, mention: [] });
+    await notify(db, [], "comments.pending", { assets, total: byAsset.size, day: today, orgId, pingAll: pingToday, ...(assets.length === 1 ? { eventId: assets[0].eventId, slotId: assets[0].slotId } : {}) }, undefined, { orgId, mention: [] });
   }
 
   // 2. Retention (+ tell the creator and the chat that an event was archived)
