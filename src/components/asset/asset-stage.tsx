@@ -296,16 +296,15 @@ function VersionStack({ earlier, eventId, slotId, commentCount, children }: { ea
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <div className="relative flex items-center gap-1 md:block" style={{ marginLeft: undefined }} onMouseEnter={show} onMouseLeave={hide}>
-        {/* Desktop: earlier versions peek out from behind the pill, hover opens the list.
+        {/* Desktop: a history chip peeks out from behind the pill (a fainter one behind it when there are two or more), hover opens the list.
             Phones: a small round history-icon button before the pill (a 14px sliver is too small to tap). */}
-        {layers >= 2 && <span aria-hidden className="absolute inset-y-0 -left-[14px] right-[14px] rounded-full border border-border bg-card opacity-60 max-md:hidden" />}
-        {layers >= 1 && <span aria-hidden className="absolute inset-y-0 -left-[7px] right-[7px] rounded-full border border-border bg-card max-md:hidden" />}
+        {layers >= 2 && <span aria-hidden className="absolute inset-y-0 left-0 right-6 rounded-full border border-border bg-card opacity-60 max-md:hidden" />}
         <PopoverTrigger asChild>
-          <button type="button" aria-label={`${earlier.length} earlier version${earlier.length === 1 ? "" : "s"}`} className="inline-flex shrink-0 items-center justify-center gap-1 rounded-full text-[13px] font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:size-8 max-md:border max-md:border-border max-md:bg-card md:absolute md:inset-y-0 md:-left-4 md:z-[1] md:w-5">
-            <span className="inline-flex items-center md:hidden"><Icon name="history" className="!text-[18px]" /></span>
+          <button type="button" aria-label={`${earlier.length} earlier version${earlier.length === 1 ? "" : "s"}`} className="inline-flex shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring max-md:size-8 max-md:border max-md:border-border max-md:bg-card md:absolute md:inset-y-0 md:left-2 md:right-3 md:z-[1] md:justify-start md:border md:border-border md:bg-card md:pl-2 md:focus-visible:ring-0 md:data-[state=open]:bg-subtle">
+            <Icon name="history" className="!text-[18px]" />
           </button>
         </PopoverTrigger>
-        <div className={cn("relative z-[2]", layers >= 2 ? "md:ml-[14px]" : "md:ml-[7px]")}>{children}</div>
+        <div className="relative z-[2] md:ml-9">{children}</div>
       </div>
       <PopoverContent align="start" className="w-72 rounded-xl p-2" onMouseEnter={show} onMouseLeave={hide}>
         <p className="px-2 pb-1 pt-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Earlier versions</p>

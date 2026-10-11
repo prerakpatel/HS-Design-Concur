@@ -58,7 +58,7 @@ export function InstallNudge() {
   const body = (
     <>
       <p className="text-[15px] font-semibold leading-5">{mode === "install" && !phone ? "Install as an app" : "Add to your home screen"}</p>
-      <p className="mt-0.5 text-sm text-foreground/65">
+      <p className="mt-0.5 text-sm text-white/75">
         {mode === "ios-safari" && <>Tap <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> Share in the toolbar, then Add to Home Screen.</>}
         {mode === "ios-other" && <>Open the browser menu, tap <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> Share, then Add to Home Screen.</>}
         {mode === "install" && (phone ? "Tap to open it like an app." : "Click to open it in its own window.")}
@@ -67,21 +67,15 @@ export function InstallNudge() {
   );
   return (
     <div className="animate-nudge fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),12px)+80px)] z-40 md:inset-x-auto md:bottom-auto md:right-6 md:top-4 md:w-[24rem]">
-      <div role="region" aria-label="Add Design & Concur as an app" className="relative overflow-hidden rounded-3xl border-2 border-brand/35 bg-white/60 p-4 text-foreground shadow-[0_18px_50px_-12px_rgba(20,30,60,0.35)] backdrop-blur-2xl">
-        {/* Big soft pastel-orange light drifting through the frost. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <span className="aurora-a absolute -left-12 -top-16 size-64 rounded-full bg-brand/40 blur-3xl" />
-          <span className="aurora-b absolute -bottom-20 -right-10 size-72 rounded-full bg-warning/35 blur-3xl" />
-          <span className="aurora-c absolute left-1/4 top-0 size-56 rounded-full bg-brand/30 blur-3xl" />
-        </div>
-        <button type="button" onClick={later} aria-label="Dismiss" className="absolute right-3 top-3 z-10 flex size-7 items-center justify-center rounded-full bg-black/5 text-foreground/60 hover:bg-black/10"><Icon name="close" className="!text-[16px]" /></button>
+      <div role="region" aria-label="Add Design & Concur as an app" className="relative overflow-hidden rounded-3xl bg-navy p-4 text-white shadow-[0_18px_50px_-12px_rgba(20,30,60,0.55)]">
+        <button type="button" onClick={later} aria-label="Dismiss" className="absolute right-3 top-3 z-10 flex size-7 items-center justify-center rounded-full bg-white/10 text-white/75 hover:bg-white/20"><Icon name="close" className="!text-[16px]" /></button>
         {/* Tapping the card installs on Chrome/Edge. On iPhone it is instructions only: navigator.share() opens the content
             share sheet, which never offers "Add to Home Screen" (only the browser's own Share does). */}
         <div role={tappable ? "button" : undefined} tabIndex={tappable ? 0 : undefined} onClick={tappable ? install : undefined} onKeyDown={tappable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void install(); } } : undefined} className={"relative flex items-start gap-3.5 pr-8 " + (tappable ? "cursor-pointer" : "")}>
           <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-foreground shadow-sm"><Icon name={phone ? "install_mobile" : "install_desktop"} size={24} /></span>
           <div className="min-w-0 flex-1">{body}</div>
         </div>
-        {mode === "install" && <div className="relative mt-3 flex items-center justify-end gap-2"><button type="button" onClick={later} className="h-9 rounded-full px-4 text-sm font-medium text-foreground/65 hover:bg-black/5">Not now</button><button type="button" onClick={install} className="h-9 rounded-full bg-foreground px-5 text-sm font-semibold text-background shadow-sm hover:bg-foreground/90">{phone ? "Add" : "Install"}</button></div>}
+        {mode === "install" && <div className="relative mt-3 flex items-center justify-end gap-2"><button type="button" onClick={later} className="h-9 rounded-full px-4 text-sm font-medium text-white/80 hover:bg-white/10">Not now</button><button type="button" onClick={install} className="h-9 rounded-full bg-white px-5 text-sm font-semibold text-navy shadow-sm hover:bg-white/90">{phone ? "Add" : "Install"}</button></div>}
       </div>
     </div>
   );
