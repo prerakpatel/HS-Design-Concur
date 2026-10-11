@@ -4,7 +4,7 @@ import { signedUrl } from "@/lib/storage";
 import { formatSize } from "@/lib/labels";
 import { loadGroups, groupHandle } from "@/lib/groups";
 import { orderSlots } from "@/lib/slot-order";
-import { UploadPanel, UploadDropArea } from "@/components/asset/upload-panel";
+import { UploadPanel } from "@/components/asset/upload-panel";
 import { AssetHeader } from "@/components/asset/asset-header";
 import { ReviewActions } from "@/components/asset/review-actions";
 import { PreviewRefresher } from "@/components/asset/preview-refresher";
@@ -89,7 +89,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
       ) : (
         <>
           {!event.brief_locked_at && <p className="text-xs text-muted-foreground">Uploading the first design locks the brief.</p>}
-          {canUpload ? <UploadDropArea label="Drop to upload"><UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={isPrint} nextNumber={1} variant="dropzone" /></UploadDropArea> : <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nothing uploaded yet. The assigned designer will add the first version.</p>}
+          {canUpload ? <UploadPanel slotId={slotId} accept={fmt.allowed_mimes} isPrint={isPrint} nextNumber={1} variant="dropzone" /> : <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nothing uploaded yet. The assigned designer will add the first version.</p>}
         </>
       ) : (
         <>

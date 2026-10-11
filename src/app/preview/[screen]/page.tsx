@@ -9,7 +9,7 @@ import { EventList } from "@/components/events/event-list";
 import { BriefCard, ActivityFeed } from "@/components/events/event-detail";
 import { FormatGrid } from "@/components/events/format-grid";
 import { ArchivedReference } from "@/components/events/archived-reference";
-import { UploadProgress } from "@/components/asset/upload-panel";
+import { UploadProgress, UploadPanel } from "@/components/asset/upload-panel";
 import { UsersList } from "@/components/settings/user-editor";
 import { AccessRequests } from "@/components/settings/access-requests";
 import { GroupsEditor } from "@/components/settings/groups-editor";
@@ -29,7 +29,7 @@ import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
 
 export const dynamic = "force-dynamic";
-const SCREENS = ["events", "event", "event-archived", "upload-progress", "slot", "slot-review", "slot-versions", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
+const SCREENS = ["events", "event", "event-archived", "upload-progress", "slot-empty", "slot", "slot-review", "slot-versions", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
 
 /** Design preview harness. Renders real components with fixture data so screens can be reviewed without a database. */
 export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
@@ -53,6 +53,10 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
   if (screen === "event-archived") return shell(<>
     <PageHeader title="Jal Jhilani Utsav" subtitle="Sun 27 Sep 2026 · Harisumiran Mandir" />
     <div className="space-y-10"><BriefCard brief={{ ...F.BRIEF_VIEW, inviteText: F.BRIEF }} locked editHref="#" /><ArchivedReference src="/preview/flyer.webp" formatName="IG Post" approved={5} requested={5} /></div>
+  </>);
+  if (screen === "slot-empty") return shell(<>
+    <AssetHeader eventId="e-1" eventTitle="Dashera Sabha" formatName="IG Reel / Story" position={{ at: 2, total: 5 }} prev={{ id: "s-1", name: "Mobile" }} next={{ id: "s-3", name: "Sambandh Event" }} />
+    <UploadPanel slotId="s-2" accept={["image/png", "image/jpeg", "image/webp", "image/gif"]} isPrint={false} nextNumber={1} variant="dropzone" />
   </>);
   if (screen === "upload-progress") return shell(<div className="h-[60vh]">
     <UploadProgress p={{ name: "annakut-mobile-v3.png", phase: "upload", pct: 42 }} cancel={noop} />

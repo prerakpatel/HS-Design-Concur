@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, type DragEvent, type ReactNode } from "react";
+import { useRef, useState, useSyncExternalStore, type DragEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,8 @@ export interface UploadTarget { side: "front" | "back"; replaceVersionId: string
 
 /** Hidden file input + the upload flow. Renders a single Upload button; `openWith` lets a menu start a replace or back-side upload. */
 export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "button", label, compactOnPhone, className }: { slotId: string; accept: string[]; isPrint: boolean; nextNumber: number; variant?: "button" | "dropzone" | "pill"; label?: string; compactOnPhone?: boolean; className?: string }) {
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusyState] = useState<string | null>(null);
+  const setBusy = (v: string | null) => { setBusyState(v); uploadBusy.set(v); };
   const [progress, setProgress] = useState<Progress | null>(null);
   const xhr = useRef<XMLHttpRequest | null>(null);
   const [target, setTarget] = useState<UploadTarget>({ side: "front", replaceVersionId: null });
@@ -42,15 +43,29 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
   }
   const openWith = (t: UploadTarget) => { setTarget(t); input.current?.click(); };
 
+  const bridge = <><input ref={input} type="file" accept={accept.join(",")} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f); }} />
+    <UploadBridge openWith={openWith} drop={(f) => handle(f, { side: "front", replaceVersionId: null })} />
+    {progress && <UploadProgress p={progress} cancel={() => xhr.current?.abort()} />}</>;
+
+  // Empty format: the whole section is the drop target, Dropbox-style.
+  if (variant === "dropzone") return (
+    <DropSurface fill onFile={(f) => handle(f, { side: "front", replaceVersionId: null })} className="mt-4 min-h-[calc(100dvh-270px)] md:min-h-[calc(100dvh-170px)]">
+      {(dragging) => <>
+        <p className="mt-7 text-base font-medium">{busy ?? (dragging ? "Drop to upload" : <><span className="md:hidden">Add your design</span><span className="max-md:hidden">Drop your design here</span></>)}</p>
+        <p className="mt-1 text-sm text-muted-foreground max-md:hidden">or</p>
+        <Button onClick={() => openWith({ side: "front", replaceVersionId: null })} disabled={!!busy} size="lg" className="mt-3"><Icon name="upload" />{label ?? "Upload design"}</Button>
+        <p className="mx-auto mt-6 max-w-md text-xs text-muted-foreground">{typesLabel(accept)} up to 8 MB. Shown with a DRAFT mark until approved. Nobody is notified until you send it for review.{isPrint && accept.includes("application/pdf") ? " A two-page PDF fills Front and Back at once." : ""}</p>
+        {bridge}
+      </>}
+    </DropSurface>
+  );
+
   return (
-    <div className={variant === "dropzone" ? "rounded-2xl border border-dashed border-border p-6 text-center" : "contents"} data-upload-panel>
-      <input ref={input} type="file" accept={accept.join(",")} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f); }} />
-      <Button onClick={() => openWith({ side: "front", replaceVersionId: null })} disabled={!!busy} size={variant === "dropzone" ? "lg" : "default"} variant={variant === "pill" || variant === "dropzone" ? "default" : "secondary"} className={className} aria-label={compactOnPhone ? (label ?? "Upload") : undefined}>
+    <div className="contents" data-upload-panel>
+      <Button onClick={() => openWith({ side: "front", replaceVersionId: null })} disabled={!!busy} variant={variant === "pill" ? "default" : "secondary"} className={className} aria-label={compactOnPhone ? (label ?? "Upload") : undefined}>
         <Icon name="upload" /><span className={compactOnPhone && !busy ? "hidden sm:inline" : undefined}>{busy ?? label ?? (nextNumber === 1 ? "Upload design" : "Upload new version")}</span>
       </Button>
-      {variant === "dropzone" && <p className="mt-3 text-xs text-muted-foreground">Drop a file here or tap Upload. {typesLabel(accept)} up to 8 MB. Shown with a DRAFT mark until approved. Nobody is notified until you send it for review.{isPrint && accept.includes("application/pdf") ? " A two-page PDF fills Front and Back at once." : ""}</p>}
-      <UploadBridge openWith={openWith} drop={(f) => handle(f, { side: "front", replaceVersionId: null })} />
-      {progress && <UploadProgress p={progress} cancel={() => xhr.current?.abort()} />}
+      {bridge}
     </div>
   );
 }
@@ -91,26 +106,74 @@ export function UploadProgress({ p, cancel }: { p: Progress; cancel: () => void 
   );
 }
 
+/** Upload state shared with the drop overlay, so the paper stack keeps moving while a file uploads. */
+const uploadBusy = (() => {
+  let v: string | null = null; const subs = new Set<() => void>();
+  return { get: () => v, set: (n: string | null) => { v = n; subs.forEach((f) => f()); }, sub: (f: () => void) => { subs.add(f); return () => { subs.delete(f); }; } };
+})();
+const useUploadBusy = () => useSyncExternalStore(uploadBusy.sub, uploadBusy.get, () => null);
+
 /**
- * Wrap the design viewport: dragging a file over it tints it light blue with a dashed outline and
- * "Drop to upload"; dropping hands the file to the page's UploadPanel. Only files trigger it.
+ * Drag-and-drop target. `fill`: the zone is always visible (empty format). Otherwise it wraps the
+ * design section and appears only while a file is dragged over it, or while that upload runs.
+ * Dashed border marches while dragging and turns colour on hover; the paper stack piles up.
  */
-export function UploadDropArea({ children, enabled = true, label = "Drop to upload a new version", className }: { children: ReactNode; enabled?: boolean; label?: string; className?: string }) {
+function DropSurface({ fill, enabled = true, onFile, className, label, children }: { fill?: boolean; enabled?: boolean; onFile: (f: File) => void; className?: string; label?: string; children: ReactNode | ((dragging: boolean) => ReactNode) }) {
   const [over, setOver] = useState(false);
   const depth = useRef(0);
+  const busy = useUploadBusy();
   const isFiles = (e: DragEvent) => enabled && e.dataTransfer.types.includes("Files");
+  const showOverlay = !fill && enabled && (over || !!busy);
   return (
-    <div className={cn("relative", className)}
+    <div className={cn("group/drop relative", fill && "flex flex-col items-center justify-center rounded-3xl px-6 py-10 text-center transition-colors", fill && over && "bg-info-soft/60", className)}
       onDragEnter={(e) => { if (!isFiles(e)) return; e.preventDefault(); depth.current++; setOver(true); }}
       onDragOver={(e) => { if (!isFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
       onDragLeave={(e) => { if (!isFiles(e)) return; depth.current = Math.max(0, depth.current - 1); if (depth.current === 0) setOver(false); }}
-      onDrop={(e) => { if (!isFiles(e)) return; e.preventDefault(); depth.current = 0; setOver(false); const f = e.dataTransfer.files?.[0]; if (f) dropFile(f); }}>
-      {children}
-      {over && (
-        <div className="pointer-events-none absolute -inset-2 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-info bg-info-soft/70 backdrop-blur-[1px]">
-          <span className="flex items-center gap-2 rounded-full bg-card px-4 py-2 text-sm font-medium text-info-text shadow-sm"><Icon name="upload" className="!text-[18px]" />{label}</span>
+      onDrop={(e) => { if (!isFiles(e)) return; e.preventDefault(); depth.current = 0; setOver(false); const f = e.dataTransfer.files?.[0]; if (f) onFile(f); }}>
+      {fill && <Ants active={over} />}
+      {fill && <PaperStack moving={over || !!busy} />}
+      {typeof children === "function" ? children(over) : children}
+      {showOverlay && (
+        <div className="pointer-events-none absolute -inset-2 z-20 flex flex-col items-center justify-center rounded-3xl bg-info-soft/85 backdrop-blur-[2px]">
+          <Ants active />
+          <PaperStack moving />
+          <p className="mt-6 text-base font-medium text-info-text">{busy ?? label ?? "Drop to upload a new version"}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+/** The design section of a format page: drop a file anywhere on it to upload a new version. */
+export function UploadDropArea({ children, enabled = true, label, className }: { children: ReactNode; enabled?: boolean; label?: string; className?: string }) {
+  return <DropSurface enabled={enabled} label={label} onFile={dropFile} className={className}>{children}</DropSurface>;
+}
+
+/** Dashed outline drawn in SVG so the dashes can march. Colour on hover, brighter and moving while dragging. */
+function Ants({ active }: { active: boolean }) {
+  return (
+    <svg aria-hidden className="pointer-events-none absolute inset-0 size-full overflow-visible">
+      <rect width="100%" height="100%" rx="24" fill="none" strokeDasharray="8 6" vectorEffect="non-scaling-stroke"
+        className={cn("transition-[stroke]", active ? "drop-ants stroke-info stroke-2" : "stroke-foreground/20 stroke-[1.5] group-hover/drop:stroke-info")} />
+    </svg>
+  );
+}
+
+/** Three generic pages, fanned. While a file is dragged or uploading they drop in one by one and pile up, then repeat. */
+function PaperStack({ moving }: { moving: boolean }) {
+  const pages: { r: number; x: number; body: ReactNode }[] = [
+    { r: -12, x: -18, body: <><span className="block h-[38%] rounded-[3px] bg-brand-soft" /><span className="mt-2 block h-1 w-4/5 rounded-full bg-muted-strong" /><span className="mt-1 block h-1 w-3/5 rounded-full bg-muted-strong" /></> },
+    { r: 9, x: 18, body: <>{[90, 70, 85, 60, 75].map((w) => <span key={w} className="mb-1.5 block h-1 rounded-full bg-muted-strong" style={{ width: `${w}%` }} />)}</> },
+    { r: -2, x: 0, body: <><span className="flex h-[52%] items-center justify-center rounded-[3px] bg-info-soft"><span className="size-4 rounded-full bg-info/40" /></span><span className="mt-2 block h-1 w-3/4 rounded-full bg-muted-strong" /><span className="mt-1 block h-1 w-1/2 rounded-full bg-muted-strong" /></> },
+  ];
+  return (
+    <div aria-hidden className="relative h-24 w-28">
+      {pages.map((p, i) => (
+        <div key={i} className={cn("absolute left-1/2 top-1/2 h-[84px] w-16 rounded-md bg-card p-2 shadow-[0_2px_8px_-2px_rgba(0,0,0,.18)] ring-1 ring-black/5", moving && "paper-pile")}
+          style={{ ["--r" as string]: `${p.r}deg`, ["--x" as string]: `${p.x}px`, transform: `translate(calc(-50% + var(--x)), -50%) rotate(var(--r))`, animationDelay: `${i * 0.35}s` }}>
+          {p.body}
+        </div>
+      ))}
     </div>
   );
 }

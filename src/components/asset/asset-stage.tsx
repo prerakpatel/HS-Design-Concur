@@ -107,7 +107,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-      <div className="min-w-0">
+      <UploadDropArea enabled={!!upload && !readOnly} className="min-w-0">
         {/* Toolbar: what changes the file on the left, how everyone looks at it on the right */}
         <div className="mb-4 flex items-center gap-2">
           {versions.length > 1 && (
@@ -143,7 +143,6 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           </div>
         </div>
 
-        <UploadDropArea enabled={!!upload && !readOnly}>
         <div className="flex flex-col items-center gap-8">
           {sides.map((s) => {
             const g = guideGeometry(safe, print, s.width, s.height);
@@ -175,9 +174,8 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
             );
           })}
         </div>
-        </UploadDropArea>
         {open && <Lightbox open onClose={() => setOpen(null)} src={sides.find((s) => s.side === open)?.src ?? null} caption={open} isGif={sides.find((s) => s.side === open)?.isGif} size={sides.find((s) => s.side === open)} />}
-      </div>
+      </UploadDropArea>
 
       <div className="flex flex-col gap-4">
         {/* Status: what everyone needs to know; approvers also decide here on desktop */}

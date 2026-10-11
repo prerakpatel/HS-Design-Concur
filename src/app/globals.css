@@ -243,3 +243,14 @@
 .loader-dot { animation: loader-dot 1s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .page-enter, .page-loader { animation: none; } .loader-dot { animation: none; opacity: 0.8; } }
 
+
+/* Upload drop zone: marching dashed border and the piling paper stack (upload-panel.tsx). */
+@keyframes drop-ants { to { stroke-dashoffset: -28; } }
+.drop-ants { animation: drop-ants 0.9s linear infinite; }
+@keyframes paper-pile {
+  0% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% - 44px)) rotate(calc(var(--r) * 2)); }
+  25%, 80% { opacity: 1; transform: translate(calc(-50% + var(--x)), -50%) rotate(var(--r)); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + 6px)) rotate(var(--r)); }
+}
+.paper-pile { animation: paper-pile 2.1s cubic-bezier(0.2, 0.8, 0.2, 1) infinite both; }
+@media (prefers-reduced-motion: reduce) { .drop-ants, .paper-pile { animation: none; } }
