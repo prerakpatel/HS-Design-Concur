@@ -219,5 +219,7 @@
 @keyframes aurora-c { 0% { transform: translate(0, 0) scale(0.9); } 100% { transform: translate(-80%, 45%) scale(1.35); } }
 .aurora-a { animation: aurora-a 6s ease-in-out infinite alternate; }
 .aurora-b { animation: aurora-b 8s ease-in-out infinite alternate; }
+.aurora-d { animation: aurora-b 7s ease-in-out infinite alternate; }
 .aurora-c { animation: aurora-c 9s ease-in-out infinite alternate; }
-@media (prefers-reduced-motion: reduce) { .aurora-a, .aurora-b, .aurora-c { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .aurora-a, .aurora-b, .aurora-d { animation: aurora-b 7s ease-in-out infinite alternate; }
+.aurora-c { animation: none; } }
