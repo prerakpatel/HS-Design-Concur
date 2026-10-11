@@ -16,6 +16,7 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
     case "version.uploaded": return `${by} sent ${f} v${p.number} for review`;
     case "review.waiting": return `${f} v${p.number} for ${t} has been waiting ${p.days} day${p.days === 1 ? "" : "s"} for review`;
     case "reviews.waiting": return `${p.count} designs are waiting for your review`;
+    case "comments.pending": return `You have ${p.count} comment${p.count === 1 ? "" : "s"} still open. Mark ${p.count === 1 ? "it" : "them"} as done once handled${p.title ? `: ${p.title}` : ""}`;
     case "version.changes_requested": return `${by} requested changes on ${f} v${p.number}`;
     case "version.approved": return `${by} approved ${f} v${p.number}`;
     case "version.reopened": return `${by} reopened ${f} v${p.number} for changes`;
@@ -59,6 +60,10 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
     case "slot.due": return { head: `⏰ ${t} · ${f}`, body: `{@${p.assignee}} this is due ${p.when === "today" ? "today" : "in 3 days"}${p.due ? ` (${chatDate(p.due)})` : ""}.` };
     case "version.uploaded": return { head: `📤 ${t} · ${f}${n}`, body: `Sent for review by ${by}.` };
     case "review.waiting": return { head: `⏳ ${t} · ${f}${n}`, body: `Waiting for review since ${chatDate(p.since)} · ${p.days} day${p.days === 1 ? "" : "s"}. Approve it or request changes.` };
+    case "comments.pending": {
+      const people = (Array.isArray(p.people) ? p.people as { id: string; count: number }[] : []);
+      return { head: "✅ Comments waiting to be marked done", body: [...people.map((x) => `• {@${x.id}} · ${x.count} comment${x.count === 1 ? "" : "s"}`), "Once a comment is handled, tap Mark as done so nobody wonders what is still open."].join("\n") };
+    }
     case "reviews.waiting": {
       const items = (Array.isArray(p.items) ? p.items as { title: string; format: string; number: number; days: number }[] : []);
       const more = Number(p.count) - items.length;

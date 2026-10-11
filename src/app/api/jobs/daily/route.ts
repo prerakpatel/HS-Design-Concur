@@ -7,6 +7,7 @@ import { runRetention } from "@/lib/retention";
 import { refreshStalePreviews } from "@/lib/uploads/refresh-preview";
 import { pruneAllSlots } from "@/lib/uploads/prune";
 import { matchSlackIds } from "@/lib/slack";
+import { mentionIds, groupMentionIds } from "@/lib/rich-text";
 import { postRelease } from "@/lib/changelog";
 import { RELEASES } from "@/config/changelog";
 import { getActiveUser } from "@/lib/auth";
@@ -89,6 +90,47 @@ export async function GET(req: Request) {
     report.unsent = (report.unsent as number) + 1;
   }
 
+  // 1d. Comments that name a person (not a group) and are still open a day later: remind that person to mark them
+  // done, so nothing sits open by mistake. One in-app / push / email reminder per person per day, plus one chat post
+  // per organization listing who has comments waiting.
+  type OpenComment = { id: string; author_id: string; body: string; mentions: string[] | null; versions: { number: number; slots: { id: string; event_id: string; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } } } };
+  const { data: openRaw } = await db.from("comments").select("id,author_id,body,mentions,versions!inner(number,slots!inner(id,event_id,formats(name),events!inner(title,status,org_id,deleted_at)))").eq("is_draft", false).is("addressed_at", null).is("confirmed_at", null).lte("created_at", new Date(Date.now() - 86400_000).toISOString()).limit(2000);
+  const openComments = ((openRaw ?? []) as unknown as OpenComment[]).filter((c) => (c.mentions?.length ?? 0) > 0 && c.versions.slots.events.status === "active" && !c.versions.slots.events.deleted_at);
+  const groupIds = [...new Set(openComments.flatMap((c) => groupMentionIds(c.body)))];
+  const { data: gm } = groupIds.length ? await db.from("group_members").select("group_id,user_id").in("group_id", groupIds) : { data: [] as { group_id: string; user_id: string }[] };
+  const groupMembers = new Map<string, string[]>();
+  for (const m of gm ?? []) groupMembers.set(m.group_id, [...(groupMembers.get(m.group_id) ?? []), m.user_id]);
+  const { data: activeUsers } = await db.from("users").select("id").eq("status", "active");
+  const active = new Set((activeUsers ?? []).map((u) => u.id as string));
+  // person → org → open comments they were named in (never because a group they are in was named)
+  const owed = new Map<string, Map<string, OpenComment[]>>();
+  for (const c of openComments) {
+    const viaGroup = new Set(groupIds.length ? groupMentionIds(c.body).flatMap((g) => groupMembers.get(g) ?? []) : []);
+    const named = new Set(mentionIds(c.body));
+    for (const id of c.mentions ?? []) {
+      if (id === c.author_id || !active.has(id)) continue;
+      if (viaGroup.has(id) && !named.has(id)) continue;
+      const orgs = owed.get(id) ?? new Map<string, OpenComment[]>();
+      const org = c.versions.slots.events.org_id;
+      orgs.set(org, [...(orgs.get(org) ?? []), c]); owed.set(id, orgs);
+    }
+  }
+  report.openComments = 0;
+  const chatByOrg = new Map<string, { id: string; count: number }[]>();
+  for (const [person, orgs] of owed) {
+    const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "comments.pending").contains("payload", { day: today }).limit(1);
+    if (dup?.length) continue;
+    const all = [...orgs.values()].flat();
+    const first = all[0].versions.slots;
+    const places = [...new Map(all.map((c) => [c.versions.slots.id, `${c.versions.slots.events.title} · ${c.versions.slots.formats.name}`])).values()];
+    await notify(db, [person], "comments.pending", { count: all.length, day: today, href: `/events/${first.event_id}/slots/${first.id}`, title: places.slice(0, 3).join(" · ") + (places.length > 3 ? ` · +${places.length - 3} more` : ""), places: places.length });
+    for (const [org, list] of orgs) chatByOrg.set(org, [...(chatByOrg.get(org) ?? []), { id: person, count: list.length }]);
+    report.openComments = (report.openComments as number) + all.length;
+  }
+  for (const [orgId, people] of chatByOrg) {
+    await notify(db, [], "comments.pending", { people: people.sort((a, b) => b.count - a.count).slice(0, 20), day: today, orgId }, undefined, { orgId, mention: people.map((p) => p.id) });
+  }
+
   // 2. Retention (+ tell the creator and the chat that an event was archived)
   const retention = await runRetention(db, { tz, today });
   for (const ev of retention.archivedEvents) await notify(db, [ev.created_by], "event.archived", { eventId: ev.id, title: ev.title }, undefined, { orgId: ev.org_id });
@@ -105,7 +147,7 @@ export async function GET(req: Request) {
       if ("ok" in r) { await db.from("notifications").update({ emailed_at: new Date().toISOString() }).in("id", items.map((n) => n.id)); report.digests = (report.digests as number) + 1; }
     }
     // Instant users also get job-created notifications by email (they bypass the request-time delivery path).
-    const { data: instant } = await db.from("notifications").select("id,user_id,kind,payload,users!inner(email,email_pref,status)").in("kind", ["slot.due", "review.waiting", "reviews.waiting", "draft.expiring", "draft.swept", "devices.refresh"]).is("emailed_at", null).eq("users.email_pref", "instant").eq("users.status", "active");
+    const { data: instant } = await db.from("notifications").select("id,user_id,kind,payload,users!inner(email,email_pref,status)").in("kind", ["slot.due", "review.waiting", "reviews.waiting", "comments.pending", "draft.expiring", "draft.swept", "devices.refresh"]).is("emailed_at", null).eq("users.email_pref", "instant").eq("users.status", "active");
     for (const n of instant ?? []) {
       const u = n.users as unknown as { email: string }; const p = n.payload as Record<string, unknown>;
       const r = await sendEmail(u.email, subjectFor(n.kind as NotificationKind, p), { heading: notificationText(n.kind, p), body: String(p.title ?? ""), cta: { label: "Open Design & Concur", href: appUrl(notificationHref(p)) } });
