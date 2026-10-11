@@ -135,7 +135,7 @@ export async function GET(req: Request) {
   }
   for (const [orgId, byAsset] of assetsByOrg) {
     const assets = [...byAsset.values()].sort((x, y) => y.open - x.open).slice(0, 15);
-    await notify(db, [], "comments.pending", { assets, total: byAsset.size, day: today, orgId, ...(assets.length === 1 ? { eventId: assets[0].eventId, slotId: assets[0].slotId } : {}) }, undefined, { orgId, mention: [] });
+    await notify(db, [], "comments.pending", { assets, total: byAsset.size, day: today, orgId, pingAll: true, ...(assets.length === 1 ? { eventId: assets[0].eventId, slotId: assets[0].slotId } : {}) }, undefined, { orgId, mention: [] });
   }
 
   // 2. Retention (+ tell the creator and the chat that an event was archived)

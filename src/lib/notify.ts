@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { after } from "next/server";
 import { sendEmail, appUrl } from "@/lib/email";
-import { postChat, chat, mention, platformOf, type ChatUser, type ChatImage } from "@/lib/chat";
+import { postChat, chat, mention, everyone, platformOf, type ChatUser, type ChatImage } from "@/lib/chat";
 import { signedUrl } from "@/lib/storage";
 import { sendPush } from "@/lib/push";
 import { notificationText, notificationHref, chatLines } from "@/lib/labels";
@@ -144,7 +144,7 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
       const bodyText = rendered.replace(/\{@([0-9a-f-]{36})\}/g, (_, id) => at(id) || "someone");
       const inlined = new Set([...placeholderIds, ...allHtml.flatMap(mentionIds)]);
       const who = mentions.filter((id) => !inlined.has(id)).map(at).filter(Boolean).join(" ");
-      return postChat(hook, [chat.bold(head), bodyText, who, chat.link(href, "Open in Design & Concur")].filter(Boolean).join("\n"), image);
+      return postChat(hook, [chat.bold(head), payload.pingAll ? everyone(platform) : "", bodyText, who, chat.link(href, "Open in Design & Concur")].filter(Boolean).join("\n"), image);
     }));
     for (const r of results) if ("error" in r) console.error("[chat]", r.error);
   }

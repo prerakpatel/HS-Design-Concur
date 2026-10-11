@@ -33,6 +33,9 @@ export function platformOf(webhookUrl: string): ChatPlatform { return /hooks\.sl
 /** Chat text formatting shared by Google Chat and Slack: *bold*, _italic_, <url|label>. */
 export const chat = { bold: (s: string) => `*${s.replace(/\*/g, "")}*`, link: (url: string, label: string) => `<${url}|${label.replace(/[<>|]/g, "")}>` };
 
+/** Ping everyone in the channel or space: Slack @channel, Google Chat @all. */
+export const everyone = (platform: ChatPlatform) => (platform === "slack" ? "<!channel>" : "<users/all>");
+
 export interface ChatUser { id: string; name: string | null; email: string; slack_user_id: string | null; gchat_user_id: string | null }
 
 /**
