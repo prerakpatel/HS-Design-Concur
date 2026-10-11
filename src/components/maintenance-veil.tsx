@@ -1,9 +1,11 @@
 "use client";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Icon } from "@/components/material-icon";
+import { Button } from "@/components/ui/button";
+import { setMaintenance } from "@/app/actions/admin";
+import { errorMessage } from "@/lib/user-error";
 import type { MaintenanceState } from "@/lib/maintenance";
 
 // icons: construction
@@ -13,13 +15,14 @@ const POLL_MS = 15_000;
 /**
  * The maintenance hold. Sits on top of the app without unmounting it, so anything someone was typing stays put
  * and is there again when the hold lifts. Pages poll /api/status (and re-check when the tab regains focus), so the
- * veil appears and disappears on its own. Core Admins are never blocked: they get a slim banner instead.
+ * veil appears and disappears on its own. Everyone is held, Core Admins included; they get a "Turn off the hold" button on the screen.
  */
 export function MaintenanceVeil({ initial }: { initial: MaintenanceState }) {
   const [state, setState] = useState(initial);
   const router = useRouter();
-  const wasOn = useRef(initial.on && !initial.admin);
-  const blocked = state.on && !state.admin;
+  const wasOn = useRef(initial.on);
+  const [busy, setBusy] = useState(false);
+  const blocked = state.on;
 
   useEffect(() => {
     let alive = true;
@@ -29,7 +32,7 @@ export function MaintenanceVeil({ initial }: { initial: MaintenanceState }) {
         if (!r.ok || !alive) return;
         const next = (await r.json()) as MaintenanceState;
         setState(next);
-        const nowBlocked = next.on && !next.admin;
+        const nowBlocked = next.on;
         if (wasOn.current && !nowBlocked) { toast.success("We’re back. Thanks for waiting."); router.refresh(); }
         wasOn.current = nowBlocked;
       } catch { /* offline or mid-deploy: keep whatever is showing */ }
@@ -48,15 +51,12 @@ export function MaintenanceVeil({ initial }: { initial: MaintenanceState }) {
     return () => others.forEach((el) => el.removeAttribute("inert"));
   }, [blocked]);
 
-  if (state.on && state.admin) {
-    return (
-      <div data-veil className="fixed inset-x-0 top-0 z-[90] flex items-center justify-center gap-3 bg-foreground px-4 py-2 text-sm text-background">
-        <Icon name="construction" className="!text-[18px]" />
-        <span>Maintenance hold is <strong>on</strong>. Everyone except Core Admins sees the hold screen.</span>
-        <Link href="/settings?tab=maintenance" className="font-semibold underline underline-offset-4">Turn off</Link>
-      </div>
-    );
-  }
+  const release = async () => {
+    setBusy(true);
+    try { await setMaintenance(false, ""); setState((st) => ({ ...st, on: false })); wasOn.current = false; toast.success("Hold is off. Everyone is back in."); router.refresh(); }
+    catch (e) { toast.error(errorMessage(e)); }
+    setBusy(false);
+  };
   if (!blocked) return null;
   return (
     <div data-veil role="alertdialog" aria-modal="true" aria-labelledby="hold-title" aria-describedby="hold-text" className="fixed inset-0 z-[100] flex items-center justify-center bg-background/85 p-6 backdrop-blur-md">
@@ -65,6 +65,7 @@ export function MaintenanceVeil({ initial }: { initial: MaintenanceState }) {
         <h2 id="hold-title" className="mt-6 text-2xl font-semibold tracking-[-0.02em]">Please hold</h2>
         <p id="hold-text" className="mt-2 text-base text-muted-foreground">{state.message?.trim() || DEFAULT_HOLD_MESSAGE}</p>
         <p className="mt-6 text-sm text-muted-foreground">Your work is safe. This screen goes away by itself, no need to refresh.</p>
+        {state.admin && <Button className="mt-6" onClick={release} disabled={busy}>{busy ? "Turning off…" : "Turn off the hold"}</Button>}
         <div className="mt-6 flex justify-center gap-1.5" aria-hidden>{[0, 1, 2].map((i) => <span key={i} className="size-2 animate-pulse rounded-full bg-info" style={{ animationDelay: `${i * 200}ms` }} />)}</div>
       </div>
     </div>
