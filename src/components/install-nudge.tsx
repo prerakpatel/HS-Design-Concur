@@ -45,26 +45,34 @@ export function InstallNudge() {
     try { await e.prompt(); const { outcome } = await e.userChoice; write(outcome === "accepted" ? "installed" : String(Date.now())); } catch { write(String(Date.now())); }
     setShow(false);
   };
+  // iOS can't install programmatically, but the Web Share API opens the system share sheet, where "Add to Home
+  // Screen" is one row away. Needs a user gesture, so it hangs off the tap. Cancelling rejects with AbortError.
+  const canShare = mode !== "install" && typeof navigator !== "undefined" && typeof navigator.share === "function";
+  const openShare = async () => {
+    try { await navigator.share({ title: "Design & Concur", url: window.location.origin }); } catch { /* cancelled or unsupported */ }
+  };
   const phone = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
   return (
-    <div role="region" aria-label="Add Design & Concur as an app" className="animate-nudge fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40 overflow-hidden rounded-2xl border border-border/60 bg-card/55 shadow-xl backdrop-blur-xl md:inset-x-auto md:bottom-6 md:right-6 md:w-[22rem]">
-      {/* Slow drifting colour under the frost, to catch the eye without shouting. */}
+    <div role="region" aria-label="Add Design & Concur as an app" className="animate-nudge fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40 overflow-hidden rounded-2xl border border-brand/30 bg-brand-soft shadow-[0_6px_20px_-6px_rgb(0_0_0/0.18)] md:inset-x-auto md:bottom-6 md:right-6 md:w-[22rem]">
+      {/* Slow drifting colour behind the card. Solid brand-soft base so it lifts off the page; blobs sit in the
+          corners and stay saturated, leaving the text zone light for contrast. */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <span className="aurora-a absolute -left-10 -top-12 size-48 rounded-full bg-brand/45 blur-3xl" />
-        <span className="aurora-b absolute -bottom-14 right-0 size-52 rounded-full bg-info/35 blur-3xl" />
-        <span className="aurora-c absolute left-1/3 top-1/3 size-36 rounded-full bg-warning/30 blur-3xl" />
+        <span className="aurora-a absolute -left-8 -top-14 size-44 rounded-full bg-brand/60 blur-2xl" />
+        <span className="aurora-b absolute -bottom-16 -right-6 size-48 rounded-full bg-warning/55 blur-2xl" />
+        <span className="aurora-c absolute -bottom-10 left-1/4 size-32 rounded-full bg-info/25 blur-2xl" />
       </div>
       <div className="relative p-4">
-        <button type="button" onClick={later} aria-label="Dismiss" className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-foreground/5"><Icon name="close" className="!text-[18px]" /></button>
-        <div className="pr-8">
-          <p className="text-[15px] font-semibold">{mode === "install" && !phone ? "Install as an app" : "Add to your home screen"}</p>
-          <p className="mt-0.5 text-sm text-foreground/70">
+        <button type="button" onClick={later} aria-label="Dismiss" className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full text-brand-foreground/70 hover:bg-brand-foreground/10"><Icon name="close" className="!text-[18px]" /></button>
+        <div className={`pr-8 ${canShare ? "cursor-pointer" : ""}`} onClick={canShare ? openShare : undefined}>
+          <p className="text-[15px] font-semibold text-brand-foreground">{mode === "install" && !phone ? "Install as an app" : "Add to your home screen"}</p>
+          <p className="mt-0.5 text-sm text-brand-foreground/80">
             {mode === "ios-safari" && <>Tap <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> Share, then Add to Home Screen.</>}
             {mode === "ios-other" && <>Tap the <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> share icon, then Add to Home Screen.</>}
             {mode === "install" && (phone ? "Open it like an app." : "Open it in its own window.")}
           </p>
         </div>
         {mode === "install" && <div className="mt-3 flex justify-end gap-2"><Button type="button" variant="ghost" onClick={later}>Not now</Button><Button type="button" onClick={install}>{phone ? "Add" : "Install"}</Button></div>}
+        {canShare && <div className="mt-3 flex justify-end"><Button type="button" onClick={openShare}><Icon name="ios_share" className="!text-[18px]" />Open Share</Button></div>}
       </div>
     </div>
   );
