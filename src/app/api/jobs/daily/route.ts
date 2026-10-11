@@ -101,7 +101,11 @@ export async function GET(req: Request) {
   const { data: sharedRows } = await db.from("changelog_posts").select("release_id");
   const shared = new Set((sharedRows ?? []).map((r) => r.release_id as string));
   report.releasesPosted = 0;
-  for (const r of RELEASES.filter((x) => !shared.has(x.id)).reverse()) { const out = await postRelease(db, r.id); if (out.posted) report.releasesPosted = (report.releasesPosted as number) + 1; }
+  // Announce only the newest release. Older ones nobody posted (the job was not running) are marked as shared, not
+  // sent, so a catch-up never floods the channels.
+  const unannounced = RELEASES.filter((x) => !shared.has(x.id));
+  if (unannounced.length > 1) await db.from("changelog_posts").insert(unannounced.slice(1).map((r) => ({ release_id: r.id })));
+  if (unannounced[0]) { const out = await postRelease(db, unannounced[0].id); if (out.posted) report.releasesPosted = 1; }
 
   // 3c. Version files: only the newest two per format keep theirs (safety net for the upload-time prune).
   report.versionsPruned = await pruneAllSlots(db);
