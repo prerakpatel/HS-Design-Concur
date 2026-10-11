@@ -12,6 +12,8 @@ import { ChoiceChips } from "@/components/ui/choice-chips";
 import { StateBadge } from "@/components/state-badge";
 import { Icon } from "@/components/material-icon";
 import { formatSize } from "@/lib/labels";
+import { AspectIcon } from "@/components/aspect-icon";
+import { ratioOf, ratioLabel } from "@/lib/aspect";
 import { saveFormat } from "@/app/actions/formats";
 import type { Format } from "@/lib/types";
 import { errorMessage } from "@/lib/user-error";
@@ -39,6 +41,7 @@ export function FormatsList({ formats }: { formats: Format[] }) {
         {formats.map((f) => (
           <li key={f.id} className={"flex items-center gap-3 py-3 " + (f.active ? "" : "opacity-60")}>
             <button type="button" onClick={() => setOpen(f)} className="-my-1 flex min-w-0 flex-1 items-center gap-4 rounded-xl px-2 py-2 text-left hover:bg-subtle">
+              <AspectIcon ratio={f.allow_custom_size ? null : ratioOf(f.width, f.height)} box={22} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium leading-5">{f.name}</p>
                 <p className="truncate text-[13px] text-muted-foreground">{formatSize(f)}{f.dpi ? ` · ${f.dpi} dpi` : ""} · {FRAMES.find((x) => x.value === f.frame)?.label ?? f.frame}{f.class === "print" ? ` · bleed ${f.bleed_in ?? 0} in` : (f.safe_top || f.safe_bottom || f.safe_left || f.safe_right) ? ` · safe ${f.safe_top}/${f.safe_right}/${f.safe_bottom}/${f.safe_left} px` : ""}</p>
@@ -64,6 +67,8 @@ function FormatPanel({ format, onClose }: { format: Format | "new" | null; onClo
   const [cls, setCls] = useState<"digital" | "print">(f?.class ?? "digital");
   const [custom, setCustom] = useState(f?.allow_custom_size ?? false);
   const [active, setActive] = useState(f?.active ?? true);
+  const [dims, setDims] = useState({ w: String(f?.width ?? ""), h: String(f?.height ?? "") });
+  const ratio = ratioOf(Number(dims.w), Number(dims.h));
   const router = useRouter();
   return (
     <Dialog open={!!format} onOpenChange={(o) => !o && onClose()}>
@@ -82,11 +87,12 @@ function FormatPanel({ format, onClose }: { format: Format | "new" | null; onClo
                 <div className="flex items-center justify-between"><Label>Size</Label><label className="flex items-center gap-2 text-sm text-muted-foreground"><Switch checked={custom} onCheckedChange={setCustom} />Custom per event</label></div>
                 {!custom && (
                   <div className="grid grid-cols-[1fr_1fr_96px] gap-2">
-                    <Input name="width" type="number" step="any" min="0" required defaultValue={f?.width ?? ""} placeholder="W" aria-label="Width" />
-                    <Input name="height" type="number" step="any" min="0" required defaultValue={f?.height ?? ""} placeholder="H" aria-label="Height" />
+                    <Input name="width" type="number" step="any" min="0" required defaultValue={f?.width ?? ""} onChange={(e) => setDims((d) => ({ ...d, w: e.target.value }))} placeholder="W" aria-label="Width" />
+                    <Input name="height" type="number" step="any" min="0" required defaultValue={f?.height ?? ""} onChange={(e) => setDims((d) => ({ ...d, h: e.target.value }))} placeholder="H" aria-label="Height" />
                     <SelectField key={f ? "unit" : cls} name="unit" defaultValue={f?.unit ?? (cls === "print" ? "in" : "px")}><option value="px">px</option><option value="in">in</option></SelectField>
                   </div>
                 )}
+                {!custom && <p className="flex items-center gap-2 text-sm text-muted-foreground"><AspectIcon ratio={ratio} box={22} />{ratio ? <>Shape {ratioLabel(ratio)}. Drawn from the size.</> : "Type a width and height to see its shape."}</p>}
                 {custom && <p className="text-sm text-muted-foreground">The width and height are typed in when the event is set up (like the LED wall).</p>}
               </div>
               {cls === "print" ? (

@@ -11,6 +11,7 @@ import { ChatHandles } from "@/components/chat-handles";
 import { WhatsNewButton } from "@/components/whats-new";
 
 // icons: account_circle chevron_right check settings notifications logout
+export interface ProfileGroup { id: string; name: string; hears: string; mine: boolean; members: { name: string; initials: string; avatar?: string | null }[] }
 export interface ProfileUser { name: string; email: string; roles: string[]; initials: string; avatar?: string | null; slackId: string | null; gchatLinked: boolean; whatsNewUnseen?: boolean }
 
 /**
@@ -18,7 +19,7 @@ export interface ProfileUser { name: string; email: string; roles: string[]; ini
  * and sign-out. On phones this is the fourth tab and replaces the old top bar; on desktop the sidebar covers the
  * same ground, so the page is just a plain fallback.
  */
-export function ProfileView({ user, orgs, currentOrgId }: { user: ProfileUser; orgs: Organization[]; currentOrgId: string }) {
+export function ProfileView({ user, orgs, currentOrgId, groups = [] }: { user: ProfileUser; orgs: Organization[]; currentOrgId: string; groups?: ProfileGroup[] }) {
   const currentOrg = orgs.find((o) => o.id === currentOrgId);
   const row = "flex h-14 items-center gap-4 px-4 text-sm";
   return (
@@ -43,6 +44,22 @@ export function ProfileView({ user, orgs, currentOrgId }: { user: ProfileUser; o
         </ul>
         {orgs.length > 1 && <p className="mt-2 px-1 text-xs text-muted-foreground">Events, formats and people are per organization. Switch here to see the other one.</p>}
       </section>
+
+      {groups.length > 0 && (
+        <section>
+          <h2 className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Groups in {currentOrg?.short_name ?? "this organization"}</h2>
+          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
+            {groups.map((g) => (
+              <li key={g.id} className="space-y-2.5 px-4 py-3.5">
+                <div className="flex items-center gap-2"><p className="min-w-0 flex-1 truncate text-sm font-medium">{g.name}</p>{g.mine && <span className="shrink-0 rounded-full bg-info-soft px-2 py-0.5 text-xs font-medium text-info-text">You’re in</span>}</div>
+                <p className="text-[13px] text-muted-foreground">{g.hears}</p>
+                <ul className="flex flex-wrap gap-1.5">{g.members.map((m) => <li key={m.name} className="inline-flex h-7 items-center gap-1.5 rounded-full bg-muted pl-1 pr-2.5 text-[13px]"><UserAvatar initials={m.initials} src={m.avatar} size={24} className="scale-[.83]" />{m.name}</li>)}</ul>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 px-1 text-xs text-muted-foreground">Groups decide which chat channels posts go to. Core Admins manage them in Settings.</p>
+        </section>
+      )}
 
       <ChatHandles slackId={user.slackId} gchatLinked={user.gchatLinked} orgName={currentOrg?.short_name ?? "the team"} />
 

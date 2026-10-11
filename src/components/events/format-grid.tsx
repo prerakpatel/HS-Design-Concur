@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { AspectIcon } from "@/components/aspect-icon";
 import { StateBadge, type BadgeState } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
 import { Icon } from "@/components/material-icon";
@@ -64,7 +65,7 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta, downloada
                   {c.isPrimary && <span className={cn("absolute top-3 rounded-full bg-brand px-2.5 py-1 text-xs font-medium text-brand-foreground shadow-sm", selectable ? "left-11" : "left-3")}>Primary</span>}
                 </div>
                 <div className="space-y-1.5 p-3.5">
-                  <p className="truncate text-sm font-medium leading-5">{c.name}</p>
+                  <p className="flex items-center gap-2 text-sm font-medium leading-5"><AspectIcon size={c.size} box={16} /><span className="truncate">{c.name}</span></p>
                   <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm text-muted-foreground"><span>{c.size}</span>{c.due && <span className="ml-auto text-xs">Due {format(new Date(c.due + "T00:00:00"), "d MMM")}</span>}</p>
                   {c.assignee && <p className="flex items-center gap-2 pt-1 text-sm text-muted-foreground"><UserAvatar initials={c.assignee.initials} src={c.assignee.avatar} size={24} /><span className="truncate">{c.assignee.name}</span></p>}
                 </div>

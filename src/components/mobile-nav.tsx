@@ -12,7 +12,7 @@ const TABS = [
   { href: "/profile", label: "Profile", icon: "account_circle" },
 ];
 
-const isTaskScreen = (path: string) => /\/events\/[^/]+\/slots\/|\/preview\/slot(-review)?$/.test(path);
+const isTaskScreen = (path: string) => /\/events\/[^/]+\/slots\/|\/preview\/slot(-review|-versions)?$/.test(path);
 
 export function MobileNav({ user }: { user: { initials: string; avatar?: string | null } }) {
   const pathname = usePathname();

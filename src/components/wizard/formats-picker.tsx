@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { SelectField } from "@/components/ui/select-field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AspectIcon } from "@/components/aspect-icon";
 import { Icon } from "@/components/material-icon";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -40,7 +41,7 @@ export function FormatsPicker({ rows }: { rows: FormatRow[] }) {
         {digital.map((r) => (
           <li key={r.slotId} className={cn("rounded-2xl px-4 py-3.5 transition-colors", primary === r.slotId ? "bg-brand-soft/70" : on.has(r.slotId) ? "bg-subtle" : "")}>
             <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1"><p className="text-sm font-medium">{r.name}</p><p className="mt-0.5 text-sm text-muted-foreground">{r.size}</p></div>
+              <div className="flex min-w-0 flex-1 items-start gap-3"><AspectIcon size={r.size} className="mt-0.5" /><div className="min-w-0"><p className="text-sm font-medium">{r.name}</p><p className="mt-0.5 text-sm text-muted-foreground">{r.size}</p></div></div>
               <NeedChips label={r.name} isOn={on.has(r.slotId)} onChange={(v) => need(r.slotId, v)} />
             </div>
             {on.has(r.slotId) && <RowExtras row={r} primary={primary} onPrimary={(id) => setPrimary(primary === id ? "" : id)} noteOpen={notesOpen.has(r.slotId)} onOpenNote={(id) => setNotesOpen((s) => new Set(s).add(id))} />}
@@ -49,7 +50,7 @@ export function FormatsPicker({ rows }: { rows: FormatRow[] }) {
         {print.length > 0 && (
           <li className={cn("rounded-2xl px-4 py-3.5 transition-colors", printOn && print.some((r) => r.slotId === primary) ? "bg-brand-soft/70" : printOn ? "bg-subtle" : "")}>
             <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1"><p className="text-sm font-medium">Print</p><p className="mt-0.5 text-sm text-muted-foreground">{printOn ? "Sizes include the 0.125 in bleed." : "Invitation card or flyer."}</p></div>
+              <div className="flex min-w-0 flex-1 items-start gap-3"><AspectIcon ratio={null} className="mt-0.5" /><div className="min-w-0"><p className="text-sm font-medium">Print</p><p className="mt-0.5 text-sm text-muted-foreground">{printOn ? "Sizes include the 0.125 in bleed." : "Invitation card or flyer."}</p></div></div>
               <NeedChips label="Print" isOn={printOn} onChange={(v) => { setPrintOn(v); if (!v && print.some((r) => r.slotId === primary)) setPrimary(""); }} />
             </div>
             {printOn && (
@@ -62,9 +63,16 @@ export function FormatsPicker({ rows }: { rows: FormatRow[] }) {
                     <div key={i}>
                       <input type="hidden" name={`print_orig_${i}`} value={it.orig ?? ""} /><input type="hidden" name={`print_pick_${i}`} value={it.pick} />
                       <div className="flex items-center gap-2">
-                        <SelectField value={it.pick} onChange={(e) => setPick(i, e.target.value)} aria-label={i === 0 ? "Print size" : `Print item ${i + 1}`} className="min-w-0 flex-1 sm:max-w-xs">
-                          {print.filter((r) => r.slotId === it.pick || !chosenPrint.has(r.slotId)).map((r) => <option key={r.slotId} value={r.slotId}>{r.name.replace(/^Print\s+/i, "")}{r.hasVersions ? " · has designs" : ""}</option>)}
-                        </SelectField>
+                        <Select value={it.pick} onValueChange={(v) => setPick(i, v)}>
+                          <SelectTrigger aria-label={i === 0 ? "Print size" : `Print item ${i + 1}`} className="h-11 w-full min-w-0 rounded-lg bg-card px-3.5 sm:max-w-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {print.filter((r) => r.slotId === it.pick || !chosenPrint.has(r.slotId)).map((r) => (
+                              <SelectItem key={r.slotId} value={r.slotId} className="h-11 gap-2.5 md:h-10">
+                                <AspectIcon size={r.size} /><span>{r.name.replace(/^Print\s+/i, "")}{r.hasVersions ? " · has designs" : ""}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         {items.length > 1 && <button type="button" onClick={() => removeItem(i)} className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Remove</button>}
                       </div>
                       {moving && <p className="mt-1.5 text-[13px] text-muted-foreground">The designs and comments on {origRow!.name.replace(/^Print\s+/i, "")} move to this size when you save.</p>}

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { addComment, sendCommentBatch, discardCommentBatch, setCommentFlag, edit
 import { assignSlot } from "@/app/actions/events";
 import { CommentEditor } from "@/components/rich/comment-editor";
 import { RichBody } from "@/components/rich/rich-body";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SelectField } from "@/components/ui/select-field";
 import { relativeTime } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -97,6 +98,9 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
 
   const hasGuides = sides.some((s) => { const g = guideGeometry(safe, print, s.width, s.height); return g.cut || g.safe.top + g.safe.right + g.safe.bottom + g.safe.left > 0; });
   const current = versions.find((v) => v.id === currentVersionId) ?? null;
+  const byNumber = [...versions].sort((a, b) => a.number - b.number);
+  const shownVersions = byNumber.filter((v, i) => i >= byNumber.length - 2 || v.id === currentVersionId);
+  const earlierVersions = byNumber.filter((v) => !shownVersions.includes(v));
   const manage = !readOnly && !!current?.canManage && !!upload;
   const pill = "rounded-full";
   const iconPill = "rounded-full max-sm:size-10 max-sm:px-0";
@@ -108,11 +112,17 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
         <div className="mb-4 flex items-center gap-2">
           {versions.length > 1 && (
             <div className="flex items-center gap-1" role="tablist" aria-label="Versions">
-              {[...versions].sort((a, b) => a.number - b.number).map((v) => (
-                <Button key={v.id} asChild variant="outline" role="tab" aria-selected={currentVersionId === v.id} title={v.purged ? `v${v.number}: comments only, files removed` : undefined} className={cn(pill, "px-3.5", v.purged && currentVersionId !== v.id && "border-dashed text-muted-foreground", currentVersionId === v.id && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")}>
-                  <Link href={`/events/${eventId}/slots/${slotId}?v=${v.number}`}>v{v.number}{v.decision === "approved" && <Icon name="check" className="!text-[16px]" />}</Link>
-                </Button>
-              ))}
+              {shownVersions.map((v, idx) => {
+                const pillEl = (
+                  <Button key={v.id} asChild variant="outline" role="tab" aria-selected={currentVersionId === v.id} title={v.purged ? `v${v.number}: comments only, files removed` : undefined} className={cn(pill, "px-3.5", v.purged && currentVersionId !== v.id && "border-dashed text-muted-foreground", currentVersionId === v.id && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")}>
+                    <Link href={`/events/${eventId}/slots/${slotId}?v=${v.number}`}>v{v.number}{v.decision === "approved" && <Icon name="check" className="!text-[16px]" />}</Link>
+                  </Button>
+                );
+                // Only the two newest versions are pills. The older of the two has the earlier ones peeking out from behind it.
+                return idx === 0 && earlierVersions.length > 0
+                  ? <VersionStack key={v.id} earlier={earlierVersions} eventId={eventId} slotId={slotId} commentCount={(n) => comments.filter((c) => c.version === n && !c.draft).length}>{pillEl}</VersionStack>
+                  : pillEl;
+              })}
             </div>
           )}
           {upload && !readOnly && <UploadPanel slotId={slotId} accept={upload.accept} isPrint={upload.isPrint} nextNumber={upload.nextNumber} variant="pill" label="Upload" compactOnPhone className={iconPill} />}
@@ -269,5 +279,39 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
       {/* Phones: the decision rides in a fixed bar */}
       {decisionBar && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur md:hidden [&>div]:justify-end">{decisionBar}</div>}
     </div>
+  );
+}
+
+/**
+ * The pill of the older of the two newest versions, with the earlier versions drawn as cards peeking out from behind
+ * it. Hover (mouse) or tap (touch) opens a short read-only list of them: their files are gone, only comments remain.
+ */
+function VersionStack({ earlier, eventId, slotId, commentCount, children }: { earlier: VersionChip[]; eventId: string; slotId: string; commentCount: (n: number) => number; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverable = () => typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
+  const show = () => { if (timer.current) clearTimeout(timer.current); if (hoverable()) setOpen(true); };
+  const hide = () => { if (timer.current) clearTimeout(timer.current); timer.current = setTimeout(() => setOpen(false), 140); };
+  const layers = Math.min(2, earlier.length);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <div className="relative" style={{ marginLeft: layers * 8 }} onMouseEnter={show} onMouseLeave={hide}>
+        {layers >= 2 && <span aria-hidden className="absolute -left-4 inset-y-[7px] right-4 rounded-full border border-border bg-card opacity-60" />}
+        {layers >= 1 && <span aria-hidden className="absolute -left-2 inset-y-[3px] right-2 rounded-full border border-border bg-card" />}
+        <PopoverTrigger asChild><button type="button" aria-label={`${earlier.length} earlier version${earlier.length === 1 ? "" : "s"}`} className="absolute inset-y-0 -left-5 z-[1] w-6 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring" /></PopoverTrigger>
+        <div className="relative z-[2]">{children}</div>
+      </div>
+      <PopoverContent align="start" className="w-72 rounded-xl p-2" onMouseEnter={show} onMouseLeave={hide}>
+        <p className="px-2 pb-1 pt-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Earlier versions</p>
+        <ul>
+          {[...earlier].reverse().map((v) => {
+            const n = commentCount(v.number);
+            const label = <span className="whitespace-nowrap"><span className="font-medium">v{v.number}</span><span className="text-muted-foreground">{v.purged ? " · files removed" : ""} · {n} comment{n === 1 ? "" : "s"}</span></span>;
+            return <li key={v.id}>{v.purged ? <p className="px-2 py-1.5 text-sm">{label}</p> : <Link href={`/events/${eventId}/slots/${slotId}?v=${v.number}`} className="block rounded-lg px-2 py-1.5 text-sm hover:bg-subtle" onClick={() => setOpen(false)}>{label}</Link>}</li>;
+          })}
+        </ul>
+        <p className="px-2 pt-1.5 text-[13px] text-muted-foreground">Only the two newest versions keep their files. Their comments stay in the thread.</p>
+      </PopoverContent>
+    </Popover>
   );
 }
