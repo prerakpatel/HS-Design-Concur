@@ -14,7 +14,7 @@ const write = (v: string) => { try { localStorage.setItem(KEY, v); } catch { /* 
 /**
  * A quiet card, a few seconds after the app opens in a browser, saying it can be added as an app. Chrome and Edge
  * (Android and desktop) can install with one tap, so tapping the card installs. iPhone and iPad cannot be
- * asked programmatically, so the card says where to tap. The whole card is the tap target; the close button hides it for a month.
+ * asked programmatically, so the card says where to tap. On Chrome/Edge the whole card is the tap target; the close button hides it for a month.
  * Never shown inside the installed app.
  */
 export function InstallNudge() {
@@ -47,20 +47,14 @@ export function InstallNudge() {
     try { await e.prompt(); const { outcome } = await e.userChoice; write(outcome === "accepted" ? "installed" : String(Date.now())); } catch { write(String(Date.now())); }
     setShow(false);
   };
-  // iOS can't install programmatically, but the Web Share API opens the system share sheet, where "Add to Home
-  // Screen" is one row away. Needs a user gesture, so it hangs off the tap. Cancelling rejects with AbortError.
-  const canShare = mode !== "install" && typeof navigator !== "undefined" && typeof navigator.share === "function";
-  const openShare = async () => {
-    try { await navigator.share({ title: "Design & Concur", url: window.location.origin }); } catch { /* cancelled or unsupported */ }
-  };
   const phone = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
-  const tappable = mode === "install" || canShare;
+  const tappable = mode === "install";
   const body = (
     <>
       <p className="text-[15px] font-semibold leading-5">{mode === "install" && !phone ? "Install as an app" : "Add to your home screen"}</p>
       <p className="mt-0.5 text-sm text-foreground/65">
-        {mode === "ios-safari" && <>Tap <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> Share, then Add to Home Screen.</>}
-        {mode === "ios-other" && <>Tap the <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> share icon, then Add to Home Screen.</>}
+        {mode === "ios-safari" && <>Tap <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> Share in the toolbar, then Add to Home Screen.</>}
+        {mode === "ios-other" && <>Open the browser menu, tap <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> Share, then Add to Home Screen.</>}
         {mode === "install" && (phone ? "Tap to open it like an app." : "Click to open it in its own window.")}
       </p>
     </>
@@ -75,8 +69,9 @@ export function InstallNudge() {
           <span className="aurora-c absolute left-1/4 top-0 size-56 rounded-full bg-brand/30 blur-3xl" />
         </div>
         <button type="button" onClick={later} aria-label="Dismiss" className="absolute right-3 top-3 z-10 flex size-7 items-center justify-center rounded-full bg-black/5 text-foreground/60 hover:bg-black/10"><Icon name="close" className="!text-[16px]" /></button>
-        {/* Tapping the card does the useful thing: install on Chrome/Edge, open the share sheet on iPhone. */}
-        <div role={tappable ? "button" : undefined} tabIndex={tappable ? 0 : undefined} onClick={tappable ? (mode === "install" ? install : openShare) : undefined} onKeyDown={tappable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void (mode === "install" ? install() : openShare()); } } : undefined} className={"relative flex items-start gap-3.5 pr-8 " + (tappable ? "cursor-pointer" : "")}>
+        {/* Tapping the card installs on Chrome/Edge. On iPhone it is instructions only: navigator.share() opens the content
+            share sheet, which never offers "Add to Home Screen" (only the browser's own Share does). */}
+        <div role={tappable ? "button" : undefined} tabIndex={tappable ? 0 : undefined} onClick={tappable ? install : undefined} onKeyDown={tappable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void install(); } } : undefined} className={"relative flex items-start gap-3.5 pr-8 " + (tappable ? "cursor-pointer" : "")}>
           <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-foreground shadow-sm"><Icon name={phone ? "install_mobile" : "install_desktop"} size={24} /></span>
           <div className="min-w-0 flex-1">{body}</div>
         </div>
