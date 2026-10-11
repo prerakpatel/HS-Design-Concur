@@ -107,8 +107,8 @@
   --brand-hover: #b2613f;
   --brand-foreground: #ffffff;
   --brand-soft-foreground: #672d15;
-  /* Material 3 inverse surface: the dark slate used for snackbars and floating prompts. */
-  --inverse-surface: #2f3033;
+  /* Material 3 dark surface (neutral 6): the near-black used for snackbars and floating prompts. */
+  --inverse-surface: #131316;
   --inverse-on-surface: #f1f0f4;
   --brand-soft: #fff0ec;
   --navy: #1e3a5f;
