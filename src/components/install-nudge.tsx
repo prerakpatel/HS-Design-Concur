@@ -63,18 +63,25 @@ export function InstallNudge() {
     </>
   );
   return (
-    <div role="region" aria-label="Add Design & Concur as an app" className="animate-nudge fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40 overflow-hidden rounded-2xl border border-brand/25 bg-card shadow-[0_6px_20px_-6px_rgb(0_0_0/0.16)] md:inset-x-auto md:bottom-6 md:right-6 md:w-[22rem]">
-      {/* Soft, bright colour drifting behind the card. Pastel tints only (peach, butter, sky, mint), so the navy text always has a light ground. */}
+    <div role="region" aria-label="Add Design & Concur as an app" className="animate-nudge fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40 overflow-hidden rounded-2xl border border-white/30 bg-primary text-white shadow-xl ring-1 ring-inset ring-white/10 md:inset-x-auto md:bottom-6 md:right-6 md:w-[22rem]">
+      {/* Three palette colours (navy, blue, coral) drifting slowly under the text. */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <span className="aurora-a absolute -left-6 -top-10 size-56 rounded-full bg-brand/35 blur-2xl" />
-        <span className="aurora-b absolute -bottom-12 -right-4 size-64 rounded-full bg-warning-soft blur-2xl" />
-        <span className="aurora-d absolute -top-8 right-8 size-44 rounded-full bg-success-soft blur-2xl" />
-        <span className="aurora-c absolute -bottom-8 left-1/4 size-52 rounded-full bg-info-soft blur-2xl" />
+        <span className="aurora-a absolute -left-10 -top-16 size-52 rounded-full bg-info/90 blur-2xl" />
+        <span className="aurora-b absolute -bottom-16 -right-6 size-56 rounded-full bg-brand/80 blur-2xl" />
+        <span className="aurora-c absolute left-1/4 top-1/3 size-32 rounded-full bg-info/50 blur-2xl" />
       </div>
-      {tappable
-        ? <button type="button" onClick={mode === "install" ? install : openShare} className="relative block w-full p-4 pr-12 text-left transition-transform active:scale-[0.99]">{body}</button>
-        : <div className="relative p-4 pr-12">{body}</div>}
-      <button type="button" onClick={later} aria-label="Dismiss" className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full text-navy/70 hover:bg-navy/10"><Icon name="close" className="!text-[18px]" /></button>
+      <div className="relative p-4">
+        <button type="button" onClick={later} aria-label="Dismiss" className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full text-white/80 hover:bg-white/15"><Icon name="close" className="!text-[18px]" /></button>
+        <div className="pr-8">
+          <p className="text-[15px] font-semibold">{mode === "install" && !phone ? "Install as an app" : "Add to your home screen"}</p>
+          <p className="mt-0.5 text-sm text-white/85">
+            {mode === "ios-safari" && <>Tap <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> Share, then Add to Home Screen.</>}
+            {mode === "ios-other" && <>Tap the <Icon name="ios_share" className="!text-[16px] align-[-3px]" /> share icon, then Add to Home Screen.</>}
+            {mode === "install" && (phone ? "Open it like an app." : "Open it in its own window.")}
+          </p>
+        </div>
+        {mode === "install" && <div className="mt-3 flex items-center justify-end gap-2"><button type="button" onClick={later} className="h-10 rounded-full px-4 text-sm font-medium text-white/85 hover:bg-white/15">Not now</button><button type="button" onClick={install} className="h-10 rounded-full bg-white px-5 text-sm font-semibold text-primary shadow-sm hover:bg-white/90">{phone ? "Add" : "Install"}</button></div>}
+      </div>
     </div>
   );
 }
