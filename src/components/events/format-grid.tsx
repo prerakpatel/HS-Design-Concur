@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { AspectIcon } from "@/components/aspect-icon";
+import { FormatThumb, type FrameKind } from "@/components/events/format-thumb";
 import { StateBadge, type BadgeState } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
 import { Icon } from "@/components/material-icon";
@@ -15,7 +16,7 @@ import { approveMany } from "@/app/actions/reviews";
 import { cn } from "@/lib/utils";
 
 // icons: download
-export interface FormatCardData { slotId: string; name: string; size: string; state: BadgeState; requested: boolean; version: number | null; versionId: string | null; uploadedByMe?: boolean; thumb: string | null; due: string | null; assignee: { name: string; initials: string; avatar?: string | null } | null; isPrimary?: boolean }
+export interface FormatCardData { slotId: string; name: string; size: string; state: BadgeState; requested: boolean; version: number | null; versionId: string | null; uploadedByMe?: boolean; thumb: string | null; frame?: FrameKind; due: string | null; assignee: { name: string; initials: string; avatar?: string | null } | null; isPrimary?: boolean }
 
 /**
  * Format cards: media-first, badge and version overlaid, 2 columns on phones, 3 on desktop.
@@ -50,15 +51,15 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta, downloada
       </div>} />
       {/* Bulk approve: approvers get a checkbox on each in-review card (hover on desktop, always on touch). Ticking one brings up the action bar. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">
-        {visible.map((c) => {
+        {visible.map((c, i) => {
           const selectable = canBulk && eligible.some((e) => e.slotId === c.slotId);
           const on = picked.includes(c.slotId);
           const toggle = () => setPicked((p) => on ? p.filter((x) => x !== c.slotId) : [...p, c.slotId]);
           return (
             <div key={c.slotId} className={cn("group relative", selecting && !selectable && "opacity-55")}>
               <Link href={`/events/${eventId}/slots/${c.slotId}`} className={cn("block w-full overflow-hidden rounded-2xl border bg-card text-left transition", "border-border hover:border-foreground/25 hover:shadow-sm", !c.requested && "opacity-55")}>
-                <div className={"relative aspect-[5/4] " + (c.thumb ? "bg-canvas" : "bg-muted")}>
-                  {c.thumb && <img src={c.thumb} alt="" className="absolute inset-0 size-full object-cover" />}
+                <div className={"relative aspect-[5/4] overflow-hidden " + (c.thumb ? "bg-canvas" : "bg-muted")}>
+                  {c.thumb && <FormatThumb src={c.thumb} size={c.size} frame={c.frame} index={i} />}
                   {!c.thumb && c.requested && <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><Icon name="add_photo_alternate" size={24} /></div>}
                   <div className="absolute bottom-3 left-3"><StateBadge state={c.requested ? c.state : "na"} /></div>
                   {c.version != null && <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium shadow-sm">v{c.version}</span>}

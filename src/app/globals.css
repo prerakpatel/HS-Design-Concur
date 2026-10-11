@@ -242,3 +242,12 @@
 @keyframes loader-dot { 0%, 70%, 100% { transform: translateY(0); opacity: 0.45; } 35% { transform: translateY(-7px); opacity: 1; } }
 .loader-dot { animation: loader-dot 1s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .page-enter, .page-loader { animation: none; } .loader-dot { animation: none; opacity: 0.8; } }
+
+/* Format tiles (event page): the asset sits at its own ratio, then slowly fades into a minimal
+   device frame and back. Plain hold ≈ 3.6s, framed hold ≈ 3.6s. Reduced motion keeps the plain asset. */
+@keyframes frame-bezel { 0%, 40% { opacity: 0; } 60%, 100% { opacity: 1; } }
+@keyframes frame-body { 0%, 40% { transform: scale(1); } 60%, 100% { transform: scale(0.86); } }
+.frame-bezel { opacity: 0; animation: frame-bezel 4.5s ease-in-out infinite alternate; }
+.frame-body { animation: frame-body 4.5s ease-in-out infinite alternate; }
+.group:hover .frame-bezel, .group:hover .frame-body { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .frame-bezel, .frame-body { animation: none; } }
