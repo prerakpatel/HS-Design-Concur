@@ -70,14 +70,20 @@ export function InstallNudge() {
       {/* Two quiet layers peek out underneath, like a stack of notifications. */}
       <span aria-hidden className="absolute inset-x-5 -bottom-2 h-6 rounded-b-3xl border border-white/60 bg-white/40 shadow-md backdrop-blur-md" />
       <span aria-hidden className="absolute inset-x-9 -bottom-3.5 h-6 rounded-b-3xl border border-white/40 bg-white/25 backdrop-blur-md" />
-      <div role="region" aria-label="Add Design & Concur as an app" className="relative overflow-hidden rounded-3xl border border-white/70 bg-gradient-to-br from-white/85 via-white/70 to-brand-soft/70 p-4 text-foreground shadow-[0_18px_50px_-12px_rgba(20,30,60,0.35)] ring-1 ring-black/5 backdrop-blur-2xl">
-        <button type="button" onClick={later} aria-label="Dismiss" className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-black/5 text-foreground/60 hover:bg-black/10"><Icon name="close" className="!text-[16px]" /></button>
+      <div role="region" aria-label="Add Design & Concur as an app" className="relative overflow-hidden rounded-3xl border-2 border-brand/35 bg-white/60 p-4 text-foreground shadow-[0_18px_50px_-12px_rgba(20,30,60,0.35)] backdrop-blur-2xl">
+        {/* Big soft pastel-orange light drifting through the frost. */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <span className="aurora-a absolute -left-12 -top-16 size-64 rounded-full bg-brand/40 blur-3xl" />
+          <span className="aurora-b absolute -bottom-20 -right-10 size-72 rounded-full bg-warning/35 blur-3xl" />
+          <span className="aurora-c absolute left-1/4 top-0 size-56 rounded-full bg-brand/30 blur-3xl" />
+        </div>
+        <button type="button" onClick={later} aria-label="Dismiss" className="absolute right-3 top-3 z-10 flex size-7 items-center justify-center rounded-full bg-black/5 text-foreground/60 hover:bg-black/10"><Icon name="close" className="!text-[16px]" /></button>
         {/* Tapping the card does the useful thing: install on Chrome/Edge, open the share sheet on iPhone. */}
-        <div role={tappable ? "button" : undefined} tabIndex={tappable ? 0 : undefined} onClick={tappable ? (mode === "install" ? install : openShare) : undefined} onKeyDown={tappable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void (mode === "install" ? install() : openShare()); } } : undefined} className={"flex items-start gap-3.5 pr-8 " + (tappable ? "cursor-pointer" : "")}>
+        <div role={tappable ? "button" : undefined} tabIndex={tappable ? 0 : undefined} onClick={tappable ? (mode === "install" ? install : openShare) : undefined} onKeyDown={tappable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void (mode === "install" ? install() : openShare()); } } : undefined} className={"relative flex items-start gap-3.5 pr-8 " + (tappable ? "cursor-pointer" : "")}>
           <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-foreground shadow-sm"><Icon name={phone ? "install_mobile" : "install_desktop"} size={24} /></span>
           <div className="min-w-0 flex-1">{body}</div>
         </div>
-        {mode === "install" && <div className="mt-3 flex items-center justify-end gap-2"><button type="button" onClick={later} className="h-9 rounded-full px-4 text-sm font-medium text-foreground/65 hover:bg-black/5">Not now</button><button type="button" onClick={install} className="h-9 rounded-full bg-foreground px-5 text-sm font-semibold text-background shadow-sm hover:bg-foreground/90">{phone ? "Add" : "Install"}</button></div>}
+        {mode === "install" && <div className="relative mt-3 flex items-center justify-end gap-2"><button type="button" onClick={later} className="h-9 rounded-full px-4 text-sm font-medium text-foreground/65 hover:bg-black/5">Not now</button><button type="button" onClick={install} className="h-9 rounded-full bg-foreground px-5 text-sm font-semibold text-background shadow-sm hover:bg-foreground/90">{phone ? "Add" : "Install"}</button></div>}
       </div>
     </div>
   );
