@@ -12,9 +12,9 @@ export interface UploadTarget { side: "front" | "back"; replaceVersionId: string
 
 /** Hidden file input + the upload flow. Renders a single Upload button; `openWith` lets a menu start a replace or back-side upload. */
 export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "button", label, compactOnPhone, className }: { slotId: string; accept: string[]; isPrint: boolean; nextNumber: number; variant?: "button" | "dropzone" | "pill"; label?: string; compactOnPhone?: boolean; className?: string }) {
-  const [busy, setBusyState] = useState<string | null>(null);
-  const setBusy = (v: string | null) => { setBusyState(v); uploadBusy.set(v); };
-  const [progress, setProgress] = useState<Progress | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  // Progress lives in a small shared store: the drop zone / design overlay shows it inside the section.
+  const setProgress = (next: Progress | null | ((p: Progress | null) => Progress | null)) => uploadState.set(typeof next === "function" ? next(uploadState.get()) : next);
   const xhr = useRef<XMLHttpRequest | null>(null);
   const [target, setTarget] = useState<UploadTarget>({ side: "front", replaceVersionId: null });
   const input = useRef<HTMLInputElement>(null);
@@ -45,15 +45,17 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
 
   const bridge = <><input ref={input} type="file" accept={accept.join(",")} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f); }} />
     <UploadBridge openWith={openWith} drop={(f) => handle(f, { side: "front", replaceVersionId: null })} />
-    {progress && <UploadProgress p={progress} cancel={() => xhr.current?.abort()} />}</>;
+    <CancelBridge cancel={() => xhr.current?.abort()} /></>;
 
   // Empty format: the whole section is the drop target, Dropbox-style.
   if (variant === "dropzone") return (
     <DropSurface fill onFile={(f) => handle(f, { side: "front", replaceVersionId: null })} className="mt-4 min-h-[calc(100dvh-270px)] md:min-h-[calc(100dvh-170px)]">
       {(dragging) => <>
-        <p className="mt-7 text-base font-medium">{busy ?? (dragging ? "Drop to upload" : <><span className="md:hidden">Add your design</span><span className="max-md:hidden">Drop your design here</span></>)}</p>
-        <p className="mt-1 text-sm text-muted-foreground max-md:hidden">or</p>
-        <Button onClick={() => openWith({ side: "front", replaceVersionId: null })} disabled={!!busy} size="lg" className="mt-3"><Icon name="upload" />{label ?? "Upload design"}</Button>
+        <p className="mt-7 text-base font-medium">{dragging ? "Drop to upload" : busy ? "Uploading your design" : <><span className="md:hidden">Add your design</span><span className="max-md:hidden">Drop your design here</span></>}</p>
+        {busy ? <div className="mt-5 flex w-full justify-center"><UploadStatus /></div> : <>
+          <p className="mt-1 text-sm text-muted-foreground max-md:hidden">or</p>
+          <Button onClick={() => openWith({ side: "front", replaceVersionId: null })} size="lg" className="mt-3"><Icon name="upload" />{label ?? "Upload design"}</Button>
+        </>}
         <p className="mx-auto mt-6 max-w-md text-xs text-muted-foreground">{typesLabel(accept)} up to 8 MB. Shown with a DRAFT mark until approved. Nobody is notified until you send it for review.{isPrint && accept.includes("application/pdf") ? " A two-page PDF fills Front and Back at once." : ""}</p>
         {bridge}
       </>}
@@ -91,10 +93,10 @@ function putWithProgress(path: string, token: string, file: File, ref: { current
 }
 function uploadError(text: string, status: number) { try { return (JSON.parse(text) as { message?: string }).message ?? `Upload failed (${status})`; } catch { return `Upload failed (${status})`; } }
 
-/** Thin floating progress, bottom centre: file name, bar, ✕ while uploading; "Done" when finished. */
+/** Thin progress strip shown inside the drop zone / design overlay: file name, bar, ✕ while uploading; "Done" when finished. */
 export function UploadProgress({ p, cancel }: { p: Progress; cancel: () => void }) {
   return (
-    <div role="status" aria-live="polite" className="animate-nudge fixed inset-x-0 bottom-[calc(max(env(safe-area-inset-bottom),12px)+80px)] z-40 mx-auto w-[min(calc(100vw-24px),22rem)] overflow-hidden rounded-xl bg-inverse-surface text-inverse-on-surface shadow-lg md:bottom-6">
+    <div role="status" aria-live="polite" className="animate-nudge pointer-events-auto w-[min(100%,22rem)] overflow-hidden rounded-xl bg-inverse-surface text-left text-inverse-on-surface shadow-lg">
       <div className="flex h-11 items-center gap-2.5 pl-4 pr-1.5 text-sm">
         <Icon name={p.phase === "done" ? "check_circle" : "upload"} className={cn("!text-[18px]", p.phase === "done" && "text-success")} />
         <span className="min-w-0 flex-1 truncate">{p.phase === "done" ? <><span className="font-medium">Done</span> · {p.name}</> : p.phase === "optimise" ? "Optimising…" : <>{p.name}</>}</span>
@@ -106,12 +108,15 @@ export function UploadProgress({ p, cancel }: { p: Progress; cancel: () => void 
   );
 }
 
-/** Upload state shared with the drop overlay, so the paper stack keeps moving while a file uploads. */
-const uploadBusy = (() => {
-  let v: string | null = null; const subs = new Set<() => void>();
-  return { get: () => v, set: (n: string | null) => { v = n; subs.forEach((f) => f()); }, sub: (f: () => void) => { subs.add(f); return () => { subs.delete(f); }; } };
+/** Upload progress shared with the drop zone and design overlay, which show it inside the section. */
+const uploadState = (() => {
+  let v: Progress | null = null; const subs = new Set<() => void>();
+  return { get: () => v, set: (n: Progress | null) => { v = n; subs.forEach((f) => f()); }, sub: (f: () => void) => { subs.add(f); return () => { subs.delete(f); }; } };
 })();
-const useUploadBusy = () => useSyncExternalStore(uploadBusy.sub, uploadBusy.get, () => null);
+const useUploadProgress = () => useSyncExternalStore(uploadState.sub, uploadState.get, () => null);
+let cancelUpload: () => void = () => {};
+function CancelBridge({ cancel }: { cancel: () => void }) { cancelUpload = cancel; return null; }
+function UploadStatus() { const p = useUploadProgress(); return p ? <UploadProgress p={p} cancel={() => cancelUpload()} /> : null; }
 
 /**
  * Drag-and-drop target. `fill`: the zone is always visible (empty format). Otherwise it wraps the
@@ -121,9 +126,10 @@ const useUploadBusy = () => useSyncExternalStore(uploadBusy.sub, uploadBusy.get,
 function DropSurface({ fill, enabled = true, onFile, className, label, children }: { fill?: boolean; enabled?: boolean; onFile: (f: File) => void; className?: string; label?: string; children: ReactNode | ((dragging: boolean) => ReactNode) }) {
   const [over, setOver] = useState(false);
   const depth = useRef(0);
-  const busy = useUploadBusy();
+  const progress = useUploadProgress();
+  const busy = !!progress;
   const isFiles = (e: DragEvent) => enabled && e.dataTransfer.types.includes("Files");
-  const showOverlay = !fill && enabled && (over || !!busy);
+  const showOverlay = !fill && enabled && (over || busy);
   return (
     <div className={cn("group/drop relative", fill && "flex flex-col items-center justify-center rounded-3xl px-6 py-10 text-center transition-colors", fill && over && "bg-info-soft/60", className)}
       onDragEnter={(e) => { if (!isFiles(e)) return; e.preventDefault(); depth.current++; setOver(true); }}
@@ -131,13 +137,15 @@ function DropSurface({ fill, enabled = true, onFile, className, label, children 
       onDragLeave={(e) => { if (!isFiles(e)) return; depth.current = Math.max(0, depth.current - 1); if (depth.current === 0) setOver(false); }}
       onDrop={(e) => { if (!isFiles(e)) return; e.preventDefault(); depth.current = 0; setOver(false); const f = e.dataTransfer.files?.[0]; if (f) onFile(f); }}>
       {fill && <Ants active={over} />}
-      {fill && <PaperStack moving={over || !!busy} />}
+      {fill && <PaperStack moving={over || (busy && progress?.phase !== "done")} />}
       {typeof children === "function" ? children(over) : children}
       {showOverlay && (
         <div className="pointer-events-none absolute -inset-2 z-20 flex flex-col items-center justify-center rounded-3xl bg-info-soft/85 backdrop-blur-[2px]">
           <Ants active />
-          <PaperStack moving />
-          <p className="mt-6 text-base font-medium text-info-text">{busy ?? label ?? "Drop to upload a new version"}</p>
+          <PaperStack moving={over || progress?.phase !== "done"} />
+          {over || !progress
+            ? <p className="mt-6 text-base font-medium text-info-text">{label ?? "Drop to upload a new version"}</p>
+            : <div className="mt-6 flex w-full justify-center px-4"><UploadStatus /></div>}
         </div>
       )}
     </div>
