@@ -21,7 +21,7 @@ import { relativeTime } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/user-error";
 
-// icons: forum add_comment grid_on zoom_out_map check close arrow_upward more_vert upload sync flip delete replay edit chat_bubble
+// icons: forum add_comment history grid_on zoom_out_map check close arrow_upward more_vert upload sync flip delete replay edit chat_bubble
 export type Side = "front" | "back";
 export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number }
 export interface CommentView { id: string; version: number; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; draft?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
@@ -295,11 +295,17 @@ function VersionStack({ earlier, eventId, slotId, commentCount, children }: { ea
   const layers = Math.min(2, earlier.length);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <div className="relative" style={{ marginLeft: layers * 7 }} onMouseEnter={show} onMouseLeave={hide}>
-        {layers >= 2 && <span aria-hidden className="absolute inset-y-0 -left-[14px] right-[14px] rounded-full border border-border bg-card opacity-60" />}
-        {layers >= 1 && <span aria-hidden className="absolute inset-y-0 -left-[7px] right-[7px] rounded-full border border-border bg-card" />}
-        <PopoverTrigger asChild><button type="button" aria-label={`${earlier.length} earlier version${earlier.length === 1 ? "" : "s"}`} className="absolute inset-y-0 -left-4 z-[1] w-5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring" /></PopoverTrigger>
-        <div className="relative z-[2]">{children}</div>
+      <div className="relative flex items-center gap-1 md:block" style={{ marginLeft: undefined }} onMouseEnter={show} onMouseLeave={hide}>
+        {/* Desktop: earlier versions peek out from behind the pill, hover opens the list.
+            Phones: a plain "history · N" button before the pill (a 14px sliver is too small to tap). */}
+        {layers >= 2 && <span aria-hidden className="absolute inset-y-0 -left-[14px] right-[14px] rounded-full border border-border bg-card opacity-60 max-md:hidden" />}
+        {layers >= 1 && <span aria-hidden className="absolute inset-y-0 -left-[7px] right-[7px] rounded-full border border-border bg-card max-md:hidden" />}
+        <PopoverTrigger asChild>
+          <button type="button" aria-label={`${earlier.length} earlier version${earlier.length === 1 ? "" : "s"}`} className="inline-flex shrink-0 items-center justify-center gap-1 rounded-full text-[13px] font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:h-10 max-md:border max-md:border-border max-md:bg-card max-md:px-3 md:absolute md:inset-y-0 md:-left-4 md:z-[1] md:w-5">
+            <span className="inline-flex items-center gap-1 md:hidden"><Icon name="history" className="!text-[18px]" />{earlier.length}</span>
+          </button>
+        </PopoverTrigger>
+        <div className={cn("relative z-[2]", layers >= 2 ? "md:ml-[14px]" : "md:ml-[7px]")}>{children}</div>
       </div>
       <PopoverContent align="start" className="w-72 rounded-xl p-2" onMouseEnter={show} onMouseLeave={hide}>
         <p className="px-2 pb-1 pt-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Earlier versions</p>
