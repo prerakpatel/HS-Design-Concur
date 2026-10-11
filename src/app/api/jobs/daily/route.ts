@@ -45,19 +45,34 @@ export async function GET(req: Request) {
     report.reminders = (report.reminders as number) + 1;
   }
 
-  // 1b. Designs waiting for review for a day or more: remind the approvers once a day until decided.
+  // 1b. Designs waiting for review for a day or more: one reminder per organization per day to its approvers (one
+  // chat post, one push, one in-app item), listing every design, until each is decided.
   const { data: waiting } = await db.from("versions").select("id,number,sent_at,uploaded_by,slots!inner(id,event_id,state,formats(name),events(title,status,org_id)),uploader:uploaded_by(name,email)").eq("decision", "pending").not("sent_at", "is", null).lte("sent_at", new Date(Date.now() - 86400_000).toISOString()).eq("slots.state", "in_review");
+  type Waiting = { eventId: string; slotId: string; versionId: string; title: string; format: string; number: number; days: number; by: string | undefined; since: string; uploadedBy: string };
+  const waitingByOrg = new Map<string, Waiting[]>();
   for (const v of waiting ?? []) {
     const slot = v.slots as unknown as { id: string; event_id: string; formats: { name: string }; events: { title: string; status: string; org_id: string } };
     if (slot.events.status !== "active") continue;
-    const days = Math.floor((Date.now() - new Date(v.sent_at).getTime()) / 86400_000);
     const up = v.uploader as unknown as { name: string | null; email: string } | null;
-    const payload = { eventId: slot.event_id, slotId: slot.id, versionId: v.id, title: slot.events.title, format: slot.formats.name, number: v.number, by: up?.name ?? up?.email, since: v.sent_at, days, day: today };
-    const { data: dup } = await db.from("notifications").select("id").eq("kind", "review.waiting").contains("payload", { versionId: v.id, day: today }).limit(1);
-    if (dup?.length) continue;
-    const approvers = await approverIds(db, slot.events.org_id);
-    await notify(db, approvers, "review.waiting", payload, v.uploaded_by, { orgId: slot.events.org_id });
-    report.waiting = ((report.waiting as number) ?? 0) + 1;
+    const row: Waiting = { eventId: slot.event_id, slotId: slot.id, versionId: v.id, title: slot.events.title, format: slot.formats.name, number: v.number, days: Math.floor((Date.now() - new Date(v.sent_at).getTime()) / 86400_000), by: up?.name ?? up?.email, since: v.sent_at, uploadedBy: v.uploaded_by };
+    waitingByOrg.set(slot.events.org_id, [...(waitingByOrg.get(slot.events.org_id) ?? []), row]);
+  }
+  for (const [orgId, rows] of waitingByOrg) {
+    const approvers = await approverIds(db, orgId);
+    if (approvers.length === 0) continue;
+    rows.sort((a, b) => b.days - a.days);
+    if (rows.length === 1) {
+      const r = rows[0];
+      const { data: dup } = await db.from("notifications").select("id").eq("kind", "review.waiting").contains("payload", { versionId: r.versionId, day: today }).limit(1);
+      if (dup?.length) continue;
+      await notify(db, approvers, "review.waiting", { eventId: r.eventId, slotId: r.slotId, versionId: r.versionId, title: r.title, format: r.format, number: r.number, by: r.by, since: r.since, days: r.days, day: today }, r.uploadedBy, { orgId });
+    } else {
+      const { data: dup } = await db.from("notifications").select("id").eq("kind", "reviews.waiting").contains("payload", { orgId, day: today }).limit(1);
+      if (dup?.length) continue;
+      const items = rows.slice(0, 15).map((r) => ({ title: r.title, format: r.format, number: r.number, days: r.days }));
+      await notify(db, approvers, "reviews.waiting", { orgId, day: today, count: rows.length, items, title: items.slice(0, 3).map((i) => `${i.title} · ${i.format}`).join(" · ") + (rows.length > 3 ? ` · +${rows.length - 3} more` : "") }, undefined, { orgId });
+    }
+    report.waiting = ((report.waiting as number) ?? 0) + rows.length;
   }
 
   // 1c. Review-mode comments nobody sent: nudge their author (in-app and push only, never chat), once a day.
@@ -90,7 +105,7 @@ export async function GET(req: Request) {
       if ("ok" in r) { await db.from("notifications").update({ emailed_at: new Date().toISOString() }).in("id", items.map((n) => n.id)); report.digests = (report.digests as number) + 1; }
     }
     // Instant users also get job-created notifications by email (they bypass the request-time delivery path).
-    const { data: instant } = await db.from("notifications").select("id,user_id,kind,payload,users!inner(email,email_pref,status)").in("kind", ["slot.due", "review.waiting", "draft.expiring", "draft.swept", "devices.refresh"]).is("emailed_at", null).eq("users.email_pref", "instant").eq("users.status", "active");
+    const { data: instant } = await db.from("notifications").select("id,user_id,kind,payload,users!inner(email,email_pref,status)").in("kind", ["slot.due", "review.waiting", "reviews.waiting", "draft.expiring", "draft.swept", "devices.refresh"]).is("emailed_at", null).eq("users.email_pref", "instant").eq("users.status", "active");
     for (const n of instant ?? []) {
       const u = n.users as unknown as { email: string }; const p = n.payload as Record<string, unknown>;
       const r = await sendEmail(u.email, subjectFor(n.kind as NotificationKind, p), { heading: notificationText(n.kind, p), body: String(p.title ?? ""), cta: { label: "Open Design & Concur", href: appUrl(notificationHref(p)) } });

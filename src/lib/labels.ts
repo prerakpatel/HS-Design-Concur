@@ -15,6 +15,7 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
     case "event.published": return `${t} was published and needs designs`;
     case "version.uploaded": return `${by} sent ${f} v${p.number} for review`;
     case "review.waiting": return `${f} v${p.number} for ${t} has been waiting ${p.days} day${p.days === 1 ? "" : "s"} for review`;
+    case "reviews.waiting": return `${p.count} designs are waiting for your review`;
     case "version.changes_requested": return `${by} requested changes on ${f} v${p.number}`;
     case "version.approved": return `${by} approved ${f} v${p.number}`;
     case "version.reopened": return `${by} reopened ${f} v${p.number} for changes`;
@@ -58,6 +59,11 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
     case "slot.due": return { head: `⏰ ${t} · ${f}`, body: `{@${p.assignee}} this is due ${p.when === "today" ? "today" : "in 3 days"}${p.due ? ` (${chatDate(p.due)})` : ""}.` };
     case "version.uploaded": return { head: `📤 ${t} · ${f}${n}`, body: `Sent for review by ${by}.` };
     case "review.waiting": return { head: `⏳ ${t} · ${f}${n}`, body: `Waiting for review since ${chatDate(p.since)} · ${p.days} day${p.days === 1 ? "" : "s"}. Approve it or request changes.` };
+    case "reviews.waiting": {
+      const items = (Array.isArray(p.items) ? p.items as { title: string; format: string; number: number; days: number }[] : []);
+      const more = Number(p.count) - items.length;
+      return { head: `⏳ ${p.count} designs waiting for review`, body: [...items.map((i) => `• ${i.title} · ${i.format} v${i.number} · ${i.days} day${i.days === 1 ? "" : "s"}`), ...(more > 0 ? [`• and ${more} more`] : []), "Approve them or request changes."].join("\n") };
+    }
     case "version.approved": return { head: `✅ ${t} · ${f}${n}`, body: `Approved by ${by}.` };
     case "versions.approved": return { head: `✅ ${t} · ${p.count} designs approved`, body: `${by} approved ${String(p.formats ?? "")}.` };
     case "event.all_approved": return { head: `🎉 ${t} · all designs approved`, body: `${p.count} format${p.count === 1 ? "" : "s"} final and ready to publish.` };
