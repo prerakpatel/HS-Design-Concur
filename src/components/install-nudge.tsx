@@ -6,15 +6,20 @@ import { isIOS, standalone } from "@/lib/push-client";
 // icons: ios_share close install_mobile install_desktop
 interface InstallEvent extends Event { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> }
 const KEY = "dc.installNudge";
-const COOLDOWN_DAYS = 30;
+const COUNT_KEY = "dc.installNudge.dismissals";
+const COOLDOWN_DAYS = 7;
+const MAX_DISMISSALS = 2; // shown, dismissed, shown once more after the cooldown, dismissed again: then never again
 const DELAY_MS = 7000;
 const read = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
 const write = (v: string) => { try { localStorage.setItem(KEY, v); } catch { /* private mode */ } };
+// A timestamp saved before the counter existed means one earlier dismissal.
+const dismissals = () => { try { const n = Number(localStorage.getItem(COUNT_KEY)); return n > 0 ? n : read() ? 1 : 0; } catch { return 0; } };
+const dismiss = () => { const n = dismissals() + 1; write(String(Date.now())); try { localStorage.setItem(COUNT_KEY, String(n)); } catch { /* private mode */ } };
 
 /**
  * A quiet card, a few seconds after the app opens in a browser, saying it can be added as an app. Chrome and Edge
  * (Android and desktop) can install with one tap, so tapping the card installs. iPhone and iPad cannot be
- * asked programmatically, so the card says where to tap. On Chrome/Edge the whole card is the tap target; the close button hides it for a month.
+ * asked programmatically, so the card says where to tap. On Chrome/Edge the whole card is the tap target; the close button hides it for a week; after a second dismissal it stays away.
  * Never shown inside the installed app.
  */
 export function InstallNudge() {
@@ -28,6 +33,7 @@ export function InstallNudge() {
     if (standalone()) return;
     const seen = force ? null : read();
     if (seen === "installed") return;
+    if (seen && !force && dismissals() >= MAX_DISMISSALS) return;
     if (seen && Date.now() - Number(seen) < COOLDOWN_DAYS * 86400_000) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const reveal = (m: "install" | "ios-safari" | "ios-other") => { if (!timer) timer = setTimeout(() => { setMode(m); setShow(true); }, force ? 600 : DELAY_MS); };
@@ -41,10 +47,10 @@ export function InstallNudge() {
   }, []);
 
   if (!show || !mode) return null;
-  const later = () => { write(String(Date.now())); setShow(false); };
+  const later = () => { dismiss(); setShow(false); };
   const install = async () => {
     const e = deferred.current; if (!e) return later();
-    try { await e.prompt(); const { outcome } = await e.userChoice; write(outcome === "accepted" ? "installed" : String(Date.now())); } catch { write(String(Date.now())); }
+    try { await e.prompt(); const { outcome } = await e.userChoice; if (outcome === "accepted") write("installed"); else dismiss(); } catch { dismiss(); }
     setShow(false);
   };
   const phone = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
