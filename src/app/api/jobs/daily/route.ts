@@ -116,7 +116,9 @@ export async function GET(req: Request) {
     }
   }
   report.openComments = 0;
-  const chatByOrg = new Map<string, { id: string; count: number }[]>();
+  // Chat gets no names: one post per organization saying which assets still have open comments.
+  const assetsByOrg = new Map<string, Map<string, { eventId: string; slotId: string; title: string; format: string; open: number }>>();
+  const seenComment = new Set<string>();
   for (const [person, orgs] of owed) {
     const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "comments.pending").contains("payload", { day: today }).limit(1);
     if (dup?.length) continue;
@@ -124,11 +126,16 @@ export async function GET(req: Request) {
     const first = all[0].versions.slots;
     const places = [...new Map(all.map((c) => [c.versions.slots.id, `${c.versions.slots.events.title} · ${c.versions.slots.formats.name}`])).values()];
     await notify(db, [person], "comments.pending", { count: all.length, day: today, href: `/events/${first.event_id}/slots/${first.id}`, title: places.slice(0, 3).join(" · ") + (places.length > 3 ? ` · +${places.length - 3} more` : ""), places: places.length });
-    for (const [org, list] of orgs) chatByOrg.set(org, [...(chatByOrg.get(org) ?? []), { id: person, count: list.length }]);
+    for (const [org, list] of orgs) for (const c of list) {
+      if (seenComment.has(c.id)) continue; seenComment.add(c.id);
+      const sl = c.versions.slots; const m = assetsByOrg.get(org) ?? new Map();
+      m.set(sl.id, { eventId: sl.event_id, slotId: sl.id, title: sl.events.title, format: sl.formats.name, open: (m.get(sl.id)?.open ?? 0) + 1 }); assetsByOrg.set(org, m);
+    }
     report.openComments = (report.openComments as number) + all.length;
   }
-  for (const [orgId, people] of chatByOrg) {
-    await notify(db, [], "comments.pending", { people: people.sort((a, b) => b.count - a.count).slice(0, 20), day: today, orgId }, undefined, { orgId, mention: people.map((p) => p.id) });
+  for (const [orgId, byAsset] of assetsByOrg) {
+    const assets = [...byAsset.values()].sort((x, y) => y.open - x.open).slice(0, 15);
+    await notify(db, [], "comments.pending", { assets, total: byAsset.size, day: today, orgId, ...(assets.length === 1 ? { eventId: assets[0].eventId, slotId: assets[0].slotId } : {}) }, undefined, { orgId, mention: [] });
   }
 
   // 2. Retention (+ tell the creator and the chat that an event was archived)

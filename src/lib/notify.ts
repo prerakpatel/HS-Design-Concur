@@ -114,7 +114,7 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
     const audience = new Set([...ids, ...mentions]);
     const grouped = new Set(groups.flatMap((g) => g.members));
     const explicit = new Set(Array.isArray(payload.groups) ? (payload.groups as string[]) : []);
-    const someoneUngrouped = groups.length === 0 || [...audience].some((id) => !grouped.has(id));
+    const someoneUngrouped = groups.length === 0 || audience.size === 0 || [...audience].some((id) => !grouped.has(id));
     const hookList: string[] = [];
     if (milestone || someoneUngrouped || kind === "event.archived") hookList.push(...orgs.flatMap((o) => [o.chat_enabled && o.chat_webhook_url, o.slack_enabled && o.slack_webhook_url]).filter((h): h is string => !!h));
     for (const g of groups) {
