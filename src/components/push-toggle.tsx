@@ -3,19 +3,12 @@ import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
-import { savePushSubscription, removePushSubscription, sendTestPush } from "@/app/actions/push";
+import { removePushSubscription, sendTestPush } from "@/app/actions/push";
+import { isIOS, standalone, subscribeThisDevice } from "@/lib/push-client";
 import { errorMessage } from "@/lib/user-error";
 
 // icons: notifications_active notifications_off ios_share
 type State = "checking" | "unsupported" | "ios-install" | "denied" | "off" | "on" | "unconfigured";
-
-function urlBase64ToUint8Array(base64: string) {
-  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
-  const raw = atob((base64 + padding).replace(/-/g, "+").replace(/_/g, "/"));
-  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
-}
-const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-const standalone = () => window.matchMedia("(display-mode: standalone)").matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
 
 /** "Notify this device": registers the service worker, asks permission, stores the subscription. One row on the Inbox page. */
 export function PushToggle({ publicKey }: { publicKey: string | null }) {
@@ -36,13 +29,10 @@ export function PushToggle({ publicKey }: { publicKey: string | null }) {
 
   const enable = () => start(async () => {
     try {
-      const perm = await Notification.requestPermission();
+      const perm = await subscribeThisDevice(publicKey!);
       if (perm !== "granted") { setState(perm === "denied" ? "denied" : "off"); return; }
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey!) });
-      const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
-      await savePushSubscription({ endpoint: json.endpoint, keys: json.keys });
-      setEndpoint(json.endpoint); setState("on"); toast.success("Notifications are on for this device");
+      const sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+      setEndpoint(sub?.endpoint ?? null); setState("on"); toast.success("Notifications are on for this device");
     } catch (e) { toast.error(errorMessage(e)); }
   });
   const disable = () => start(async () => {
