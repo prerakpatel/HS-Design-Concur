@@ -6,13 +6,20 @@ self.addEventListener("push", (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data && event.data.text() }; }
   const title = data.title || "Design & Concur";
-  event.waitUntil(self.registration.showNotification(title, {
+  // Home-screen icon badge (iOS 16.4+ installed web apps, Android, desktop): the person's unread count.
+  const setBadge = async () => {
+    const n = Number(data.badge);
+    const nav = self.navigator;
+    if (!nav || !Number.isFinite(n) || !nav.setAppBadge) return;
+    try { if (n > 0) await nav.setAppBadge(n); else if (nav.clearAppBadge) await nav.clearAppBadge(); } catch {}
+  };
+  event.waitUntil(Promise.all([setBadge(), self.registration.showNotification(title, {
     body: data.body || "",
     icon: "/brand/icon-192.png",
     badge: "/brand/icon-192.png",
     tag: data.tag || undefined,
     data: { href: data.href || "/inbox" },
-  }));
+  })]));
 });
 
 self.addEventListener("notificationclick", (event) => {
