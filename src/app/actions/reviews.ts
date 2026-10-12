@@ -31,10 +31,25 @@ export async function sendForReview(versionId: string) {
   if (version.sent_at) throw new UserError("This version is already with the approvers");
   if (version.decision !== "pending") throw new UserError("Only a pending version can be sent");
   const now = new Date().toISOString();
+  // Replacing a sent version's file makes it private again, so the designer sends it a second time. If the
+  // approvers were told about this version in the last 30 minutes and have not acted since (no decision, no
+  // comment), the resend is silent: the page already shows the newest file and nobody needs a second ping.
+  const windowStart = new Date(Date.now() - 30 * 60_000).toISOString();
+  const { data: prior } = await supabase.from("activity").select("created_at").eq("version_id", versionId).eq("kind", "version.sent").gte("created_at", windowStart).order("created_at", { ascending: false }).limit(1);
+  let quietResend = false;
+  if (prior?.length) {
+    const since = prior[0].created_at as string;
+    const [{ data: decided }, { data: talked }] = await Promise.all([
+      supabase.from("activity").select("id").eq("version_id", versionId).in("kind", ["version.approved", "version.changes_requested"]).gt("created_at", since).limit(1),
+      supabase.from("comments").select("id").eq("version_id", versionId).eq("is_draft", false).gt("created_at", since).limit(1),
+    ]);
+    quietResend = !decided?.length && !talked?.length;
+  }
   await supabase.from("versions").update({ decision: "superseded" }).eq("slot_id", slot.id).neq("id", versionId).in("decision", ["pending", "changes_requested"]);
   await supabase.from("versions").update({ sent_at: now }).eq("id", versionId);
   await supabase.from("slots").update({ state: "in_review", updated_at: now }).eq("id", slot.id);
-  await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.sent", payload: { format: formatName, number: version.number } });
+  await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.sent", payload: { format: formatName, number: version.number, ...(quietResend ? { resent: true } : {}) } });
+  if (quietResend) { revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`); return { ok: true, quiet: true }; }
   const approvers = await approverIds(supabase, org.id);
   await notify(supabase, [...approvers, event.created_by], "version.uploaded", { eventId: event.id, slotId: slot.id, versionId, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id });
   revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`);

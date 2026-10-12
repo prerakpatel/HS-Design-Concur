@@ -36,7 +36,7 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
     const a = document.createElement("a"); a.href = url; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
     toast.success(side === "back" ? "Downloading the back" : "Download started");
   };
-  const run = (fn: () => Promise<unknown>, done: string) => start(async () => { try { await fn(); close(); toast.success(done); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } });
+  const run = (fn: () => Promise<unknown>, done: string | ((r: unknown) => string)) => start(async () => { try { const r = await fn(); close(); toast.success(typeof done === "function" ? done(r) : done); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } });
 
   const downloadButtons = (
     <>
@@ -49,7 +49,7 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
     if (!canSend) return <p className="text-sm text-muted-foreground">Not sent for review yet. The designer is still working on it.</p>;
     return (
       <div className={wrap}>
-        <Button disabled={pending} onClick={() => run(() => sendForReview(versionId), "Sent for review · approvers notified")}>Send for review</Button>
+        <Button disabled={pending} onClick={() => run(() => sendForReview(versionId), (r) => ((r as { quiet?: boolean })?.quiet ? "Updated · approvers were already told about this version" : "Sent for review · approvers notified"))}>Send for review</Button>
         <p className="w-full text-xs text-muted-foreground">Only you can see it is here. Check it, replace it or add the back first; approvers are told when you send.</p>
       </div>
     );
