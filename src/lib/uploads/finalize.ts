@@ -38,10 +38,11 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
 
   // Attach a Back side to the latest version if it is a print format, same uploader, no back yet, within the hour.
   let versionId: string | null = null; let number = 1;
+  let keptInReview = false;
   const { data: latest } = await supabase.from("versions").select("id,number,uploaded_by,created_at,version_sides(side)").eq("slot_id", slotId).order("number", { ascending: false }).limit(1).maybeSingle();
   if (replaceVersionId) {
     // Replace: same version number, files overwritten, decision back to pending.
-    const { data: rv } = await supabase.from("versions").select("id,number,uploaded_by").eq("id", replaceVersionId).eq("slot_id", slotId).maybeSingle();
+    const { data: rv } = await supabase.from("versions").select("id,number,uploaded_by,sent_at,decision").eq("id", replaceVersionId).eq("slot_id", slotId).maybeSingle();
     if (!rv) return { error: "That version no longer exists" };
     if (rv.uploaded_by !== user.id && user.role !== "core_admin") return { error: "Only the uploader or a Core Admin can replace a version" };
     versionId = rv.id; number = rv.number;
@@ -49,8 +50,16 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
     const gone = (old ?? []).flatMap((s) => [s.optimised_path, s.preview_path, s.thumb_path]).filter((p): p is string => !!p);
     if (gone.length) await supabase.storage.from(BUCKET).remove(gone);
     if (isPdf || side === "front") await supabase.from("version_sides").delete().eq("version_id", rv.id);
-    // A replaced file has not been seen by anyone, so it has to be sent for review again.
-    await supabase.from("versions").update({ decision: "pending", decided_by: null, decided_at: null, sent_at: null, uploaded_by: user.id, created_at: new Date().toISOString() }).eq("id", rv.id);
+    // A replaced file has not been seen by anyone, so it has to be sent for review again, with one exception:
+    // a version that is in review and that nobody has decided on or commented on yet. Approvers always see the
+    // newest file, so it stays in review (no second send, no second message) and the log notes the update.
+    let unreviewed = false;
+    if (rv.sent_at && rv.decision === "pending") {
+      const { data: talked } = await supabase.from("comments").select("id").eq("version_id", rv.id).eq("is_draft", false).limit(1);
+      unreviewed = !talked?.length;
+    }
+    keptInReview = unreviewed;
+    await supabase.from("versions").update({ ...(unreviewed ? {} : { decision: "pending", decided_by: null, decided_at: null, sent_at: null }), uploaded_by: user.id, created_at: new Date().toISOString() }).eq("id", rv.id);
   } else if (latest) {
     const sides = (latest.version_sides as { side: string }[]).map((s) => s.side);
     const recent = Date.now() - new Date(latest.created_at).getTime() < 60 * 60 * 1000;
@@ -82,12 +91,12 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
   // Uploading is private: the slot only moves to In review when the designer sends the version (sendForReview).
   if (firstSide === "front") {
     if (!event.brief_locked_at) await supabase.from("events").update({ brief_locked_at: new Date().toISOString() }).eq("id", event.id);
-    await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slotId, version_id: versionId, actor_id: user.id, kind: "version.uploaded", payload: { format: slotName(fmt.name, slot.label), number } });
+    await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slotId, version_id: versionId, actor_id: user.id, kind: keptInReview ? "version.updated" : "version.uploaded", payload: { format: slotName(fmt.name, slot.label), number } });
     if (replaceVersionId) await recomputeSlotState(supabase, slotId);
     // A new version pushes the oldest out: only the newest VERSIONS_KEPT keep files (approved ones always do).
     else await pruneOldVersions(supabase, slotId);
   }
   revalidatePath(`/events/${event.id}`);
   revalidatePath(`/events/${event.id}/slots/${slotId}`);
-  return { ok: true, versionId, number };
+  return { ok: true, versionId, number, keptInReview };
 }

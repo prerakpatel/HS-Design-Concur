@@ -32,9 +32,9 @@ export async function sendForReview(versionId: string) {
   if (version.decision !== "pending") throw new UserError("Only a pending version can be sent");
   const now = new Date().toISOString();
   // Replacing a sent version's file makes it private again, so the designer sends it a second time. If the
-  // approvers were told about this version in the last 30 minutes and have not acted since (no decision, no
+  // approvers were told about this version in the last 10 minutes and have not acted since (no decision, no
   // comment), the resend is silent: the page already shows the newest file and nobody needs a second ping.
-  const windowStart = new Date(Date.now() - 30 * 60_000).toISOString();
+  const windowStart = new Date(Date.now() - 10 * 60_000).toISOString();
   const { data: prior } = await supabase.from("activity").select("created_at").eq("version_id", versionId).eq("kind", "version.sent").gte("created_at", windowStart).order("created_at", { ascending: false }).limit(1);
   let quietResend = false;
   if (prior?.length) {

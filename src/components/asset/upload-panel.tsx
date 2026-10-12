@@ -30,9 +30,9 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
       await putWithProgress(start.path, start.token, file, xhr, (pct) => setProgress((p) => p && { ...p, pct }));
       setBusy("Optimising…"); setProgress((p) => p && { ...p, phase: "optimise", pct: 100 });
       const res = await fetch("/api/uploads/finalize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slotId, tmpPath: start.path, mime: file.type, side: t.side, replaceVersionId: t.replaceVersionId }) });
-      const done = await res.json().catch(() => ({ error: `Processing failed (${res.status})` })) as { error?: string; number?: number };
+      const done = await res.json().catch(() => ({ error: `Processing failed (${res.status})` })) as { error?: string; number?: number; keptInReview?: boolean };
       if (!res.ok || done.error) throw new Error(done.error ?? `Processing failed (${res.status})`);
-      setProgress({ name: t.replaceVersionId ? `Version ${done.number} replaced` : t.side === "back" ? "Back side added" : `Version ${done.number} uploaded`, phase: "done", pct: 100 });
+      setProgress({ name: t.replaceVersionId ? (done.keptInReview ? `Version ${done.number} updated · approvers already see it` : `Version ${done.number} replaced · send it for review`) : t.side === "back" ? "Back side added" : `Version ${done.number} uploaded`, phase: "done", pct: 100 });
       setTimeout(() => setProgress((p) => (p?.phase === "done" ? null : p)), 2400);
       router.refresh();
     } catch (e) {
