@@ -49,6 +49,23 @@ function Layer({ on, tall, children }: { on: boolean; /** Narrow phone mocks cle
   );
 }
 
+/**
+ * The same in-place mock, large, for the format page: fills a box up to 75% of the viewport height.
+ * Returns null when the format has no mockup (or needs a fixed size it doesn't have).
+ */
+export function MockStage({ src, size, formatKey, frame, event }: { src: string; size: string; formatKey?: string; frame?: Format["frame"]; event?: { title: string; date: string | null } }) {
+  const r = ratioFromSize(size); const m = mockupFor(formatKey, frame);
+  if (!m || (m !== "phone" && !r)) return null;
+  return (
+    <div className="relative flex h-[min(75dvh,860px)] w-full items-center justify-center" style={{ containerType: "size" }}>
+      <InPlace mock={m} src={src} r={r ?? SCREEN} event={event} />
+    </div>
+  );
+}
+
+/** True when a format has an in-place mock to show. */
+export function hasMock(size: string, formatKey?: string, frame?: Format["frame"]) { const m = mockupFor(formatKey, frame); return !!m && (m === "phone" || !!ratioFromSize(size)); }
+
 /** Largest box of ratio r that fits the layer. */
 const fit = (r: number): CSSProperties => ({ width: `min(100cqw, ${r} * 100cqh)`, aspectRatio: String(r) });
 

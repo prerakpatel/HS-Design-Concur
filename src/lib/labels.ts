@@ -19,6 +19,7 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
     case "comments.pending": return `You have ${p.count} comment${p.count === 1 ? "" : "s"} still open. Mark ${p.count === 1 ? "it" : "them"} as done once handled${p.title ? `: ${p.title}` : ""}`;
     case "version.changes_requested": return `${by} requested changes on ${f} v${p.number}`;
     case "version.approved": return `${by} approved ${f} v${p.number}`;
+    case "primary.approved": return `Congrats! The primary design for ${t} (${f}) is approved. You can start the other formats now.`;
     case "version.reopened": return `${by} reopened ${f} v${p.number} for changes`;
     case "comment.mention": return `${by} mentioned you on ${f}: “${p.excerpt ?? ""}”`;
     case "comment.posted": return `${by} commented on ${f}: “${p.excerpt ?? ""}”`;
@@ -71,6 +72,7 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
       return { head: `⏳ ${p.count} designs waiting for review`, body: [...items.map((i) => `• ${i.title} · ${i.format} v${i.number} · ${i.days} day${i.days === 1 ? "" : "s"}`), ...(more > 0 ? [`• and ${more} more`] : []), "Approve them or request changes."].join("\n") };
     }
     case "version.approved": return { head: `✅ ${t} · ${f}${n}`, body: `Approved by ${by}.` };
+    case "primary.approved": return { head: `🎉 ${t} · primary design approved`, body: `Congrats! The primary design (${f}${n}) has been approved by ${by}. Designers can now start creating the other formats from it.` };
     case "versions.approved": return { head: `✅ ${t} · ${p.count} designs approved`, body: `${by} approved ${String(p.formats ?? "")}.` };
     case "event.all_approved": return { head: `🎉 ${t} · all designs approved`, body: `${p.count} format${p.count === 1 ? "" : "s"} final and ready to publish.` };
     case "version.changes_requested": return { head: `✏️ ${t} · ${f}${n}`, body: `${by} requested changes${q ? `: ${q}` : "."}` };

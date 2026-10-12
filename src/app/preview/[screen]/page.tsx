@@ -80,7 +80,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
         versions={screen === "slot-versions" ? [1, 2, 3, 4, 5, 6].map((n) => ({ id: n === 6 ? "v-1" : `v-${n + 10}`, number: n, decision: n === 6 ? "changes_requested" : "superseded", canManage: true, hasBack: false, purged: n < 5 })) : [{ id: "v-1", number: 1, decision: "changes_requested", canManage: true, hasBack: false }]} currentVersionId="v-1" eventId="e-1" slotId="s-3" upload={{ accept: ["image/png", "image/jpeg", "image/webp"], isPrint: false, nextNumber: 2 }} readOnly={false}
         status={{ state: "changes_requested", version: 1, uploader: "Kinjal Patel", uploadedAt: F.COMMENTS[0].created_at }}
         decision={<ReviewActions versionId="v-1" label="WhatsApp flyer v1" eventTitle="Diwali Annakut Darshan" decision="changes_requested" canApprove isOwnUpload={false} hasBack={false} layout="fill" />}
-        decisionBar={<ReviewActions versionId="v-1" label="WhatsApp flyer v1" eventTitle="Diwali Annakut Darshan" decision="changes_requested" canApprove isOwnUpload={false} hasBack={false} />} />
+        decisionBar={<ReviewActions versionId="v-1" label="WhatsApp flyer v1" eventTitle="Diwali Annakut Darshan" decision="changes_requested" canApprove isOwnUpload={false} hasBack={false} />}  mockup={{ size: "1125 × 1200", formatKey: "sambandh_event", frame: "phone", event: { title: "Diwali Annakut Darshan", date: "2026-11-08" } }} />
     </div>
   </div>);
 

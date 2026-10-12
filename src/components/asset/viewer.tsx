@@ -9,12 +9,25 @@ export const CUT = "#F0447C";          // cut / trim line
 export const SAFE = "rgba(122,226,178,.45)"; // safe zone band
 
 /** Numbered comment bubble. `draft` is the one being placed. */
-export function PinBubble({ n, x, y, draft, active, onClick, className }: { n: number | string; x: number; y: number; draft?: boolean; active?: boolean; onClick?: () => void; className?: string }) {
+/**
+ * Comment marker on the design: small enough not to hide the artwork, numbered to match the comment.
+ * The picked one grows and pulses; the others fade back so it is easy to spot.
+ */
+export function PinBubble({ id, n, x, y, draft, active, dimmed, onClick, className }: { id?: string; n: number | string; x: number; y: number; draft?: boolean; active?: boolean; dimmed?: boolean; onClick?: () => void; className?: string }) {
   return (
-    <button type="button" onClick={onClick} tabIndex={onClick ? 0 : -1} aria-label={`Comment ${n}`}
-      className={cn("absolute flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[13px] font-semibold shadow-[0_2px_10px_rgba(0,0,0,.35)] ring-[3px] transition-transform", draft ? "bg-white text-black ring-white/60" : "bg-info text-white ring-white", active && "scale-110", onClick ? "cursor-pointer" : "pointer-events-none", className)}
-      style={{ left: `${x * 100}%`, top: `${y * 100}%` }}>{n}</button>
+    <button type="button" id={id} onClick={(e) => { e.stopPropagation(); onClick?.(); }} tabIndex={onClick ? 0 : -1} aria-label={`Comment ${n}`} aria-pressed={onClick ? !!active : undefined}
+      className={cn("absolute z-[1] flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[11px] font-semibold leading-none shadow-[0_1px_4px_rgba(0,0,0,.35)] ring-2 transition-[transform,opacity] duration-200",
+        draft ? "bg-white text-black ring-white/70" : "bg-info text-white ring-white", active && "z-[2] scale-125", dimmed && "opacity-45 hover:opacity-100", onClick ? "cursor-pointer" : "pointer-events-none", className)}
+      style={{ left: `${x * 100}%`, top: `${y * 100}%` }}>
+      {active && <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-info/50" />}
+      <span className="relative">{n}</span>
+    </button>
   );
+}
+
+/** The same number as a small chip in the comment list, so a comment and its marker read as a pair. */
+export function PinChip({ n, active, muted }: { n: number; active?: boolean; muted?: boolean }) {
+  return <span className={cn("inline-flex size-[18px] items-center justify-center rounded-full text-[10px] font-semibold leading-none", muted ? "border border-border bg-card text-muted-foreground" : "bg-info text-white", active && "ring-2 ring-info/30")}>{n}</span>;
 }
 
 /** CSS twin of the baked watermark, for GIFs (which are served untouched): one giant outlined DRAFT across the diagonal. */

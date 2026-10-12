@@ -10,7 +10,7 @@ import { loadGroups } from "@/lib/groups";
 
 export type NotificationKind =
   | "access.requested" | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "comment.posted" | "comments.posted" | "comments.unsent" | "reviews.waiting" | "comments.pending"
-  | "version.uploaded" | "review.waiting" | "version.changes_requested" | "version.approved" | "versions.approved" | "version.reopened"
+  | "version.uploaded" | "review.waiting" | "version.changes_requested" | "version.approved" | "versions.approved" | "version.reopened" | "primary.approved"
   | "event.all_approved" | "event.deleted" | "event.published" | "event.archived"
   | "draft.expiring" | "draft.swept" | "devices.refresh";
 
@@ -23,12 +23,12 @@ const CHAT: Partial<Record<NotificationKind, "mention" | "channel">> = {
   // Access moments stay out of chat on purpose: they would show a newcomer's name and email to the whole channel.
   "slot.assigned": "mention", "slot.due": "mention",
   "comment.mention": "mention", "comment.posted": "mention", "comments.posted": "mention", "version.uploaded": "mention", "review.waiting": "mention", "reviews.waiting": "mention", "comments.pending": "mention",
-  "version.changes_requested": "mention", "version.approved": "channel", "versions.approved": "mention", "version.reopened": "mention",
+  "version.changes_requested": "mention", "version.approved": "channel", "versions.approved": "mention", "version.reopened": "mention", "primary.approved": "mention",
   "event.all_approved": "mention", "event.published": "mention", "event.archived": "channel",
 };
 
-/** Event-level moments every group hears about, whatever its setting. Archiving is housekeeping: org channel only. */
-const MILESTONES = new Set<NotificationKind>(["event.published", "event.all_approved"]);
+/** Event-level moments every group hears about, whatever its setting (the primary design's approval unblocks every other format). Archiving is housekeeping: org channel only. */
+const MILESTONES = new Set<NotificationKind>(["event.published", "event.all_approved", "primary.approved"]);
 
 const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> = {
   "access.requested": (p) => `Access request: ${p.name ?? p.email}`,
@@ -47,6 +47,7 @@ const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> 
   "version.approved": (p) => `Approved: ${p.format} v${p.number} · ${p.title}`,
   "versions.approved": (p) => `Approved: ${p.count} designs · ${p.title}`,
   "version.reopened": (p) => `Reopened: ${p.format} v${p.number} · ${p.title}`,
+  "primary.approved": (p) => `Primary design approved · ${p.title}: start the other formats`,
   "event.all_approved": (p) => `All approved: ${p.title}`,
   "event.deleted": (p) => `Deleted: ${p.title}`,
   "event.published": (p) => `New event: ${p.title}`,

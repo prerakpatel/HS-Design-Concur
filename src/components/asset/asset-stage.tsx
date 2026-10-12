@@ -10,7 +10,11 @@ import { StateBadge, type BadgeState } from "@/components/state-badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Lightbox } from "@/components/asset/lightbox";
 import { UploadPanel, UploadDropArea, requestUpload } from "@/components/asset/upload-panel";
-import { Guides, PinBubble, DraftMark, guideGeometry, type SafeArea, type Pin, type PrintGuides } from "@/components/asset/viewer";
+import { MockStage, hasMock } from "@/components/events/format-thumb";
+import type { Format } from "@/lib/types";
+
+// icons: image devices
+import { Guides, PinBubble, PinChip, DraftMark, guideGeometry, type SafeArea, type Pin, type PrintGuides } from "@/components/asset/viewer";
 import { addComment, sendCommentBatch, discardCommentBatch, setCommentFlag, editComment, deleteComment, deleteVersion } from "@/app/actions/reviews";
 import { assignSlot } from "@/app/actions/events";
 import { CommentEditor } from "@/components/rich/comment-editor";
@@ -36,10 +40,12 @@ export interface StatusView { state: BadgeState; version: number | null; uploade
  * get their decision here on desktop) and the comment thread. Comment mode: click the design, a bubble drops, a
  * small composer opens under it.
  */
-export function AssetStage({ versionId, sides, safe, print, comments, members, canComment, canModerate = false, versions, currentVersionId, eventId, slotId, upload, status, decision, decisionBar, readOnly }: {
+export function AssetStage({ versionId, sides, safe, print, comments, members, canComment, canModerate = false, versions, currentVersionId, eventId, slotId, upload, status, decision, decisionBar, readOnly, mockup }: {
   versionId: string | null; sides: SideView[]; safe: SafeArea; print: PrintGuides | null;
   comments: CommentView[]; members: Member[]; canComment: boolean; canModerate?: boolean;
   versions: VersionChip[]; currentVersionId: string | null; eventId: string; slotId: string;
+  /** The format's in-place mock (phone, Instagram, Sambandh, TV, LED), shown with the "In place" toggle. */
+  mockup?: { size: string; formatKey: string; frame: Format["frame"]; event: { title: string; date: string | null } };
   upload: { accept: string[]; isPrint: boolean; nextNumber: number } | null; status: StatusView; decision: React.ReactNode; decisionBar?: React.ReactNode; readOnly: boolean;
 }) {
   const [showGuides, setShowGuides] = useState(false);
@@ -58,17 +64,40 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const [review, setReview] = useState(unsent > 0);
   const [sending, setSending] = useState(false);
   const mode = review ? "place" : "view";
+  // Design ↔ In place: the same mock the event page tiles use, at full size, as soon as a design exists.
+  const front = sides.find((x) => x.side === "front")?.src ?? null;
+  const canMock = !!mockup && !!front && hasMock(mockup.size, mockup.formatKey, mockup.frame);
+  const [inPlace, setInPlace] = useState(false);
+  const showMock = canMock && inPlace && !review;
 
   // Resolved comments stay: hidden by default, one tap away. Pins are drawn for the version on screen only.
   const [showResolved, setShowResolved] = useState(false);
   const isDone = (c: CommentView) => !!c.addressed_at || !!c.confirmed_at;
   const currentNumber = versions.find((v) => v.id === currentVersionId)?.number ?? null;
   const shown = useMemo(() => comments.filter((c) => showResolved || !isDone(c)), [comments, showResolved]);
-  const numbered = useMemo(() => { let n = 0; return new Map(shown.filter((c) => c.version === currentNumber && c.pin_x != null && c.pin_y != null).map((c) => [c.id, ++n])); }, [shown, currentNumber]);
+  // Pinned comments are numbered per version (1, 2, 3 on v7; 1, 2 on v8), matching the markers on that version.
+  const pinNo = useMemo(() => { const per = new Map<number, number>(); return new Map(shown.filter((c) => c.pin_x != null && c.pin_y != null).map((c) => { const n = (per.get(c.version) ?? 0) + 1; per.set(c.version, n); return [c.id, n] as const; })); }, [shown]);
+  const numbered = useMemo(() => new Map([...pinNo].filter(([id]) => shown.find((c) => c.id === id)?.version === currentNumber)), [pinNo, shown, currentNumber]);
   const pinsFor = (side: Side): Pin[] => shown.filter((c) => numbered.has(c.id) && c.pin_side === side).map((c) => ({ id: c.id, n: numbered.get(c.id)!, x: c.pin_x!, y: c.pin_y! }));
   const openCount = comments.filter((c) => !isDone(c) && !c.draft).length;
   const resolvedCount = comments.filter(isDone).length;
-  useEffect(() => { if (active) document.getElementById(`comment-${active}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [active]);
+  // Marker ↔ comment: picking one brings the other into view. `from` says which side was tapped.
+  const [from, setFrom] = useState<"pin" | "list">("list");
+  useEffect(() => {
+    if (!active) return;
+    document.getElementById(from === "pin" ? `comment-${active}` : `pin-${active}`)?.scrollIntoView({ block: from === "pin" ? "center" : "nearest", behavior: "smooth" });
+  }, [active, from]);
+  // Arriving from a comment on another version (?c=…): highlight its marker once the page is here.
+  useEffect(() => {
+    const c = new URLSearchParams(window.location.search).get("c"); if (!c) return;
+    const t = setTimeout(() => { setFrom("list"); setActive(c); }, 0); return () => clearTimeout(t);
+  }, [currentVersionId]);
+  const pickPin = (id: string) => { setFrom("pin"); setActive(active === id ? null : id); };
+  const pickComment = (c: CommentView) => {
+    if (!pinNo.has(c.id)) return;
+    if (c.version !== currentNumber) { router.push(`/events/${eventId}/slots/${slotId}?v=${c.version}&c=${c.id}`); return; }
+    setFrom("list"); setActive(active === c.id ? null : c.id);
+  };
 
   const stop = () => { setDraft(null); setDraftText(""); setDraftEmpty(true); };
   const post = (body: string, pin: { side: Side; x: number; y: number } | null) => start(async () => {
@@ -139,12 +168,23 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
             </DropdownMenu>
           )}
           <div className="ml-auto flex items-center gap-2">
-            {canComment && versionId && !review && <Button variant="outline" onClick={() => setReview(true)} className={iconPill} aria-label="Start a review: comment on the design"><Icon name="add_comment" /><span className="max-sm:hidden">Comment</span></Button>}
-            {hasGuides && <Button variant="outline" onClick={() => setShowGuides((v) => !v)} aria-pressed={showGuides} className={cn(iconPill, showGuides && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")} aria-label="Toggle guides"><Icon name="grid_on" /><span className="max-sm:hidden">Guides</span></Button>}
+            {canMock && !review && (
+              <div role="tablist" aria-label="View" className="flex h-10 items-center rounded-full border border-border p-1">
+                {([[false, "image", "Design"], [true, "devices", "In place"]] as const).map(([v, icon, label]) => (
+                  <button key={label} type="button" role="tab" aria-selected={inPlace === v} aria-label={label} onClick={() => setInPlace(v)}
+                    className={cn("flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-medium transition-colors max-sm:px-2.5", inPlace === v ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
+                    <Icon name={icon} className="!text-[18px]" /><span className="max-md:hidden">{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {canComment && versionId && !review && <Button variant="outline" onClick={() => { setInPlace(false); setReview(true); }} className={iconPill} aria-label="Start a review: comment on the design"><Icon name="add_comment" /><span className="max-sm:hidden">Comment</span></Button>}
+            {hasGuides && !showMock && <Button variant="outline" onClick={() => setShowGuides((v) => !v)} aria-pressed={showGuides} className={cn(iconPill, showGuides && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")} aria-label="Toggle guides"><Icon name="grid_on" /><span className="max-sm:hidden">Guides</span></Button>}
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-8">
+        {showMock && front && mockup && <MockStage src={front} size={mockup.size} formatKey={mockup.formatKey} frame={mockup.frame} event={mockup.event} />}
+        <div className={cn("flex flex-col items-center gap-8", showMock && "hidden")}>
           {sides.map((s) => {
             const g = guideGeometry(safe, print, s.width, s.height);
             const pins = pinsFor(s.side);
@@ -156,7 +196,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                       onClick={(e) => { if (mode !== "place") { setOpen(s.side); return; } const r = e.currentTarget.getBoundingClientRect(); setDraft({ side: s.side, x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }); }} />
                     {s.isGif && <DraftMark width={s.width} height={s.height} />}
                     {showGuides && <Guides cut={g.cut} safe={g.safe} />}
-                    {pins.map((p) => <PinBubble key={p.id} n={p.n} x={p.x} y={p.y} active={active === p.id} onClick={() => setActive(active === p.id ? null : p.id)} />)}
+                    {pins.map((p) => <PinBubble key={p.id} id={`pin-${p.id}`} n={p.n} x={p.x} y={p.y} active={active === p.id} dimmed={!!active && active !== p.id && numbered.has(active)} onClick={() => pickPin(p.id)} />)}
                     {draft?.side === s.side && <PinBubble n={numbered.size + 1} x={draft.x} y={draft.y} draft />}
                     {draft?.side === s.side && (
                       <div className={cn("absolute z-10 w-[min(340px,calc(100vw-2rem))] rounded-2xl bg-card p-2 shadow-xl ring-1 ring-border", draft.y > 0.7 ? "-translate-y-[calc(100%+26px)]" : "translate-y-[26px]")} style={{ left: `clamp(0px, ${draft.x * 100}% - 24px, calc(100% - min(340px, calc(100vw - 2rem))))`, top: `${draft.y * 100}%` }} onClick={(e) => e.stopPropagation()}>
@@ -209,7 +249,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
             {comments.length === 0 && <li className="px-2 py-3 text-sm text-muted-foreground">No comments yet. Use Comment to pin one on the design, or write below.</li>}
             {comments.length > 0 && shown.length === 0 && <li className="px-2 py-3 text-sm text-muted-foreground">Everything here is resolved. <button type="button" onClick={() => setShowResolved(true)} className="font-medium text-foreground underline-offset-4 hover:underline">Show the {resolvedCount} resolved comment{resolvedCount === 1 ? "" : "s"}</button> to read the discussion.</li>}
             {shown.map((c, i) => {
-              const done = isDone(c); const n = numbered.get(c.id);
+              const done = isDone(c); const pin = pinNo.get(c.id); const here = c.version === currentNumber;
               const newVersion = i === 0 || shown[i - 1].version !== c.version;
               return (
                 <Fragment key={c.id}>
@@ -218,7 +258,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                     <span className="h-px flex-1 bg-border" /><span>v{c.version}{c.version === currentNumber ? " · this version" : ""}</span><span className="h-px flex-1 bg-border" />
                   </li>
                 )}
-                <li id={`comment-${c.id}`} onClick={() => n && setActive(c.id)} className={cn("group/c flex gap-3 rounded-xl px-2 py-2.5 transition-colors", active === c.id && "bg-subtle", done && "opacity-60", c.draft && "-mx-2 -mt-px rounded-none border-y border-info/15 bg-info-soft/60 px-4")}>
+                <li id={`comment-${c.id}`} onClick={() => pickComment(c)} className={cn("group/c flex gap-3 rounded-xl px-2 py-2.5 transition-colors", pin != null && "cursor-pointer hover:bg-subtle", active === c.id && "bg-info-soft/60 ring-1 ring-info/25 hover:bg-info-soft/60", done && "opacity-60", c.draft && "-mx-2 -mt-px rounded-none border-y border-info/15 bg-info-soft/60 px-4")}>
                   <UserAvatar initials={c.author.initials} src={c.author.avatar} size={32} className="mt-0.5 shrink-0" />
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-start gap-2">
@@ -226,7 +266,9 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                         <span className="font-medium">{c.author.name}</span>
                         <span className="text-xs text-muted-foreground">{relativeTime(c.created_at)}{c.edited_at ? " · edited" : ""}</span>
                         {c.draft && <span className="rounded-full bg-info px-2 py-px text-[11px] font-medium text-white">Not sent</span>}
-                        {n && <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground"><Icon name="chat_bubble" className="!text-[13px]" />{n}{sides.length > 1 ? ` · ${c.pin_side}` : ""}</span>}
+                        {pin != null && (here
+                          ? <span title="Marker on the design: tap to find it" className="inline-flex items-center gap-1 text-xs text-muted-foreground"><PinChip n={pin} active={active === c.id} />{sides.length > 1 ? c.pin_side : null}</span>
+                          : <span title={`Pinned on v${c.version}: tap to see it there`} className="inline-flex items-center gap-1 text-xs text-muted-foreground"><PinChip n={pin} muted />on v{c.version}<Icon name="arrow_outward" className="!text-[13px]" /></span>)}
                       </p>
                       {canComment && editing?.id !== c.id && (
                         <DropdownMenu>

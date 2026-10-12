@@ -10,8 +10,8 @@ import { UserError } from "@/lib/user-error";
 
 async function loadVersion(versionId: string) {
   const ctx = await requireActiveUser();
-  const { data: v } = await ctx.supabase.from("versions").select("*,slots(id,event_id,assignee_id,state,formats(name),events(id,org_id,title,status,created_by))").eq("id", versionId).maybeSingle();
-  const slot = v?.slots as unknown as { id: string; event_id: string; assignee_id: string | null; state: string; formats: { name: string }; events: { id: string; org_id: string; title: string; status: string; created_by: string } } | null;
+  const { data: v } = await ctx.supabase.from("versions").select("*,slots(id,event_id,assignee_id,state,is_primary,formats(name),events(id,org_id,title,status,created_by))").eq("id", versionId).maybeSingle();
+  const slot = v?.slots as unknown as { id: string; event_id: string; assignee_id: string | null; state: string; is_primary: boolean; formats: { name: string }; events: { id: string; org_id: string; title: string; status: string; created_by: string } } | null;
   if (!v || !slot || slot.events.org_id !== ctx.org.id) throw new UserError("Version not found");
   if (slot.events.status === "archived") throw new UserError("This event is archived and read-only");
   return { ...ctx, version: v, slot, event: slot.events, formatName: slot.formats?.name ?? "format" };
@@ -64,11 +64,27 @@ async function announceIfAllApproved({ supabase, user, org, event }: Loaded) {
   await notify(supabase, [event.created_by, ...publication], "event.all_approved", { eventId: event.id, title: event.title, count: slots.length, by: user.name ?? user.email }, user.id, { orgId: org.id });
 }
 
+/**
+ * The primary design unblocks every other format, so its approval gets its own message: a congratulations in
+ * the org chat and a personal note to every designer on the event (the primary's own included), instead of the
+ * usual "Approved" line.
+ */
+async function announceApproval(ctx: Loaded) {
+  const { supabase, user, org, version, slot, event, formatName } = ctx;
+  const payload = { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email };
+  if (slot.is_primary) {
+    const { data: slots } = await supabase.from("slots").select("assignee_id").eq("event_id", event.id).eq("requested", true);
+    const designers = [...new Set([slot.assignee_id, version.uploaded_by, ...(slots ?? []).map((s) => s.assignee_id as string | null)])];
+    await notify(supabase, designers, "primary.approved", { ...payload, slotId: undefined, href: `/events/${event.id}` }, user.id, { orgId: org.id });
+    return;
+  }
+  await notify(supabase, await eventParticipants(supabase, event.id), "version.approved", payload, user.id, { orgId: org.id, mention: [version.uploaded_by, slot.assignee_id] });
+}
+
 /** Approve (PRD §6.2). `download` only changes what the client does afterwards. */
 export async function approveVersion(versionId: string) {
   const ctx = await approveOne(versionId);
-  const { supabase, user, org, version, slot, event, formatName } = ctx;
-  await notify(supabase, await eventParticipants(supabase, event.id), "version.approved", { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id, mention: [version.uploaded_by, slot.assignee_id] });
+  await announceApproval(ctx);
   await announceIfAllApproved(ctx);
   return { ok: true };
 }
@@ -201,8 +217,7 @@ export async function approveMany(versionIds: string[]) {
     try { done.push(await approveOne(id)); } catch (e) { failed.push((e as Error).message); }
   }
   if (done.length === 1) {
-    const { supabase, user, org, version, slot, event, formatName } = done[0];
-    await notify(supabase, await eventParticipants(supabase, event.id), "version.approved", { eventId: event.id, slotId: slot.id, versionId: version.id, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id, mention: [version.uploaded_by, slot.assignee_id] });
+    await announceApproval(done[0]);
   } else if (done.length > 1) {
     // Usually one event; group anyway so a mixed selection still reads correctly.
     const byEvent = new Map<string, Loaded[]>();
@@ -210,6 +225,7 @@ export async function approveMany(versionIds: string[]) {
     for (const group of byEvent.values()) {
       const { supabase, user, org, event } = group[0];
       const formats = group.map((g) => `${g.formatName} v${g.version.number}`).join(", ");
+      for (const g of group) if (g.slot.is_primary) await announceApproval(g);
       await notify(supabase, await eventParticipants(supabase, event.id), "versions.approved", { eventId: event.id, title: event.title, count: group.length, formats, by: user.name ?? user.email }, user.id, { orgId: org.id, mention: group.flatMap((g) => [g.version.uploaded_by, g.slot.assignee_id]) });
     }
   }
