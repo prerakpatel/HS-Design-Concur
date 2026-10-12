@@ -31,7 +31,7 @@ import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
 
 export const dynamic = "force-dynamic";
-const SCREENS = ["events", "wizard-assets-brief", "wizard-assets-items", "project-assets", "event", "event-archived", "upload-progress", "slot-empty", "slot", "slot-review", "slot-versions", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
+const SCREENS = ["events", "replace-flow", "wizard-assets-brief", "wizard-assets-items", "project-assets", "event", "event-archived", "upload-progress", "slot-empty", "slot", "slot-review", "slot-versions", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
 
 /** Design preview harness. Renders real components with fixture data so screens can be reviewed without a database. */
 export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
@@ -60,6 +60,26 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     <AssetHeader eventId="e-1" eventTitle="Dashera Sabha" formatName="IG Reel / Story" position={{ at: 2, total: 5 }} prev={{ id: "s-1", name: "Mobile" }} next={{ id: "s-3", name: "Sambandh Event" }} />
     <UploadPanel slotId="s-2" accept={["image/png", "image/jpeg", "image/webp", "image/gif"]} isPrint={false} nextNumber={1} variant="dropzone" />
   </>);
+  if (screen === "replace-flow") {
+    const chat = (t: string, d: string, faded?: boolean) => <li className={"rounded-xl border border-border bg-card p-3 text-sm " + (faded ? "opacity-50" : "")}><p className="font-medium">{t}</p><p className="text-muted-foreground">{d}</p></li>;
+    return shell(<div className="space-y-10">
+      <PageHeader title="Replacing a file after sending" subtitle="Harsh sends Mobile v3 for review, then replaces the file a few seconds later." />
+      <section className="grid gap-6 md:grid-cols-2">
+        <div><h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Before · Google Chat / Slack</h2><ul className="space-y-2">
+          {chat("📤 Diwali Annakut · Mobile v3", "Sent for review by Harsh Patel.")}{chat("📤 Diwali Annakut · Mobile v3", "Sent for review by Harsh Patel.")}{chat("📤 Diwali Annakut · Mobile v3", "Sent for review by Harsh Patel.")}</ul></div>
+        <div><h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Now · nobody has reviewed it yet</h2><ul className="space-y-2">
+          {chat("📤 Diwali Annakut · Mobile v3", "Sent for review by Harsh Patel.")}</ul><p className="mt-3 text-sm text-muted-foreground">The replaced file stays in review; approvers see the newest file. No second message.</p></div>
+      </section>
+      <section className="grid gap-6 md:grid-cols-2">
+        <div><h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">What the designer sees</h2><div className="space-y-3">
+          <UploadProgress p={{ name: "Version 3 updated · approvers already see it", phase: "done", pct: 100 }} cancel={noop} />
+          <UploadProgress p={{ name: "Version 3 replaced · send it for review", phase: "done", pct: 100 }} cancel={noop} />
+          <p className="text-sm text-muted-foreground">Top: unreviewed, stays in review. Bottom: someone already commented or decided, so it goes private and needs a resend (which notifies).</p></div></div>
+        <div><h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Activity log</h2>
+          <ActivityFeed items={[{ id: 1, who: "Harsh Patel", initials: "HP", what: "updated the file for Mobile v3", when: "2026-10-12T14:38:00Z" }, { id: 2, who: "Harsh Patel", initials: "HP", what: "sent Mobile v3 for review", when: "2026-10-12T14:36:00Z" }, { id: 3, who: "Harsh Patel", initials: "HP", what: "uploaded Mobile v3", when: "2026-10-12T14:35:00Z" }]} /></div>
+      </section>
+    </div>);
+  }
   if (screen === "upload-progress") return shell(<div className="h-[60vh]">
     <UploadProgress p={{ name: "annakut-mobile-v3.png", phase: "upload", pct: 42 }} cancel={noop} />
   </div>);
@@ -120,7 +140,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
   if (screen === "project-assets") return shell(<>
     <PageHeader back={<Link href="#" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><Icon name="arrow_back" className="!text-[18px]" />Projects</Link>} title="YouTube thumbnails · November" subtitle="Assets only · ends Thu 5 Nov · Created by Prerak Patel" />
     <div className="space-y-10">
-      <BriefCard assets brief={{ date: "2026-11-05", timeText: null, inviteText: "Thumbnails for the four Sunday sabha videos: title on the left, Swamiji on the right, our usual warm palette.", venueName: null, venueAddress: null, notes: null }} locked={false} editHref="#" />
+      <BriefCard assets brief={{ date: "2026-11-05", timeText: null, inviteText: "Thumbnails for the four Sunday sabha videos: title on the left, Swamiji on the right, our usual warm palette. Keep the Gujarati headline large and readable on a phone, and leave the bottom right clear for the video length badge.", venueName: null, venueAddress: null, notes: null }} locked={false} editHref="#" />
       <FormatGrid eventId="e-5" title="Assets" meta="1 approved · 3 in progress" cards={[1, 2, 3, 4].map((n) => ({ slotId: `s-${n}`, name: `YouTube Thumbnail · Episode ${n}`, size: "1280 × 720", formatKey: "youtube_thumb", frame: "flat" as const, state: n === 1 ? "approved" as const : n < 4 ? "in_review" as const : "requested" as const, requested: true, version: n < 4 ? 1 : null, versionId: n < 4 ? `v-${n}` : null, thumb: n < 4 ? "/preview/flyer.webp" : null, due: "2026-11-01", assignee: { name: "Mihir Shah", initials: "MS" } }))} />
     </div>
   </>);

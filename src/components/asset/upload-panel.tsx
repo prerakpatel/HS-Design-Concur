@@ -97,9 +97,9 @@ function uploadError(text: string, status: number) { try { return (JSON.parse(te
 export function UploadProgress({ p, cancel }: { p: Progress; cancel: () => void }) {
   return (
     <div role="status" aria-live="polite" className="animate-nudge pointer-events-auto w-[min(100%,22rem)] overflow-hidden rounded-xl bg-inverse-surface text-left text-inverse-on-surface shadow-lg">
-      <div className="flex h-11 items-center gap-2.5 pl-4 pr-1.5 text-sm">
+      <div className="flex min-h-11 items-center gap-2.5 py-1.5 pl-4 pr-1.5 text-sm">
         <Icon name={p.phase === "done" ? "check_circle" : "upload"} className={cn("!text-[18px]", p.phase === "done" && "text-success")} />
-        <span className="min-w-0 flex-1 truncate">{p.phase === "done" ? <><span className="font-medium">Done</span> · {p.name}</> : p.phase === "optimise" ? "Optimising…" : <>{p.name}</>}</span>
+        <span className={"min-w-0 flex-1 " + (p.phase === "done" ? "" : "truncate")}>{p.phase === "done" ? <><span className="font-medium">Done</span> · {p.name}</> : p.phase === "optimise" ? "Optimising…" : <>{p.name}</>}</span>
         {p.phase === "upload" && <span className="tabular-nums text-xs opacity-70">{p.pct}%</span>}
         {p.phase === "upload" ? <button type="button" onClick={cancel} aria-label="Cancel upload" className="flex size-8 items-center justify-center rounded-full hover:bg-white/10"><Icon name="close" className="!text-[18px]" /></button> : <span className="w-1.5" />}
       </div>

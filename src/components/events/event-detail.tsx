@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BriefMore } from "@/components/events/brief-more";
 import { format } from "date-fns";
 import { StateBadge } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
@@ -17,10 +18,9 @@ export function BriefCard({ brief, locked, editHref, assets = false }: { brief: 
     <section className="rounded-2xl bg-subtle p-5">
       <div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-semibold leading-7 tracking-[-0.01em]">Brief</h2>{locked ? <StateBadge state="requested" label="Locked · changes via comments" /> : <Link href={editHref} className="text-sm font-medium underline-offset-4 hover:underline">Edit</Link>}</div>
       {assets ? (
-        <dl className="mt-4 grid gap-5 sm:grid-cols-2">
-          <div><dt className={dt}>Ends</dt><dd className="mt-1 text-sm font-medium">{brief.date ? format(new Date(brief.date + "T00:00:00"), "EEEE, d MMMM yyyy") : <span className="font-normal text-muted-foreground">End date not set</span>}</dd><dd className="text-sm text-muted-foreground">Files are cleared the day after. Download the finals before then.</dd></div>
-          <div><dt className={dt}>Type</dt><dd className="mt-1 text-sm font-medium">Assets only</dd><dd className="text-sm text-muted-foreground">Not tied to an event; nothing is kept after it ends.</dd></div>
-        </dl>
+        // Requests are for people who know the drill: the end date and the first lines of what is needed. The rest
+        // (what happens at the end, the type, the full text, notes) sits behind "See all details".
+        <p className="mt-3 flex flex-wrap items-baseline gap-x-2 text-sm"><span className={dt}>Ends</span><span className="font-medium">{brief.date ? format(new Date(brief.date + "T00:00:00"), "EEEE, d MMMM yyyy") : <span className="font-normal text-muted-foreground">End date not set</span>}</span></p>
       ) : (
       <dl className="mt-4 grid gap-5 sm:grid-cols-2">
         <div>
@@ -35,18 +35,12 @@ export function BriefCard({ brief, locked, editHref, assets = false }: { brief: 
         </div>
       </dl>
       )}
-      {/* Invite text and notes are the long part: two lines by default, the rest behind "See all details". Whatever is missing just shows as not set. */}
-      <details className="group mt-5 flex flex-col">
-        <summary className="order-2 mt-2 w-fit cursor-pointer list-none text-sm font-medium text-info [&::-webkit-details-marker]:hidden"><span className="group-open:hidden">See all details</span><span className="hidden group-open:inline">Show less</span></summary>
-        <div className="order-1 group-open:hidden">
-          <p className={dt}>{ask}</p>
-          <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-sm leading-6">{brief.inviteText ?? <span className="text-muted-foreground">{assets ? "Not written yet. Say what is needed before designs start." : "Not written yet. Add the invite text before designs start."}</span>}</p>
-        </div>
-        <div className="order-3 mt-3 hidden space-y-4 group-open:block">
-          <div><p className={dt}>{ask}</p><p className="mt-1 whitespace-pre-wrap text-sm leading-6">{brief.inviteText ?? <span className="text-muted-foreground">{assets ? "Not written yet. Say what is needed before designs start." : "Not written yet. Add the invite text before designs start."}</span>}</p></div>
-          {brief.notes && <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">For designers:</span> {brief.notes}</p>}
-        </div>
-      </details>
+      {/* Invite text and notes are the long part: two lines by default, the rest behind "See all details". */}
+      <div className={assets ? "mt-3" : "mt-5"}>
+        <BriefMore label={ask} text={brief.inviteText} notes={brief.notes}
+          empty={assets ? "Not written yet. Say what is needed before designs start." : "Not written yet. Add the invite text before designs start."}
+          extra={assets ? <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">Assets only.</span> Not tied to an event. Files are cleared the day after the end date, so download the finals before then; nothing is kept.</p> : null} />
+      </div>
     </section>
   );
 }
