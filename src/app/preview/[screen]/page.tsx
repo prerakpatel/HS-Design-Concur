@@ -8,6 +8,8 @@ import { Icon } from "@/components/material-icon";
 import { EventList } from "@/components/events/event-list";
 import { BriefCard, ActivityFeed } from "@/components/events/event-detail";
 import { FormatGrid } from "@/components/events/format-grid";
+import { NewRequest } from "@/components/events/new-request";
+import { AssetsBriefForm, AssetItemsForm } from "@/components/wizard/steps";
 import { ArchivedReference } from "@/components/events/archived-reference";
 import { UploadProgress, UploadPanel } from "@/components/asset/upload-panel";
 import { UsersList } from "@/components/settings/user-editor";
@@ -29,7 +31,7 @@ import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
 
 export const dynamic = "force-dynamic";
-const SCREENS = ["events", "event", "event-archived", "upload-progress", "slot-empty", "slot", "slot-review", "slot-versions", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
+const SCREENS = ["events", "wizard-assets-brief", "wizard-assets-items", "project-assets", "event", "event-archived", "upload-progress", "slot-empty", "slot", "slot-review", "slot-versions", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
 
 /** Design preview harness. Renders real components with fixture data so screens can be reviewed without a database. */
 export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
@@ -45,7 +47,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
   );
 
   if (screen === "events") return shell(<>
-    <PageHeader title="Events" subtitle={`${org.name} · 4 of 10 event slots in use`} actions={<Button asChild><Link href="#">New event</Link></Button>} />
+    <PageHeader title="Projects" subtitle={`${org.name} · 5 of 15 project slots in use`} actions={<NewRequest assets />} />
     {tabs([["upcoming", "Upcoming", 3], ["drafts", "Drafts", 1], ["past", "Past", 0]], "upcoming")}
     <EventList items={F.EVENTS.filter((e) => e.status === "active")} />
   </>);
@@ -110,6 +112,18 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
 
   const eventValues = { title: "Diwali Annakut Darshan", event_date: "2026-11-08", time_text: "5:30 PM onwards\nAarti at 7 PM", description: "Join us for Annakut Darshan…", venue_name: "Harisumiran NJ", venue_address: "2 Lincoln Ave, Lake Hiawatha, NJ 07034", notes: "" };
   if (screen === "wizard-new") return <WizardShell eventId={null} step="event" title="Tell us about the event" subtitle="The basics and the words that go on the designs. Anyone in Harisumiran can pick this up later if you save and exit."><EventForm eventId={null} orgName="Harisumiran" values={{ ...eventValues, title: "", event_date: "", time_text: "", description: "" }} action={noop} /></WizardShell>;
+  if (screen === "wizard-assets-brief") return <WizardShell assets eventId={null} step="event" title="What do you need?" subtitle="Assets that aren't tied to an event: thumbnails, covers, presets. Describe them here; list each one on the next step."><AssetsBriefForm eventId={null} orgName="Harisumiran" values={{ title: "", event_date: "", description: "", notes: "" }} action={noopForm} minDate="2026-10-12" maxDate="2026-11-11" /></WizardShell>;
+  if (screen === "wizard-assets-items") return <WizardShell assets eventId="e-5" step="formats" statuses={{ event: "done" }} title="Which assets?" subtitle="Pick a format and how many, then name each one. Every asset gets its own designer, review and approval." wide>
+    <AssetItemsForm eventId="e-5" action={noopForm} formats={[{ id: "f-yt", name: "YouTube Thumbnail", size: "1280 × 720", customSize: false }, { id: "f-sam", name: "Sambandh Event", size: "1125 × 1200", customSize: false }, { id: "f-print", name: "Print 10 × 7 in", size: "10.25 × 7.25 in", customSize: false }]}
+      items={["January", "February", "March"].map((m, i) => ({ slotId: `s-${i}`, formatId: "f-print", label: m, notes: "" })).concat([{ slotId: "s-yt", formatId: "f-yt", label: "Episode 1", notes: "Title on the left" }])} />
+  </WizardShell>;
+  if (screen === "project-assets") return shell(<>
+    <PageHeader back={<Link href="#" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><Icon name="arrow_back" className="!text-[18px]" />Projects</Link>} title="YouTube thumbnails · November" subtitle="Assets only · ends Thu 5 Nov · Created by Prerak Patel" />
+    <div className="space-y-10">
+      <BriefCard assets brief={{ date: "2026-11-05", timeText: null, inviteText: "Thumbnails for the four Sunday sabha videos: title on the left, Swamiji on the right, our usual warm palette.", venueName: null, venueAddress: null, notes: null }} locked={false} editHref="#" />
+      <FormatGrid eventId="e-5" title="Assets" meta="1 approved · 3 in progress" cards={[1, 2, 3, 4].map((n) => ({ slotId: `s-${n}`, name: `YouTube Thumbnail · Episode ${n}`, size: "1280 × 720", formatKey: "youtube_thumb", frame: "flat" as const, state: n === 1 ? "approved" as const : n < 4 ? "in_review" as const : "requested" as const, requested: true, version: n < 4 ? 1 : null, versionId: n < 4 ? `v-${n}` : null, thumb: n < 4 ? "/preview/flyer.webp" : null, due: "2026-11-01", assignee: { name: "Mihir Shah", initials: "MS" } }))} />
+    </div>
+  </>);
   if (screen === "wizard-event") return <WizardShell eventId="e-4" step="event" statuses={{ event: "done" }} title="Tell us about the event" subtitle="The basics and exactly the words the designers will place."><EventForm eventId="e-4" orgName="Harisumiran" values={eventValues} action={noop} /></WizardShell>;
   if (screen === "wizard-formats") return <WizardShell eventId="e-4" step="formats" statuses={{ event: "incomplete" }} title="Which formats does this event need?" subtitle="All formats start off. Turn on the ones you need." wide><FormatsForm eventId="e-4" rows={F.FORMAT_ROWS} action={noopForm} /></WizardShell>;
   if (screen === "wizard-assign") return <WizardShell eventId="e-4" step="assign" title="Who designs what, and by when?" subtitle="Designers are listed first. Due dates send a reminder three days before and on the day." wide><AssignForm eventId="e-4" rows={F.ASSIGN_ROWS} people={F.PEOPLE} action={noopForm} /></WizardShell>;

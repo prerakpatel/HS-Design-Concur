@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { slotName } from "@/lib/project";
 import { processUpload } from "@/lib/images";
 import { rasterisePdf } from "@/lib/pdf";
 import { BUCKET } from "@/lib/storage";
@@ -14,7 +15,7 @@ import { MARK_VERSION } from "@/config/marks";
  */
 export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpPath: string, mime: string, side: "front" | "back" = "front", replaceVersionId?: string | null) {
   const { supabase, user, org } = ctx;
-  const { data: slot } = await supabase.from("slots").select("*,events(id,org_id,title,created_by,brief_locked_at),formats(name,class)").eq("id", slotId).maybeSingle();
+  const { data: slot } = await supabase.from("slots").select("*,events(id,org_id,title,created_by,brief_locked_at),label,formats(name,class)").eq("id", slotId).maybeSingle();
   const event = slot?.events as unknown as { id: string; org_id: string; title: string; created_by: string; brief_locked_at: string | null } | null;
   if (!slot || !event || event.org_id !== org.id) return { error: "Slot not found" };
   const fmt = slot.formats as unknown as { name: string; class: string };
@@ -81,7 +82,7 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
   // Uploading is private: the slot only moves to In review when the designer sends the version (sendForReview).
   if (firstSide === "front") {
     if (!event.brief_locked_at) await supabase.from("events").update({ brief_locked_at: new Date().toISOString() }).eq("id", event.id);
-    await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slotId, version_id: versionId, actor_id: user.id, kind: "version.uploaded", payload: { format: fmt.name, number } });
+    await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slotId, version_id: versionId, actor_id: user.id, kind: "version.uploaded", payload: { format: slotName(fmt.name, slot.label), number } });
     if (replaceVersionId) await recomputeSlotState(supabase, slotId);
     // A new version pushes the oldest out: only the newest VERSIONS_KEPT keep files (approved ones always do).
     else await pruneOldVersions(supabase, slotId);

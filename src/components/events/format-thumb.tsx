@@ -98,6 +98,7 @@ function InPlace({ mock, src, r, event }: { mock: Mockup; src: string; r: number
   );
   if (mock === "browser") return <Browser src={src} r={r} />;
   if (mock === "print") return <Print src={src} r={r} />;
+  if (mock === "youtube") return <YouTube src={src} />;
   return (
     <Phone>
       {mock === "phone" && <div className="flex size-full items-center justify-center bg-black"><img src={src} alt="" className="max-h-full max-w-full object-contain" /></div>}
@@ -131,6 +132,19 @@ function Browser({ src, r }: { src: string; r: number }) {
       <div className="flex h-[6cqh] shrink-0 items-center gap-[2cqw] px-[3cqw]"><span className="h-[2.4cqh] w-[10%] rounded-sm bg-neutral-300" /><span className="ml-auto h-[1.4cqh] w-[8%] rounded-full bg-neutral-200" /><span className="h-[1.4cqh] w-[8%] rounded-full bg-neutral-200" /><span className="h-[1.4cqh] w-[8%] rounded-full bg-neutral-200" /></div>
       <img src={src} alt="" className="w-full shrink-0 object-cover" style={{ aspectRatio: String(r) }} />
       <div className="grid flex-1 grid-cols-3 gap-[2cqw] p-[3cqw]">{[0, 1, 2].map((i) => <div key={i}><span className="block aspect-[4/3] rounded-[0.8cqw] bg-neutral-100" /><Lines widths={[90, 60]} className="mt-[1.4cqw]" /></div>)}</div>
+    </div>
+  );
+}
+
+/** YouTube: the thumbnail as a video card in the feed, with a duration badge, channel avatar and title lines. */
+function YouTube({ src }: { src: string }) {
+  return (
+    <div className="flex flex-col gap-[3cqw] rounded-[1.6cqmin] bg-white p-[3cqw] shadow-[0_10px_28px_-10px_rgba(0,0,0,.3)] ring-1 ring-black/5" style={{ ...fit(1.25), containerType: "size" }}>
+      <div className="relative overflow-hidden rounded-[2.4cqw]" style={{ aspectRatio: "16 / 9" }}>
+        <img src={src} alt="" className="size-full object-cover" />
+        <span className="absolute bottom-[2cqw] right-[2cqw] rounded-[0.8cqw] bg-black/80 px-[1.2cqw] py-[0.4cqw] text-[3cqw] font-medium leading-none text-white">24:15</span>
+      </div>
+      <div className="flex gap-[2.5cqw]"><span className="size-[8cqw] shrink-0 rounded-full bg-neutral-300" /><div className="flex-1"><Lines widths={[95, 70]} /><Lines widths={[45]} className="mt-[2cqw] opacity-70" /></div></div>
     </div>
   );
 }

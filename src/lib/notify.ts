@@ -11,7 +11,7 @@ import { loadGroups } from "@/lib/groups";
 export type NotificationKind =
   | "access.requested" | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "comment.posted" | "comments.posted" | "comments.unsent" | "reviews.waiting" | "comments.pending"
   | "version.uploaded" | "review.waiting" | "version.changes_requested" | "version.approved" | "versions.approved" | "version.reopened" | "primary.approved"
-  | "event.all_approved" | "event.deleted" | "event.published" | "event.archived"
+  | "event.all_approved" | "event.deleted" | "event.published" | "event.archived" | "project.ending"
   | "draft.expiring" | "draft.swept" | "devices.refresh";
 
 /**
@@ -24,7 +24,7 @@ const CHAT: Partial<Record<NotificationKind, "mention" | "channel">> = {
   "slot.assigned": "mention", "slot.due": "mention",
   "comment.mention": "mention", "comment.posted": "mention", "comments.posted": "mention", "version.uploaded": "mention", "review.waiting": "mention", "reviews.waiting": "mention", "comments.pending": "mention",
   "version.changes_requested": "mention", "version.approved": "channel", "versions.approved": "mention", "version.reopened": "mention", "primary.approved": "mention",
-  "event.all_approved": "mention", "event.published": "mention", "event.archived": "channel",
+  "event.all_approved": "mention", "event.published": "mention", "event.archived": "channel", "project.ending": "mention",
 };
 
 /** Event-level moments every group hears about, whatever its setting (the primary design's approval unblocks every other format). Archiving is housekeeping: org channel only. */
@@ -50,8 +50,9 @@ const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> 
   "primary.approved": (p) => `Primary design approved · ${p.title}: start the other formats`,
   "event.all_approved": (p) => `All approved: ${p.title}`,
   "event.deleted": (p) => `Deleted: ${p.title}`,
-  "event.published": (p) => `New event: ${p.title}`,
+  "event.published": (p) => `${p.kind === "assets" ? "New request" : "New event"}: ${p.title}`,
   "event.archived": (p) => `Archived: ${p.title}`,
+  "project.ending": (p) => `Ends in 3 days: ${p.title}. Download the final designs`,
   "draft.expiring": (p) => `Draft “${p.title}” is deleted in ${p.days} days`,
   "draft.swept": (p) => `Draft “${p.title}” was deleted`,
   "devices.refresh": (p) => `Yearly check: phone preview presets for ${p.year}`,

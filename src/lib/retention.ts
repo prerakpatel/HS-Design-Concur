@@ -4,7 +4,7 @@ import { BUCKET } from "@/lib/storage";
 import { PURGE_AFTER_DAYS, DELETE_RESTORE_DAYS, DRAFT_SWEEP_DAYS, DRAFT_WARN_DAYS } from "@/config/limits";
 import { DEVICE_REFRESH_DAY } from "@/config/devices";
 
-export interface RetentionReport { archived: number; archivedEvents: { id: string; org_id: string; title: string; created_by: string }[]; deletedForGood: number; draftsWarned: number; draftsSwept: number; deviceReminders: number; filesRemoved: number; errors: string[] }
+export interface RetentionReport { archived: number; archivedEvents: { id: string; org_id: string; title: string; created_by: string; kind?: string }[]; deletedForGood: number; draftsWarned: number; draftsSwept: number; deviceReminders: number; filesRemoved: number; errors: string[] }
 
 interface SideRow { id: string; side: string; optimised_path: string | null; preview_path: string | null; thumb_path: string | null; reference_path: string | null }
 interface VersionRow { id: string; number: number; decision: string; purged_at: string | null; created_at: string; version_sides: SideRow[] }
@@ -16,6 +16,7 @@ const daysAgoDate = (days: number, tz: string) => new Date(Date.now() - days * 8
 /**
  * Nightly retention (PRD §8), run with the service client:
  * 1. Events dated ≥ 7 days ago: keep one reference image for the primary format only, delete every other file, archive.
+ *    Assets-only requests go the day after their end date and keep nothing (their files are meant to be downloaded).
  * 2. Events deleted ≥ 7 days ago: delete all files and the rows (text goes too; the restore window is over).
  * 3. Drafts untouched for 23 days: warn the creator. Untouched for 30 days: delete.
  * 4. Every 1 November: remind Designers and Core Admins to refresh the phone presets.
@@ -26,13 +27,17 @@ export async function runRetention(db: SupabaseClient, opts: { tz: string; today
   const step = async (name: string, fn: () => Promise<void>) => { try { await fn(); } catch (e) { r.errors.push(`${name}: ${(e as Error).message}`); } };
 
   await step("archive", async () => {
-    const { data: events, error } = await db.from("events").select("id,org_id,title,created_by").is("deleted_at", null).is("purged_at", null).neq("status", "draft").lte("event_date", daysAgoDate(PURGE_AFTER_DAYS, opts.tz));
-    if (error) throw new Error(error.message);
-    for (const ev of events ?? []) {
-      const removed = await purgeEventFiles(db, ev.id, ev.org_id, true);
+    const base = () => db.from("events").select("id,org_id,title,created_by,kind").is("deleted_at", null).is("purged_at", null).neq("status", "draft");
+    const [{ data: events, error }, { data: requests, error: reqErr }] = await Promise.all([
+      base().neq("kind", "assets").lte("event_date", daysAgoDate(PURGE_AFTER_DAYS, opts.tz)),
+      base().eq("kind", "assets").lte("event_date", daysAgoDate(1, opts.tz)),
+    ]);
+    if (error || reqErr) throw new Error((error ?? reqErr)!.message);
+    for (const ev of [...(events ?? []), ...(requests ?? [])]) {
+      const removed = await purgeEventFiles(db, ev.id, ev.org_id, ev.kind !== "assets");
       const now = new Date().toISOString();
       await db.from("events").update({ status: "archived", archived_at: now, purged_at: now }).eq("id", ev.id);
-      await db.from("activity").insert({ org_id: ev.org_id, event_id: ev.id, kind: "event.archived", payload: { title: ev.title, filesRemoved: removed } });
+      await db.from("activity").insert({ org_id: ev.org_id, event_id: ev.id, kind: "event.archived", payload: { title: ev.title, kind: ev.kind, filesRemoved: removed } });
       r.archived++; r.filesRemoved += removed; r.archivedEvents.push(ev);
     }
   });

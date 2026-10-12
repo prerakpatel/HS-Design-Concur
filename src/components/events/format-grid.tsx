@@ -23,7 +23,7 @@ export interface FormatCardData { slotId: string; name: string; size: string; st
  * Format cards: media-first, badge and version overlaid, 2 columns on phones, 3 on desktop.
  * Approvers get a Select mode to approve several in-review formats at once (PRD §6.2, no Approve All).
  */
-export function FormatGrid({ eventId, cards, canApprove = false, meta, downloadable = 0, event }: { eventId: string; cards: FormatCardData[]; /** Title and date for the Sambandh mock screen. */ event?: { title: string; date: string | null }; canApprove?: boolean; meta?: string; /** Approved formats whose files still exist; > 0 shows Download all. */ downloadable?: number }) {
+export function FormatGrid({ eventId, cards, canApprove = false, meta, downloadable = 0, event, title = "Formats" }: { title?: string; eventId: string; cards: FormatCardData[]; /** Title and date for the Sambandh mock screen. */ event?: { title: string; date: string | null }; canApprove?: boolean; meta?: string; /** Approved formats whose files still exist; > 0 shows Download all. */ downloadable?: number }) {
   const [picked, setPicked] = useState<string[]>([]);
   const selecting = picked.length > 0;
   const [confirm, setConfirm] = useState(false);
@@ -45,7 +45,7 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta, downloada
 
   return (
     <section>
-      <SectionHeader title="Formats" meta={meta} action={<div className="flex items-center gap-1.5">
+      <SectionHeader title={title} meta={meta} action={<div className="flex items-center gap-1.5">
         {naCount > 0 && <Button variant="ghost" size="sm" onClick={() => setShowNa((v) => !v)}>{showNa ? "Hide N/A" : `Show N/A (${naCount})`}</Button>}
         {/* Every approved design in one ZIP, named like the single downloads. Phones get icon + count. */}
         {downloadable > 0 && <Button asChild variant="secondary" size="sm"><a href={`/api/events/${eventId}/download`} download aria-label={`Download all ${downloadable} approved designs`}><Icon name="download" className="!text-[18px]" /><span className="max-sm:hidden">Download approved</span><span>{downloadable > 1 ? ` · ${downloadable}` : ""}</span></a></Button>}

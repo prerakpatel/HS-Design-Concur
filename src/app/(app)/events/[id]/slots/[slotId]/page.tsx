@@ -6,6 +6,7 @@ import { loadGroups, groupHandle } from "@/lib/groups";
 import { orderSlots } from "@/lib/slot-order";
 import { UploadPanel } from "@/components/asset/upload-panel";
 import { Icon } from "@/components/material-icon";
+import { isAssets, slotName, byFormatThenLabel } from "@/lib/project";
 import { AssetHeader } from "@/components/asset/asset-header";
 import { ReviewActions } from "@/components/asset/review-actions";
 import { PreviewRefresher } from "@/components/asset/preview-refresher";
@@ -24,12 +25,13 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
     supabase.from("formats").select("*").eq("id", slot.format_id).single<Format>(),
     supabase.from("versions").select("*,version_sides(*),uploader:uploaded_by(name,email)").eq("slot_id", slotId).order("number", { ascending: false }),
     supabase.from("users").select("id,name,email,avatar_url,role,function_tags,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id),
-    supabase.from("slots").select("id,is_primary,formats(name,sort),versions(created_at)").eq("event_id", id).eq("requested", true),
+    supabase.from("slots").select("id,is_primary,label,formats(name,sort),versions(created_at)").eq("event_id", id).eq("requested", true),
   ]);
   if (!fmt) notFound();
 
   // Previous / next format, in the same order as the event page.
-  const ordered = orderSlots((siblings ?? []).map((s) => { const f = s.formats as unknown as { name: string; sort: number } | null; const vs = (s.versions as { created_at: string }[]) ?? []; return { id: s.id, name: f?.name ?? "", is_primary: s.is_primary, sort: f?.sort ?? 0, firstUploadAt: vs.length ? vs.map((x) => x.created_at).sort()[0] : null }; }));
+  const sibs = (siblings ?? []).map((s) => { const f = s.formats as unknown as { name: string; sort: number } | null; const vs = (s.versions as { created_at: string }[]) ?? []; return { id: s.id, name: slotName(f?.name, s.label as string | null), label: s.label as string | null, is_primary: s.is_primary, sort: f?.sort ?? 0, firstUploadAt: vs.length ? vs.map((x) => x.created_at).sort()[0] : null }; });
+  const ordered = isAssets(event) ? sibs.sort(byFormatThenLabel) : orderSlots(sibs);
   const at = ordered.findIndex((s) => s.id === slotId);
   const prev = at > 0 ? ordered[at - 1] : null; const next = at >= 0 && at < ordered.length - 1 ? ordered[at + 1] : null;
 
@@ -79,12 +81,12 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved, sent, canSend } : null;
 
   const chips = vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, purged: !!x.purged_at, canManage: x.uploaded_by === user.id || user.role === "core_admin", hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }));
-  const decision = actionProps ? <ReviewActions {...actionProps} label={`${fmt.name} v${current?.number ?? ""}`} eventTitle={event.title} layout="fill" /> : null;
-  const decisionRow = actionProps ? <ReviewActions {...actionProps} label={`${fmt.name} v${current?.number ?? ""}`} eventTitle={event.title} /> : null;
+  const decision = actionProps ? <ReviewActions {...actionProps} label={`${slotName(fmt.name, slot.label)} v${current?.number ?? ""}`} eventTitle={event.title} layout="fill" /> : null;
+  const decisionRow = actionProps ? <ReviewActions {...actionProps} label={`${slotName(fmt.name, slot.label)} v${current?.number ?? ""}`} eventTitle={event.title} /> : null;
 
   return (
     <div className={"pb-8" + (decision ? " max-md:pb-24" : "")}>
-      <AssetHeader eventId={id} eventTitle={event.title} formatName={fmt.name} isPrimary={slot.is_primary} size={formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null} />
+      <AssetHeader eventId={id} eventTitle={event.title} formatName={slotName(fmt.name, slot.label)} isPrimary={slot.is_primary} size={formatSize(fmt, { w: slot.custom_w, h: slot.custom_h })} position={{ at: at + 1, total: ordered.length }} prev={prev ? { id: prev.id, name: prev.name } : null} next={next ? { id: next.id, name: next.name } : null} />
       <div className="mx-auto max-w-[1440px] space-y-5 px-4 pt-4 md:px-6 md:pt-6">
       {!slot.requested ? (
         <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">This format is marked N/A for this event. Change it from Edit event → Formats if it is needed.</p>

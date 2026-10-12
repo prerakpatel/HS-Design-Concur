@@ -10,11 +10,18 @@ export interface ActivityItem { id: string | number; who: string; initials: stri
 
 export interface BriefView { date: string | null; timeText: string | null; inviteText: string | null; venueName: string | null; venueAddress: string | null; notes: string | null }
 /** What goes on the designs: when, where, the invite text. */
-export function BriefCard({ brief, locked, editHref }: { brief: BriefView; locked: boolean; editHref: string }) {
+export function BriefCard({ brief, locked, editHref, assets = false }: { brief: BriefView; locked: boolean; editHref: string; /** Assets-only request: an end date instead of when/where. */ assets?: boolean }) {
+  const ask = assets ? "What is needed" : "Invite text";
   const dt = "text-xs font-medium uppercase tracking-wide text-muted-foreground";
   return (
     <section className="rounded-2xl bg-subtle p-5">
       <div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-semibold leading-7 tracking-[-0.01em]">Brief</h2>{locked ? <StateBadge state="requested" label="Locked · changes via comments" /> : <Link href={editHref} className="text-sm font-medium underline-offset-4 hover:underline">Edit</Link>}</div>
+      {assets ? (
+        <dl className="mt-4 grid gap-5 sm:grid-cols-2">
+          <div><dt className={dt}>Ends</dt><dd className="mt-1 text-sm font-medium">{brief.date ? format(new Date(brief.date + "T00:00:00"), "EEEE, d MMMM yyyy") : <span className="font-normal text-muted-foreground">End date not set</span>}</dd><dd className="text-sm text-muted-foreground">Files are cleared the day after. Download the finals before then.</dd></div>
+          <div><dt className={dt}>Type</dt><dd className="mt-1 text-sm font-medium">Assets only</dd><dd className="text-sm text-muted-foreground">Not tied to an event; nothing is kept after it ends.</dd></div>
+        </dl>
+      ) : (
       <dl className="mt-4 grid gap-5 sm:grid-cols-2">
         <div>
           <dt className={dt}>When</dt>
@@ -27,15 +34,16 @@ export function BriefCard({ brief, locked, editHref }: { brief: BriefView; locke
           {brief.venueAddress && <dd className="whitespace-pre-line text-sm text-muted-foreground">{brief.venueAddress}</dd>}
         </div>
       </dl>
+      )}
       {/* Invite text and notes are the long part: two lines by default, the rest behind "See all details". Whatever is missing just shows as not set. */}
       <details className="group mt-5 flex flex-col">
         <summary className="order-2 mt-2 w-fit cursor-pointer list-none text-sm font-medium text-info [&::-webkit-details-marker]:hidden"><span className="group-open:hidden">See all details</span><span className="hidden group-open:inline">Show less</span></summary>
         <div className="order-1 group-open:hidden">
-          <p className={dt}>Invite text</p>
-          <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-sm leading-6">{brief.inviteText ?? <span className="text-muted-foreground">Not written yet. Add the invite text before designs start.</span>}</p>
+          <p className={dt}>{ask}</p>
+          <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-sm leading-6">{brief.inviteText ?? <span className="text-muted-foreground">{assets ? "Not written yet. Say what is needed before designs start." : "Not written yet. Add the invite text before designs start."}</span>}</p>
         </div>
         <div className="order-3 mt-3 hidden space-y-4 group-open:block">
-          <div><p className={dt}>Invite text</p><p className="mt-1 whitespace-pre-wrap text-sm leading-6">{brief.inviteText ?? <span className="text-muted-foreground">Not written yet. Add the invite text before designs start.</span>}</p></div>
+          <div><p className={dt}>{ask}</p><p className="mt-1 whitespace-pre-wrap text-sm leading-6">{brief.inviteText ?? <span className="text-muted-foreground">{assets ? "Not written yet. Say what is needed before designs start." : "Not written yet. Add the invite text before designs start."}</span>}</p></div>
           {brief.notes && <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">For designers:</span> {brief.notes}</p>}
         </div>
       </details>

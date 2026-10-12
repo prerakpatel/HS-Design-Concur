@@ -4,7 +4,7 @@ import { StateBadge, type BadgeState } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
 import { Icon } from "@/components/material-icon";
 
-export interface EventListItem { id: string; title: string; venue: string | null; event_date: string | null; status: "draft" | "active" | "archived"; approved: number; uploaded?: number; total: number; people: { initials: string; avatar?: string | null }[]; needsYou?: boolean }
+export interface EventListItem { id: string; kind?: "event" | "assets"; title: string; venue: string | null; event_date: string | null; status: "draft" | "active" | "archived"; approved: number; uploaded?: number; total: number; people: { initials: string; avatar?: string | null }[]; needsYou?: boolean }
 
 function badgeFor(e: EventListItem): { state: BadgeState; label?: string } {
   if (e.status === "draft") return { state: "draft" };
@@ -26,10 +26,10 @@ function Progress({ e, className }: { e: EventListItem; className?: string }) {
   );
 }
 
-/** "1 of 5 approved · 3 uploaded"; the uploaded part only when something is waiting beyond the approved ones. */
+/** "3 of 5 uploads · 1 approved": what's in first, then how much of it is final. */
 function Counts({ e }: { e: EventListItem }) {
   const up = Math.max(e.uploaded ?? 0, e.approved);
-  return <>{e.approved} of {e.total} approved{up > e.approved && <span className="text-muted-foreground/80"> · {up} uploaded</span>}</>;
+  return <>{up} of {e.total} uploads{e.approved > 0 && <span className="text-muted-foreground/80"> · {e.approved} approved</span>}</>;
 }
 
 /** Events list: hairline rows, date tile, title + venue, progress, people, state. Mobile stacks the meta. */
@@ -53,7 +53,7 @@ export function EventList({ items, emptyTitle = "No events yet", emptyBody }: { 
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-base font-medium leading-6">{e.title}</p>
-                <p className="mt-0.5 truncate text-sm text-muted-foreground">{e.venue ?? "Venue not set"}</p>
+                <p className="mt-0.5 truncate text-sm text-muted-foreground">{e.kind === "assets" ? <>Assets only{d ? ` · ends ${format(d, "d MMM")}` : ""}</> : (e.venue ?? "Venue not set")}</p>
                 <div className="mt-1.5 space-y-1.5 md:hidden"><p className="truncate text-xs text-muted-foreground"><Counts e={e} /></p><Progress e={e} className="max-w-40" /></div>
               </div>
               <div className="hidden w-[210px] md:block">

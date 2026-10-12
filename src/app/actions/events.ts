@@ -1,8 +1,9 @@
 "use server";
+import { capFor, isAssets, slotName, assetEndMax } from "@/lib/project";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
-import { EVENT_CAP, MONTHS_AHEAD } from "@/config/limits";
+import { MONTHS_AHEAD, ASSET_MAX_DAYS } from "@/config/limits";
 import { notify } from "@/lib/notify";
 import { UserError } from "@/lib/user-error";
 
@@ -71,6 +72,75 @@ export async function saveEvent(eventId: string, formData: FormData) {
   goto(event.id, formData, "formats");
 }
 
+/** The Brief step of an assets-only request: what is needed, by when the project ends, notes. */
+function readAssetsForm(formData: FormData) {
+  const str = (k: string) => String(formData.get(k) ?? "").trim() || null;
+  const title = String(formData.get("title") ?? "").trim();
+  const endDate = str("event_date");
+  if (!title) throw new UserError("Give the request a title");
+  if (endDate && endDate < new Date().toLocaleDateString("en-CA")) throw new UserError("The end date has already passed");
+  if (endDate && endDate > assetEndMax()) throw new UserError(`An assets-only request ends at most ${ASSET_MAX_DAYS} days from today`);
+  return { title, endDate, description: str("description"), notes: str("notes") };
+}
+
+/** New assets-only request (Harisumiran for now): a draft with its brief; items are added on the next step. */
+export async function createDraftAssets(formData: FormData) {
+  const { supabase, user, org } = await requireActiveUser();
+  if (!org.asset_requests) throw new UserError(`${org.short_name} can only request designs for events right now`);
+  const f = readAssetsForm(formData);
+  const { data, error } = await supabase.from("events").insert({ org_id: org.id, kind: "assets", title: f.title, event_date: f.endDate, venue: null, created_by: user.id, status: "draft" }).select("id").single();
+  if (error) throw new UserError(error.message);
+  await supabase.from("briefs").insert({ event_id: data.id, description: f.description, notes: f.notes });
+  await supabase.from("activity").insert({ org_id: org.id, event_id: data.id, actor_id: user.id, kind: "event.created", payload: { title: f.title } });
+  revalidatePath("/events");
+  goto(data.id, formData, "formats");
+}
+
+export async function saveAssetsBrief(eventId: string, formData: FormData) {
+  const { supabase, event } = await ownEvent(eventId);
+  const f = readAssetsForm(formData);
+  await supabase.from("events").update({ title: f.title, event_date: f.endDate, last_edited_at: new Date().toISOString() }).eq("id", event.id);
+  const { error } = await supabase.from("briefs").upsert({ event_id: event.id, ...(event.brief_locked_at ? {} : { description: f.description, notes: f.notes }) });
+  if (error) throw new UserError(error.message);
+  revalidatePath(`/events/${event.id}`);
+  goto(event.id, formData, "formats");
+}
+
+/**
+ * The Assets step: the list of items, each a format plus an optional name ("March"), notes and, for
+ * custom-size formats, a size. Items with designs can be renamed but not removed or moved to another format.
+ */
+export async function saveAssetItems(eventId: string, formData: FormData) {
+  const { supabase, event } = await ownEvent(eventId);
+  type Item = { slotId?: string; formatId: string; label: string; notes: string; w?: number | null; h?: number | null };
+  let items: Item[] = [];
+  try { items = JSON.parse(String(formData.get("items") ?? "[]")); } catch { throw new UserError("Could not read the list of assets"); }
+  const { data: slots } = await supabase.from("slots").select("id,format_id,label,versions(id)").eq("event_id", event.id);
+  const keep = new Set(items.map((i) => i.slotId).filter(Boolean));
+  const now = new Date().toISOString();
+  for (const s of slots ?? []) {
+    if (keep.has(s.id)) continue;
+    if ((s.versions?.length ?? 0) > 0) throw new UserError(`${s.label ? `“${s.label}”` : "An item"} already has designs, so it can't be removed`);
+    const { error } = await supabase.from("slots").delete().eq("id", s.id); if (error) throw new UserError(error.message);
+  }
+  for (const it of items) {
+    const row = { label: it.label.trim() || null, notes: it.notes.trim() || null, custom_w: it.w || null, custom_h: it.h || null, requested: true, updated_at: now };
+    const existing = (slots ?? []).find((s) => s.id === it.slotId);
+    if (existing) {
+      const moved = existing.format_id !== it.formatId;
+      if (moved && (existing.versions?.length ?? 0) > 0) throw new UserError("An item with designs can't change format; add a new item instead");
+      const { error } = await supabase.from("slots").update({ ...row, ...(moved ? { format_id: it.formatId } : {}) }).eq("id", existing.id);
+      if (error) throw new UserError(error.message);
+    } else {
+      const { error } = await supabase.from("slots").insert({ ...row, event_id: event.id, format_id: it.formatId });
+      if (error) throw new UserError(error.code === "23505" ? "Two assets of the same format need different names (e.g. January, February)" : error.message);
+    }
+  }
+  await supabase.from("events").update({ last_edited_at: now }).eq("id", event.id);
+  revalidatePath(`/events/${event.id}`);
+  goto(event.id, formData, "assign");
+}
+
 export async function saveFormats(eventId: string, formData: FormData) {
   const { supabase, event } = await ownEvent(eventId);
   const { data: slots } = await supabase.from("slots").select("id,format_id,versions(id)").eq("event_id", event.id);
@@ -114,7 +184,7 @@ export async function saveFormats(eventId: string, formData: FormData) {
 
 export async function saveAssign(eventId: string, formData: FormData) {
   const { supabase, user, org, event } = await ownEvent(eventId);
-  const { data: slots } = await supabase.from("slots").select("id,assignee_id,format_id,formats(name)").eq("event_id", event.id).eq("requested", true);
+  const { data: slots } = await supabase.from("slots").select("id,assignee_id,format_id,label,formats(name)").eq("event_id", event.id).eq("requested", true);
   // One notification per person, listing every format they were just given.
   const newlyAssigned = new Map<string, { formats: string[]; due: string | null }>();
   for (const s of slots ?? []) {
@@ -124,7 +194,7 @@ export async function saveAssign(eventId: string, formData: FormData) {
     const fmt = s.formats as unknown as { name: string } | null;
     if (assignee && assignee !== s.assignee_id) {
       const cur = newlyAssigned.get(assignee) ?? { formats: [], due: null };
-      cur.formats.push(fmt?.name ?? "a format"); if (due && (!cur.due || due < cur.due)) cur.due = due;
+      cur.formats.push(slotName(fmt?.name, s.label)); if (due && (!cur.due || due < cur.due)) cur.due = due;
       newlyAssigned.set(assignee, cur);
     }
   }
@@ -138,22 +208,24 @@ export async function saveAssign(eventId: string, formData: FormData) {
 export async function publishEvent(eventId: string) {
   const { supabase, user, org, event } = await ownEvent(eventId);
   if (event.status !== "draft") redirect(`/events/${event.id}`);
-  if (!event.event_date) throw new UserError("Set the event date before publishing");
-  if (!horizonOk(event.event_date)) throw new UserError(`Events can be at most ${MONTHS_AHEAD} months out`);
+  const assets = isAssets(event);
+  if (!event.event_date) throw new UserError(assets ? "Set the end date before publishing" : "Set the event date before publishing");
+  if (assets && (event.event_date < new Date().toLocaleDateString("en-CA") || event.event_date > assetEndMax())) throw new UserError(`Pick an end date within the next ${ASSET_MAX_DAYS} days`);
+  if (!assets && !horizonOk(event.event_date)) throw new UserError(`Events can be at most ${MONTHS_AHEAD} months out`);
   const { data: brief } = await supabase.from("briefs").select("description").eq("event_id", event.id).maybeSingle();
-  if (!brief?.description) throw new UserError("Add the brief before publishing");
+  if (!brief?.description) throw new UserError(assets ? "Describe what you need before publishing" : "Add the brief before publishing");
   const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("org_id", org.id).eq("status", "active").is("deleted_at", null);
-  if ((count ?? 0) >= EVENT_CAP) {
+  if ((count ?? 0) >= capFor(org)) {
     const { data: oldest } = await supabase.from("events").select("title,event_date").eq("org_id", org.id).eq("status", "active").is("deleted_at", null).order("event_date", { ascending: true }).limit(1).maybeSingle();
-    throw new UserError(`All ${EVENT_CAP} event slots are in use. The oldest active event is "${oldest?.title}" (${oldest?.event_date}); it frees a slot a week after its date.`);
+    throw new UserError(`All ${capFor(org)} project slots are in use. The oldest is "${oldest?.title}" (${oldest?.event_date}); an event frees its slot a week after its date, a request at its end date.`);
   }
   await supabase.from("events").update({ status: "active", published_at: new Date().toISOString() }).eq("id", event.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, actor_id: user.id, kind: "event.published", payload: { title: event.title } });
   // Designers hear about it in-app; the chat post lists who is on which format so the whole team sees the plan.
-  const { data: slots } = await supabase.from("slots").select("assignee_id,due_on,formats(name,sort)").eq("event_id", event.id).eq("requested", true);
+  const { data: slots } = await supabase.from("slots").select("assignee_id,due_on,label,formats(name,sort)").eq("event_id", event.id).eq("requested", true);
   const assignments = [...(slots ?? [])].sort((a, b) => ((a.formats as unknown as { sort: number })?.sort ?? 0) - ((b.formats as unknown as { sort: number })?.sort ?? 0))
-    .map((s) => ({ format: (s.formats as unknown as { name: string })?.name ?? "Format", userId: s.assignee_id as string | null, due: s.due_on as string | null }));
-  await notify(supabase, assignments.map((a) => a.userId), "event.published", { eventId: event.id, title: event.title, by: user.name ?? user.email, date: event.event_date, venue: event.venue, assignments }, user.id, { orgId: org.id });
+    .map((s) => ({ format: slotName((s.formats as unknown as { name: string })?.name, s.label as string | null), userId: s.assignee_id as string | null, due: s.due_on as string | null }));
+  await notify(supabase, assignments.map((a) => a.userId), "event.published", { eventId: event.id, kind: assets ? "assets" : "event", title: event.title, by: user.name ?? user.email, date: event.event_date, venue: event.venue, assignments }, user.id, { orgId: org.id });
   revalidatePath("/events");
   redirect(`/events/${event.id}`);
 }
@@ -179,7 +251,7 @@ export async function toggleSlotRequested(slotId: string, requested: boolean) {
 /** Change who designs a format from the asset page. Core Admins, the event creator and approvers may. */
 export async function assignSlot(slotId: string, userId: string | null) {
   const { supabase, user, org, isApprover } = await requireActiveUser();
-  const { data: slot } = await supabase.from("slots").select("id,assignee_id,event_id,formats(name),events(id,org_id,title,status,created_by)").eq("id", slotId).maybeSingle();
+  const { data: slot } = await supabase.from("slots").select("id,assignee_id,event_id,label,formats(name),events(id,org_id,title,status,created_by)").eq("id", slotId).maybeSingle();
   const event = slot?.events as unknown as { id: string; org_id: string; title: string; status: string; created_by: string } | null;
   if (!slot || !event || event.org_id !== org.id) throw new UserError("Format not found");
   if (event.status === "archived") throw new UserError("Archived events are read-only");
@@ -191,7 +263,7 @@ export async function assignSlot(slotId: string, userId: string | null) {
   if ((slot.assignee_id ?? null) === (userId ?? null)) return;
   const { error } = await supabase.from("slots").update({ assignee_id: userId, updated_at: new Date().toISOString() }).eq("id", slotId);
   if (error) throw new UserError(error.message);
-  const formatName = (slot.formats as unknown as { name: string } | null)?.name ?? "a format";
+  const formatName = slotName((slot.formats as unknown as { name: string } | null)?.name, slot.label as string | null);
   if (userId && event.status === "active") await notify(supabase, [userId], "slot.assigned", { eventId: event.id, slotId, title: event.title, format: formatName, assignee: userId, by: user.name ?? user.email }, user.id, { orgId: org.id });
   revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slotId}`);
 }

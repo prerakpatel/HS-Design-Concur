@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import type { Organization } from "@/lib/types";
 
 const NAV = [
-  { href: "/events", label: "Events", icon: "event" },
+  { href: "/events", label: "Projects", icon: "folder" },
   { href: "/inbox", label: "Inbox", icon: "notifications" },
   { href: "/archive", label: "Archive", icon: "inventory_2" },
   { href: "/glossary", label: "Glossary", icon: "menu_book" },
@@ -64,7 +64,7 @@ export function AppSidebar({ org, orgs, user, slots, whatsNewUnseen }: { org: Or
       <SidebarFooter className="gap-3 p-3">
         <div className={cn("flex", collapsed && "justify-center")}><WhatsNewButton unseen={whatsNewUnseen} collapsed={collapsed} /></div>
         <div className="space-y-2 px-2 group-data-[collapsible=icon]:hidden">
-          <div className="flex items-center justify-between text-sm"><span className="flex items-center gap-1 text-muted-foreground">Event slots<InfoTip text="Each organization can have this many published events at a time. Drafts don't count; an event frees its slot a week after its date." label="About event slots" /></span><span className="font-medium">{slots.used} / {slots.max}</span></div>
+          <div className="flex items-center justify-between text-sm"><span className="flex items-center gap-1 text-muted-foreground">Project slots<InfoTip text="Events and asset requests live at once for this organization. Drafts don't count; an event frees its slot a week after its date, a request at its end date." label="About event slots" /></span><span className="font-medium">{slots.used} / {slots.max}</span></div>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted-strong"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (slots.used / slots.max) * 100)}%` }} /></div>
         </div>
         <DropdownMenu>

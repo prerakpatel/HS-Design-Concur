@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { slotName } from "@/lib/project";
 import { zipSync, strToU8 } from "fflate";
 import { getActiveUser } from "@/lib/auth";
 import { BUCKET } from "@/lib/storage";
@@ -18,7 +19,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { supabase, org } = ctx;
   const { data: event } = await supabase.from("events").select("id,org_id,title,event_date").eq("id", id).is("deleted_at", null).maybeSingle();
   if (!event || event.org_id !== org.id) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const { data: slots } = await supabase.from("slots").select("id,formats(name,sort),versions(number,decision,version_sides(side,optimised_path,reference_path))").eq("event_id", id).eq("requested", true).eq("state", "approved");
+  const { data: slots } = await supabase.from("slots").select("id,label,formats(name,sort),versions(number,decision,version_sides(side,optimised_path,reference_path))").eq("event_id", id).eq("requested", true).eq("state", "approved");
 
   const files: Record<string, Uint8Array> = {};
   const missing: string[] = [];
@@ -32,7 +33,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       if (!path) { missing.push(fmt?.name ?? "format"); continue; }
       const { data: file } = await supabase.storage.from(BUCKET).download(path);
       if (!file) { missing.push(fmt?.name ?? "format"); continue; }
-      files[assetFilename({ eventDate: event.event_date, eventTitle: event.title, formatName: fmt?.name ?? "format", side: side.side, number: approved.number, path })] = new Uint8Array(await file.arrayBuffer());
+      files[assetFilename({ eventDate: event.event_date, eventTitle: event.title, formatName: slotName(fmt?.name, slot.label as string | null), side: side.side, number: approved.number, path })] = new Uint8Array(await file.arrayBuffer());
     }
   }
   if (Object.keys(files).length === 0) return NextResponse.json({ error: "Nothing approved to download yet" }, { status: 404 });

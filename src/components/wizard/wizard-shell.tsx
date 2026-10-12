@@ -10,14 +10,17 @@ export type StepStatuses = Partial<Record<WizardStep, StepStatus>>;
 export const STEPS: { key: WizardStep; label: string }[] = [
   { key: "event", label: "Event" }, { key: "formats", label: "Formats" }, { key: "assign", label: "Designers" }, { key: "review", label: "Review" },
 ];
+/** An assets-only request walks the same four steps under its own names. */
+const ASSET_LABELS: Record<WizardStep, string> = { event: "Brief", formats: "Assets", assign: "Designers", review: "Review" };
+const labelFor = (key: WizardStep, assets: boolean) => (assets ? ASSET_LABELS[key] : STEPS.find((s) => s.key === key)!.label);
 
 /** Focused full-screen flow (no app sidebar or tab bar), like a host-onboarding wizard. `eventId` is null before the draft exists. */
-export function WizardShell({ eventId, step, title, subtitle, children, wide, statuses = {} }: { eventId: string | null; step: WizardStep; title: string; subtitle?: string; children: React.ReactNode; wide?: boolean; statuses?: StepStatuses }) {
+export function WizardShell({ eventId, step, title, subtitle, children, wide, statuses = {}, assets = false }: { eventId: string | null; step: WizardStep; title: string; subtitle?: string; children: React.ReactNode; wide?: boolean; statuses?: StepStatuses; /** An assets-only request. */ assets?: boolean }) {
   const idx = STEPS.findIndex((s) => s.key === step);
   return (
     <div className="flex min-h-dvh flex-col bg-card md:flex-row">
       <aside className="hidden w-[220px] shrink-0 border-r border-border bg-subtle p-5 md:sticky md:top-0 md:block md:h-dvh md:self-start">
-        <p className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">New event</p>
+        <p className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">{assets ? "New request · assets" : "New request · event"}</p>
         <ol className="mt-3 space-y-1">
           {STEPS.map((s, i) => {
             // Green check only when the step's data is complete; amber "!" when it is not; a number when not yet reached.
@@ -29,7 +32,7 @@ export function WizardShell({ eventId, step, title, subtitle, children, wide, st
                   <span className={"flex size-6 items-center justify-center rounded-full text-xs " + (state === "active" ? "bg-primary text-primary-foreground" : state === "done" ? "bg-success-soft text-success-text" : state === "incomplete" ? "bg-warning-soft text-warning-text" : "border border-border")}>
                     {state === "done" ? <Icon name="check" className="!text-[14px]" /> : state === "incomplete" ? <Icon name="priority_high" className="!text-[14px]" /> : i + 1}
                   </span>
-                  {s.label}
+                  {labelFor(s.key, assets)}
                   {state === "incomplete" && <span className="sr-only">, incomplete</span>}
                 </Link>
               </li>
@@ -40,8 +43,8 @@ export function WizardShell({ eventId, step, title, subtitle, children, wide, st
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
         <div className="flex items-center justify-between px-4 py-3 md:px-8">
-          <Button asChild variant="outline" size="icon-sm"><Link href={eventId ? `/events/${eventId}` : "/events"} aria-label={eventId ? "Back to event" : "Back to events"}><Icon name="arrow_back" /></Link></Button>
-          <p className="text-sm"><span className="font-medium">{STEPS[idx].label}</span> <span className="text-muted-foreground">· Step {idx + 1} of {STEPS.length}</span></p>
+          <Button asChild variant="outline" size="icon-sm"><Link href={eventId ? `/events/${eventId}` : "/events"} aria-label={eventId ? "Back to the project" : "Back to projects"}><Icon name="arrow_back" /></Link></Button>
+          <p className="text-sm"><span className="font-medium">{labelFor(STEPS[idx].key, assets)}</span> <span className="text-muted-foreground">· Step {idx + 1} of {STEPS.length}</span></p>
           {eventId ? <Button asChild variant="outline"><Link href={`/events/${eventId}`}>Save and exit</Link></Button> : <Button asChild variant="ghost"><Link href="/events">Cancel</Link></Button>}
         </div>
         <div className="flex gap-1 px-4 pb-3 md:hidden">{STEPS.map((s, i) => <span key={s.key} className={"h-[3px] flex-1 rounded-full " + (i === idx ? "bg-primary" : statuses[s.key] === "done" ? "bg-success" : statuses[s.key] === "incomplete" && (i < idx || step === "review") ? "bg-warning" : i < idx ? "bg-primary" : "bg-muted-strong")} />)}</div>

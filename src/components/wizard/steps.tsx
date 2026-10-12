@@ -12,6 +12,8 @@ import { WizardFooter, STEPS, wizardBar } from "@/components/wizard/wizard-shell
 import type { WizardIssue } from "@/lib/wizard-status";
 import { ConfirmButton } from "@/components/confirm-button";
 import { FormatsPicker } from "@/components/wizard/formats-picker";
+import { AssetItems, type AssetItem, type AssetFormatOption } from "@/components/wizard/asset-items";
+import { ASSET_MAX_DAYS } from "@/config/limits";
 
 type Action = (formData: FormData) => Promise<void>;
 export const field = "space-y-2";
@@ -50,6 +52,35 @@ export function EventForm({ eventId, orgName, values, action, notice, locked }: 
   );
 }
 
+export interface AssetsValues { title: string; event_date: string; description: string; notes: string }
+/** Brief of an assets-only request: what is needed and when the project ends (at most 30 days out; files go after that). */
+export function AssetsBriefForm({ eventId, orgName, values, action, notice, locked, minDate, maxDate }: { eventId: string | null; orgName: string; values: AssetsValues; action: Action; notice?: React.ReactNode; locked?: boolean; minDate: string; maxDate: string }) {
+  return (
+    <form action={action} className="space-y-6">
+      {!eventId && <p className="text-center text-sm text-muted-foreground">Requesting for <span className="font-medium text-foreground">{orgName}</span></p>}
+      {notice}
+      {locked && <p className="rounded-xl bg-subtle px-4 py-3 text-sm text-muted-foreground">A design has been uploaded, so the description is locked. Title and end date can still change; anything else goes through comments.</p>}
+      <section className="space-y-5 rounded-2xl border border-border p-5">
+        <div className={field}><Label htmlFor="title">Title</Label><Input id="title" name="title" required defaultValue={values.title} placeholder="e.g. YouTube thumbnails · November" /></div>
+        <div className={field}><Label htmlFor="description">What do you need?</Label><Textarea id="description" name="description" rows={6} defaultValue={values.description} disabled={locked} placeholder="e.g. Thumbnails for the four Sunday sabha videos: title on the left, Swamiji on the right, our usual warm palette…" /></div>
+        <div className={field}><Label htmlFor="event_date">End date</Label><DateField id="event_date" name="event_date" defaultValue={values.event_date} min={minDate} max={maxDate} /><p className="text-sm text-muted-foreground">At most {ASSET_MAX_DAYS} days out. The day after, the project closes and its files are cleared, so download the finals before then.</p></div>
+      </section>
+      <div className={field}><Label htmlFor="notes">Anything else for the designers <span className="font-normal text-muted-foreground">(optional)</span></Label><Textarea id="notes" name="notes" rows={2} defaultValue={values.notes} disabled={locked} placeholder="e.g. Where it will be used, references, colours to avoid…" /></div>
+      <WizardFooter eventId={eventId} step="event" />
+    </form>
+  );
+}
+
+/** Assets step of an assets-only request: the list of items to design. */
+export function AssetItemsForm({ eventId, formats, items, action }: { eventId: string; formats: AssetFormatOption[]; items: AssetItem[]; action: Action }) {
+  return (
+    <form action={action}>
+      <AssetItems formats={formats} initial={items} />
+      <WizardFooter eventId={eventId} step="formats" />
+    </form>
+  );
+}
+
 export interface FormatRow { slotId: string; name: string; size: string; kind: string; requested: boolean; isPrimary: boolean; notes: string; customSize: boolean; w: number | null; h: number | null; hasVersions?: boolean }
 export function FormatsForm({ eventId, rows, action }: { eventId: string; rows: FormatRow[]; action: Action }) {
   return (
@@ -66,7 +97,7 @@ export interface Person { id: string; label: string }
 export function AssignForm({ eventId, rows, people, action }: { eventId: string; rows: AssignRow[]; people: Person[]; action: Action }) {
   return (
     <form action={action}>
-      {rows.length === 0 ? <p className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">No formats are requested yet. Go back to Formats.</p> : (
+      {rows.length === 0 ? <p className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">Nothing is listed yet. Go back a step and add what is needed.</p> : (
         <ul className="divide-y divide-border">
           <li className="hidden grid-cols-[1fr_240px_180px] gap-4 pb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground md:grid"><span>Format</span><span>Designer</span><span>Due</span></li>
           {rows.map((r) => (
@@ -83,10 +114,11 @@ export function AssignForm({ eventId, rows, people, action }: { eventId: string;
   );
 }
 
-export function ReviewPanel({ eventId, summary, slots, issues, isDraft, canDelete, publish, remove }: {
+export function ReviewPanel({ eventId, summary, slots, issues, isDraft, canDelete, publish, remove, assets = false }: {
   eventId: string; summary: { title: string; when: string; venue: string; brief: string | null }; slots: { name: string; assignee: { name: string; initials: string } | null; due: string | null }[]; issues: WizardIssue[]; isDraft: boolean; canDelete: boolean;
-  publish: () => Promise<void>; remove: () => Promise<void>;
+  publish: () => Promise<void>; remove: () => Promise<void>; /** An assets-only request: labels follow its steps. */ assets?: boolean;
 }) {
+  const stepName = (k: string) => (assets ? ({ event: "Brief", formats: "Assets", assign: "Designers" } as Record<string, string>)[k] : STEPS.find((x) => x.key === k)?.label);
   const blocking = issues.filter((i) => i.blocking); const hints = issues.filter((i) => !i.blocking);
   const edit = (step: string, label = "Edit") => <Link href={`/events/${eventId}/edit/${step}`} className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{label}</Link>;
   return (
@@ -94,29 +126,29 @@ export function ReviewPanel({ eventId, summary, slots, issues, isDraft, canDelet
       {blocking.length > 0 && (
         <ul className="space-y-2 rounded-2xl bg-warning-soft p-5 text-sm text-warning-text">
           <li className="font-medium">Before this can be published</li>
-          {blocking.map((p) => <li key={p.text} className="flex items-center justify-between gap-3"><span>{p.text}</span><Link href={`/events/${eventId}/edit/${p.step}`} className="shrink-0 font-medium underline-offset-4 hover:underline">Fix in {STEPS.find((x) => x.key === p.step)?.label}</Link></li>)}
+          {blocking.map((p) => <li key={p.text} className="flex items-center justify-between gap-3"><span>{p.text}</span><Link href={`/events/${eventId}/edit/${p.step}`} className="shrink-0 font-medium underline-offset-4 hover:underline">Fix in {stepName(p.step)}</Link></li>)}
         </ul>
       )}
       {hints.length > 0 && (
         <ul className="space-y-2 rounded-2xl bg-subtle p-5 text-sm text-muted-foreground">
           <li className="font-medium text-foreground">Worth a look, not blocking</li>
-          {hints.map((p) => <li key={p.text} className="flex items-center justify-between gap-3"><span>{p.text}</span><Link href={`/events/${eventId}/edit/${p.step}`} className="shrink-0 font-medium text-foreground underline-offset-4 hover:underline">Fix in {STEPS.find((x) => x.key === p.step)?.label}</Link></li>)}
+          {hints.map((p) => <li key={p.text} className="flex items-center justify-between gap-3"><span>{p.text}</span><Link href={`/events/${eventId}/edit/${p.step}`} className="shrink-0 font-medium text-foreground underline-offset-4 hover:underline">Fix in {stepName(p.step)}</Link></li>)}
         </ul>
       )}
       <dl className="grid grid-cols-1 gap-5 rounded-2xl bg-subtle p-6 text-sm md:grid-cols-2">
-        <div><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Event {edit("event")}</dt><dd className="mt-1 font-medium">{summary.title}</dd></div>
-        <div><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">When · where {edit("event")}</dt><dd className="mt-1">{summary.when} · {summary.venue}</dd></div>
-        <div className="md:col-span-2"><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Invite text {edit("event")}</dt><dd className="mt-1 whitespace-pre-wrap leading-6">{summary.brief ?? <Link href={`/events/${eventId}/edit/event`} className="text-warning-text underline-offset-4 hover:underline">Missing · add it in Brief</Link>}</dd></div>
+        <div><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{assets ? "Request" : "Event"} {edit("event")}</dt><dd className="mt-1 font-medium">{summary.title}</dd></div>
+        <div><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{assets ? "Ends" : "When · where"} {edit("event")}</dt><dd className="mt-1">{assets ? summary.when : `${summary.when} · ${summary.venue}`}</dd></div>
+        <div className="md:col-span-2"><dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{assets ? "What is needed" : "Invite text"} {edit("event")}</dt><dd className="mt-1 whitespace-pre-wrap leading-6">{summary.brief ?? <Link href={`/events/${eventId}/edit/event`} className="text-warning-text underline-offset-4 hover:underline">Missing · add it in Brief</Link>}</dd></div>
       </dl>
-      <div className="flex items-center justify-between px-1"><p className="text-sm font-medium">Formats and designers</p><span className="flex gap-3">{edit("formats", "Edit formats")}{edit("assign", "Edit designers")}</span></div>
+      <div className="flex items-center justify-between px-1"><p className="text-sm font-medium">{assets ? "Assets and designers" : "Formats and designers"}</p><span className="flex gap-3">{edit("formats", assets ? "Edit assets" : "Edit formats")}{edit("assign", "Edit designers")}</span></div>
       <ul className="divide-y divide-border rounded-2xl border border-border">
         {slots.map((s, i) => <li key={i} className="flex items-center gap-4 px-5 py-4 text-sm"><span className="min-w-0 flex-1 truncate font-medium">{s.name}</span>{s.assignee ? <span className="flex items-center gap-2 text-muted-foreground"><UserAvatar initials={s.assignee.initials} size={24} /><span className="hidden sm:inline">{s.assignee.name}</span></span> : <span className="text-muted-foreground">Unassigned</span>}<span className="w-20 text-right text-sm text-muted-foreground">{s.due ? format(new Date(s.due + "T00:00:00"), "d MMM") : ""}</span></li>)}
       </ul>
       <div className={wizardBar + " gap-3"}>
-        {canDelete ? <ConfirmButton variant="ghost" action={remove} label={isDraft ? "Delete draft" : "Delete event"} title={`Delete “${summary.title}”?`} description="Core Admins can restore it for 7 days. Its files are removed after that." confirmLabel="Delete" /> : <span />}
+        {canDelete ? <ConfirmButton variant="ghost" action={remove} label={isDraft ? "Delete draft" : assets ? "Delete request" : "Delete event"} title={`Delete “${summary.title}”?`} description="Core Admins can restore it for 7 days. Its files are removed after that." confirmLabel="Delete" /> : <span />}
         <div className="flex gap-2">
           <Button asChild variant="secondary" size="lg"><Link href={`/events/${eventId}`}>Save and exit</Link></Button>
-          {isDraft ? <form action={publish}><Button type="submit" size="lg" disabled={blocking.length > 0}>Publish event</Button></form> : <StateBadge state="approved" label="Live" className="h-9 px-3 text-sm" />}
+          {isDraft ? <form action={publish}><Button type="submit" size="lg" disabled={blocking.length > 0}>{assets ? "Publish request" : "Publish event"}</Button></form> : <StateBadge state="approved" label="Live" className="h-9 px-3 text-sm" />}
         </div>
       </div>
     </div>

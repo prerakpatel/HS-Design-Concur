@@ -48,8 +48,11 @@ export async function saveFormat(formData: FormData) {
     }
     const { data: created, error } = await supabase.from("formats").insert({ ...row, key, sort: (last?.sort ?? 0) + 1 }).select("id").single();
     if (error || !created) throw new UserError(error?.message ?? "Could not create the format");
-    const { data: open } = await supabase.from("events").select("id").neq("status", "archived").is("deleted_at", null);
-    if (open?.length) await supabase.from("slots").upsert(open.map((e) => ({ event_id: e.id, format_id: created.id, requested: false })), { onConflict: "event_id,format_id", ignoreDuplicates: true });
+    // Open events get the new format as an "off" slot. It was just created, so none of them has it yet: a plain
+    // insert (no ON CONFLICT, which would need the one-slot-per-format rule that asset requests relax).
+    // Asset requests list their own items and are left alone.
+    const { data: open } = await supabase.from("events").select("id").neq("status", "archived").neq("kind", "assets").is("deleted_at", null);
+    if (open?.length) await supabase.from("slots").insert(open.map((e) => ({ event_id: e.id, format_id: created.id, requested: false })));
   }
   revalidatePath("/settings"); revalidatePath("/events");
 }

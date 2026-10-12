@@ -1,12 +1,12 @@
 import { notFound, redirect } from "next/navigation";
+import { capFor, isAssets, slotName, assetEndMax, byFormatThenLabel } from "@/lib/project";
 import { format } from "date-fns";
 import { requireActiveUser, initials } from "@/lib/auth";
-import { saveEvent, saveFormats, saveAssign, publishEvent, deleteEvent, type WizardStep } from "@/app/actions/events";
+import { saveEvent, saveFormats, saveAssign, publishEvent, deleteEvent, saveAssetsBrief, saveAssetItems, type WizardStep } from "@/app/actions/events";
 import { WizardShell, STEPS } from "@/components/wizard/wizard-shell";
-import { EventForm, FormatsForm, AssignForm, ReviewPanel } from "@/components/wizard/steps";
+import { EventForm, FormatsForm, AssignForm, ReviewPanel, AssetsBriefForm, AssetItemsForm } from "@/components/wizard/steps";
 import { DEFAULT_VENUE } from "@/config/orgs";
 import { formatSize } from "@/lib/labels";
-import { EVENT_CAP } from "@/config/limits";
 import type { AppUser, Brief, EventRow, Format, Slot } from "@/lib/types";
 import { wizardStatus } from "@/lib/wizard-status";
 
@@ -22,7 +22,34 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
     supabase.from("briefs").select("description,time_text,venue_name").eq("event_id", id).maybeSingle<Pick<Brief, "description" | "time_text" | "venue_name">>(),
     supabase.from("slots").select("assignee_id,is_primary").eq("event_id", id).eq("requested", true),
   ]);
-  const { statuses, issues } = wizardStatus({ title: event.title, eventDate: event.event_date, brief: briefRow, requestedSlots: requestedSlots ?? [] });
+  const assets = isAssets(event);
+  const { statuses, issues } = wizardStatus({ title: event.title, eventDate: event.event_date, brief: briefRow, requestedSlots: requestedSlots ?? [], assets });
+
+  if (assets && s === "event") {
+    const { data: brief } = await supabase.from("briefs").select("*").eq("event_id", id).maybeSingle<Brief>();
+    return (
+      <WizardShell assets eventId={id} step={s} statuses={statuses} title="What do you need?" subtitle="Describe the assets; list each one on the next step.">
+        <AssetsBriefForm eventId={id} orgName={org.name} locked={!!event.brief_locked_at} action={saveAssetsBrief.bind(null, id)} minDate={new Date().toLocaleDateString("en-CA")} maxDate={assetEndMax()}
+          values={{ title: event.title, event_date: event.event_date ?? "", description: brief?.description ?? "", notes: brief?.notes ?? "" }} />
+      </WizardShell>
+    );
+  }
+
+  if (assets && s === "formats") {
+    const [{ data: slots }, { data: formats }] = await Promise.all([
+      supabase.from("slots").select("*,versions(id),formats(sort)").eq("event_id", id).returns<(Slot & { versions: { id: string }[]; formats: { sort: number } | null })[]>(),
+      supabase.from("formats").select("*").order("sort").returns<Format[]>(),
+    ]);
+    const used = new Set((slots ?? []).map((sl) => sl.format_id));
+    const options = (formats ?? []).filter((f) => f.active || used.has(f.id)).map((f) => ({ id: f.id, name: f.name, size: formatSize(f), customSize: f.allow_custom_size }));
+    const items = [...(slots ?? [])].map((sl) => ({ ...sl, sort: sl.formats?.sort ?? 0 })).sort(byFormatThenLabel)
+      .map((sl) => ({ slotId: sl.id, formatId: sl.format_id, label: sl.label ?? "", notes: sl.notes ?? "", w: sl.custom_w, h: sl.custom_h, locked: (sl.versions?.length ?? 0) > 0 }));
+    return (
+      <WizardShell assets eventId={id} step={s} statuses={statuses} title="Which assets?" subtitle="Pick a format and how many, then name each one. Every asset gets its own designer, review and approval." wide>
+        <AssetItemsForm eventId={id} formats={options} items={items} action={saveAssetItems.bind(null, id)} />
+      </WizardShell>
+    );
+  }
 
   if (s === "event") {
     const { data: brief } = await supabase.from("briefs").select("*").eq("event_id", id).maybeSingle<Brief>();
@@ -54,9 +81,9 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
       supabase.from("users").select("id,name,email,function_tags,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id).order("name"),
     ]);
     const people = ((members ?? []) as unknown as Pick<AppUser, "id" | "name" | "email" | "function_tags">[]).sort((a, b) => Number(b.function_tags.includes("designer")) - Number(a.function_tags.includes("designer"))).map((p) => ({ id: p.id, label: `${p.name ?? p.email}${p.function_tags.includes("designer") ? " · Designer" : ""}` }));
-    const rows = (slots ?? []).sort((a, b) => ((a.formats as unknown as { sort: number })?.sort ?? 0) - ((b.formats as unknown as { sort: number })?.sort ?? 0)).map((sl) => ({ slotId: sl.id, name: (sl.formats as unknown as { name: string })?.name ?? "", assignee: sl.assignee_id ?? "", due: sl.due_on ?? "" }));
+    const rows = (slots ?? []).map((sl) => ({ ...sl, sort: (sl.formats as unknown as { sort: number })?.sort ?? 0 })).sort(byFormatThenLabel).map((sl) => ({ slotId: sl.id, name: slotName((sl.formats as unknown as { name: string })?.name, sl.label), assignee: sl.assignee_id ?? "", due: sl.due_on ?? "" }));
     return (
-      <WizardShell eventId={id} step={s} statuses={statuses} title="Who designs what, and by when?" subtitle="Designers are listed first. Due dates send a reminder three days before and on the day." wide>
+      <WizardShell assets={assets} eventId={id} step={s} statuses={statuses} title="Who designs what, and by when?" subtitle="Designers are listed first. Due dates send a reminder three days before and on the day." wide>
         <AssignForm eventId={id} rows={rows} people={people} action={saveAssign.bind(null, id)} />
       </WizardShell>
     );
@@ -64,15 +91,17 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
 
   const brief = briefRow;
   const [{ data: slots }, { count }] = await Promise.all([
-    supabase.from("slots").select("*,formats(name),users:assignee_id(name,email)").eq("event_id", id).eq("requested", true),
+    supabase.from("slots").select("*,formats(name,sort),users:assignee_id(name,email)").eq("event_id", id).eq("requested", true),
     supabase.from("events").select("id", { count: "exact", head: true }).eq("org_id", org.id).eq("status", "active").is("deleted_at", null),
   ]);
-  const allIssues = event.status === "draft" && (count ?? 0) >= EVENT_CAP ? [...issues, { text: `All ${EVENT_CAP} event slots are in use; publishing is blocked until one frees up.`, step: "event" as const, blocking: true }] : issues;
+  const allIssues = event.status === "draft" && (count ?? 0) >= capFor(org) ? [...issues, { text: `All ${capFor(org)} project slots are in use; publishing is blocked until one frees up.`, step: "event" as const, blocking: true }] : issues;
   return (
-    <WizardShell eventId={id} step={s} statuses={statuses} title={event.status === "draft" ? "Ready to publish?" : "Review"} subtitle={event.status === "draft" ? "Publishing takes one of the shared event slots and notifies the assigned designers." : "This event is live. Changes in the earlier steps are saved as you go."}>
-      <ReviewPanel eventId={id} isDraft={event.status === "draft"} canDelete={user.role === "core_admin" || event.created_by === user.id} issues={allIssues}
-        summary={{ title: event.title, when: [event.event_date ? format(new Date(event.event_date + "T00:00:00"), "EEE d MMM yyyy") : "—", brief?.time_text?.split("\n")[0]].filter(Boolean).join(" · "), venue: brief?.venue_name ?? event.venue ?? "—", brief: brief?.description ?? null }}
-        slots={(slots ?? []).map((sl) => { const who = sl.users as unknown as { name: string | null; email: string } | null; return { name: (sl.formats as unknown as { name: string })?.name ?? "", assignee: who ? { name: who.name ?? who.email, initials: initials(who.name, who.email) } : null, due: sl.due_on }; })}
+    <WizardShell assets={assets} eventId={id} step={s} statuses={statuses} title={event.status === "draft" ? "Ready to publish?" : "Review"} subtitle={event.status === "draft" ? `Publishing takes one of ${org.short_name}'s project slots and notifies the assigned designers.` : "This is live. Changes in the earlier steps are saved as you go."}>
+      <ReviewPanel assets={assets} eventId={id} isDraft={event.status === "draft"} canDelete={user.role === "core_admin" || event.created_by === user.id} issues={allIssues}
+        summary={assets
+          ? { title: event.title, when: event.event_date ? `Ends ${format(new Date(event.event_date + "T00:00:00"), "EEE d MMM yyyy")}; files are cleared the day after` : "—", venue: "Assets only", brief: brief?.description ?? null }
+          : { title: event.title, when: [event.event_date ? format(new Date(event.event_date + "T00:00:00"), "EEE d MMM yyyy") : "—", brief?.time_text?.split("\n")[0]].filter(Boolean).join(" · "), venue: brief?.venue_name ?? event.venue ?? "—", brief: brief?.description ?? null }}
+        slots={(slots ?? []).map((sl) => ({ ...sl, sort: (sl.formats as unknown as { sort: number })?.sort ?? 0 })).sort(byFormatThenLabel).map((sl) => { const who = sl.users as unknown as { name: string | null; email: string } | null; return { name: slotName((sl.formats as unknown as { name: string })?.name, sl.label), assignee: who ? { name: who.name ?? who.email, initials: initials(who.name, who.email) } : null, due: sl.due_on }; })}
         publish={async () => { "use server"; await publishEvent(id); }} remove={async () => { "use server"; await deleteEvent(id); }} />
     </WizardShell>
   );

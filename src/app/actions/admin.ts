@@ -1,11 +1,12 @@
 "use server";
+import { capFor } from "@/lib/project";
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
 import { normaliseSlackId } from "@/lib/chat";
 import { matchSlackIds, slackConfigured } from "@/lib/slack";
 import type { FunctionTag } from "@/lib/types";
-import { EVENT_CAP, DELETE_RESTORE_DAYS } from "@/config/limits";
+import { DELETE_RESTORE_DAYS } from "@/config/limits";
 import { UserError } from "@/lib/user-error";
 
 async function requireCoreAdmin() {
@@ -83,6 +84,8 @@ export async function updateOrgSettings(orgId: string, formData: FormData) {
     chat_webhook_url: String(formData.get("chat_webhook_url") ?? "").trim() || null,
     slack_enabled: formData.get("slack_enabled") === "on",
     slack_webhook_url: String(formData.get("slack_webhook_url") ?? "").trim() || null,
+    // Projects: how many may be live at once, and whether assets-only requests are on.
+    ...(formData.has("event_cap") ? { event_cap: Math.min(100, Math.max(0, Math.round(Number(formData.get("event_cap")) || 0))), asset_requests: formData.get("asset_requests") === "on" } : {}),
   };
   const { data: cur } = await supabase.from("organisations").select("slug,logo_path").eq("id", orgId).single();
   const logo = formData.get("logo");
@@ -129,7 +132,7 @@ export async function restoreEvent(eventId: string) {
   if (Date.now() - new Date(event.deleted_at).getTime() > DELETE_RESTORE_DAYS * 86400_000) throw new UserError("The restore window has passed");
   if (event.status === "active") {
     const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("org_id", org.id).eq("status", "active").is("deleted_at", null);
-    if ((count ?? 0) >= EVENT_CAP) throw new UserError(`All ${EVENT_CAP} event slots are in use; free one before restoring.`);
+    if ((count ?? 0) >= capFor(org)) throw new UserError(`All ${capFor(org)} project slots are in use; free one before restoring.`);
   }
   await supabase.from("events").update({ deleted_at: null }).eq("id", event.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, actor_id: user.id, kind: "event.restored", payload: { title: event.title } });

@@ -13,6 +13,7 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
     case "slot.assigned": return `You were assigned ${f} for ${t}`;
     case "slot.due": return `${f} for ${t} is ${p.when === "today" ? "due today" : "due in 3 days"}`;
     case "event.published": return `${t} was published and needs designs`;
+    case "project.ending": return `${t} ends in 3 days. Download the final designs; the files are cleared after the end date.`;
     case "version.uploaded": return `${by} sent ${f} v${p.number} for review`;
     case "review.waiting": return `${f} v${p.number} for ${t} has been waiting ${p.days} day${p.days === 1 ? "" : "s"} for review`;
     case "reviews.waiting": return `${p.count} designs are waiting for your review`;
@@ -28,7 +29,7 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
     case "versions.approved": return `${by} approved ${p.count} designs for ${t}`;
     case "event.all_approved": return `All designs for ${t} are approved`;
     case "access.requested": return `${p.name ?? p.email} asked for access`;
-    case "event.archived": return `${t} was archived; one reference image was kept`;
+    case "event.archived": return p.kind === "assets" ? `${t} has ended; its files were cleared` : `${t} was archived; one reference image was kept`;
     case "event.deleted": return `${t} was deleted`;
     case "draft.expiring": return `Your draft “${t}” is deleted in ${p.days} days unless someone edits it`;
     case "draft.swept": return `Your draft “${t}” sat untouched for 30 days and was deleted`;
@@ -55,6 +56,7 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
     case "event.published": {
       const rows = (Array.isArray(p.assignments) ? p.assignments as { format: string; userId: string | null; due?: string | null }[] : [])
         .map((a) => `• ${a.format} → ${a.userId ? `{@${a.userId}}` : "unassigned"}${a.due ? ` · due ${chatDate(a.due)}` : ""}`);
+      if (p.kind === "assets") return { head: `🆕 ${t} · assets, ends ${chatDate(p.date)}`, body: [`New request published by ${by}.`, ...rows].join("\n") };
       return { head: `🆕 ${t}${p.date ? ` · ${chatDate(p.date)}` : ""}`, body: [`New event published by ${by}${p.venue ? ` · ${p.venue}` : ""}.`, ...rows].join("\n") };
     }
     case "slot.assigned": return { head: `🎯 ${t} · ${f}`, body: `${by} assigned this to {@${p.assignee}}${p.due ? ` · due ${chatDate(p.due)}` : ""}.` };
@@ -82,7 +84,8 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
     case "comments.posted": return { head: `💬 ${t} · ${f}${n}`, body: `${by} left ${p.count} comments:\n${String(p.excerpt ?? "")}` };
     case "access.requested": return { head: `🔑 ${p.name ?? p.email} asked for access`, body: `${p.email} · approve or deny in Settings → Requests.` };
     case "access.approved": return { head: `👋 ${p.name ?? "A new member"} joined`, body: `Approved by ${by}. Welcome!` };
-    case "event.archived": return { head: `📦 ${t} archived`, body: "A week has passed since the event. One reference image was kept; the other files were removed." };
+    case "project.ending": return { head: `⏳ ${t} · ends in 3 days`, body: "Download the final designs now: the files are cleared after the end date." };
+    case "event.archived": return p.kind === "assets" ? { head: `📦 ${t} ended`, body: "The request reached its end date and its files were cleared." } : { head: `📦 ${t} archived`, body: "A week has passed since the event. One reference image was kept; the other files were removed." };
     default: return { head: t, body: notificationText(kind, p) };
   }
 }

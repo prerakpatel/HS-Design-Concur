@@ -1,5 +1,6 @@
 /** Storage and calendar limits from PRD §8. */
-export const EVENT_CAP = 10;            // non-draft, non-archived events per organization (20 across both)
+export const EVENT_CAP = 10;            // fallback only: each organisation sets its own cap (organisations.event_cap)
+export const ASSET_MAX_DAYS = 30;       // an assets-only request ends at most this many days out; its files go at the end date
 export const MONTHS_AHEAD = 6;          // an event may not be dated further out than this
 export const PURGE_AFTER_DAYS = 7;      // days after the event date before it is archived and its files purged
 export const DELETE_RESTORE_DAYS = 7;   // Core Admins can restore a deleted event for this long; files go after

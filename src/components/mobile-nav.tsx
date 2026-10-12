@@ -5,7 +5,7 @@ import { Icon } from "@/components/material-icon";
 import { UserAvatar } from "@/components/user-avatar";
 
 const TABS = [
-  { href: "/events", label: "Events", icon: "event" },
+  { href: "/events", label: "Projects", icon: "folder" },
   { href: "/inbox", label: "Inbox", icon: "notifications" },
   { href: "/archive", label: "Archive", icon: "inventory_2" },
   { href: "/glossary", label: "Glossary", icon: "menu_book" },

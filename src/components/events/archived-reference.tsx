@@ -6,7 +6,13 @@ import { PURGE_AFTER_DAYS } from "@/config/limits";
  * An archived event keeps one compressed reference of its primary design (PRD §8). The format
  * files are gone, so instead of a grid of empty tiles the page shows that one image, fitted whole.
  */
-export function ArchivedReference({ src, formatName, approved, requested }: { src: string | null; formatName: string | null; approved: number; requested: number }) {
+export function ArchivedReference({ src, formatName, approved, requested, assets = false }: { src: string | null; formatName: string | null; approved: number; requested: number; /** Assets-only requests keep no reference. */ assets?: boolean }) {
+  if (assets) return (
+    <section>
+      <SectionHeader title="Assets" meta={`${approved} of ${requested} approved`} />
+      <p className="flex items-start gap-2 rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground"><Icon name="inventory_2" className="mt-px !text-[18px]" />This request has ended and its files were cleared. The brief, decisions and comments stay.</p>
+    </section>
+  );
   return (
     <section>
       <SectionHeader title="Reference" meta={`${approved} of ${requested} formats approved`} />

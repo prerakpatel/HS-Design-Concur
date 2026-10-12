@@ -1,4 +1,5 @@
 "use server";
+import { slotName } from "@/lib/project";
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
 import { notify, eventParticipants, taggedMemberIds, approverIds } from "@/lib/notify";
@@ -10,11 +11,11 @@ import { UserError } from "@/lib/user-error";
 
 async function loadVersion(versionId: string) {
   const ctx = await requireActiveUser();
-  const { data: v } = await ctx.supabase.from("versions").select("*,slots(id,event_id,assignee_id,state,is_primary,formats(name),events(id,org_id,title,status,created_by))").eq("id", versionId).maybeSingle();
-  const slot = v?.slots as unknown as { id: string; event_id: string; assignee_id: string | null; state: string; is_primary: boolean; formats: { name: string }; events: { id: string; org_id: string; title: string; status: string; created_by: string } } | null;
+  const { data: v } = await ctx.supabase.from("versions").select("*,slots(id,event_id,assignee_id,state,is_primary,label,formats(name),events(id,org_id,title,status,created_by))").eq("id", versionId).maybeSingle();
+  const slot = v?.slots as unknown as { id: string; event_id: string; assignee_id: string | null; state: string; is_primary: boolean; label: string | null; formats: { name: string }; events: { id: string; org_id: string; title: string; status: string; created_by: string } } | null;
   if (!v || !slot || slot.events.org_id !== ctx.org.id) throw new UserError("Version not found");
   if (slot.events.status === "archived") throw new UserError("This event is archived and read-only");
-  return { ...ctx, version: v, slot, event: slot.events, formatName: slot.formats?.name ?? "format" };
+  return { ...ctx, version: v, slot, event: slot.events, formatName: slotName(slot.formats?.name, slot.label) };
 }
 
 
