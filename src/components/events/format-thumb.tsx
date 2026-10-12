@@ -29,7 +29,7 @@ export function FormatThumb({ src, size, formatKey, frame, event }: { src: strin
   return (
     <>
       <Layer on={!inPlace}><Plain src={src} r={r} frame={frame} /></Layer>
-      {mock && <Layer on={inPlace} tall={PHONE_MOCKS.includes(mock)}><InPlace mock={mock} src={src} r={r ?? SCREEN} event={event} /></Layer>}
+      {mock && <Layer on={inPlace} tall={PHONE_MOCKS.includes(mock)} bleed={mock === "calendar"}><InPlace mock={mock} src={src} r={r ?? SCREEN} event={event} crop /></Layer>}
       {mock && (
         <button type="button" onClick={flip} aria-pressed={inPlace} aria-label={inPlace ? "Show the design" : "Show it in place"}
           className={cn("absolute top-1/2 z-[1] flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-[0_1px_4px_rgba(0,0,0,.18)] ring-1 ring-black/5 transition hover:bg-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", inPlace ? "left-2" : "right-2")}>
@@ -41,9 +41,9 @@ export function FormatThumb({ src, size, formatKey, frame, event }: { src: strin
 }
 
 /** One of the two stacked views, crossfaded. Leaves room for the badges above and below. */
-function Layer({ on, tall, children }: { on: boolean; /** Narrow phone mocks clear the corner chips, so they start higher. */ tall?: boolean; children: ReactNode }) {
+function Layer({ on, tall, bleed, children }: { on: boolean; /** Narrow phone mocks clear the corner chips, so they start higher. */ tall?: boolean; /** Starts near the top and runs off the bottom edge of the tile, so the top of the mock is shown larger. */ bleed?: boolean; children: ReactNode }) {
   return (
-    <div aria-hidden={!on} className={cn("absolute flex", tall ? "inset-x-[24%] bottom-[30%] top-[6%] md:bottom-[22%]" : "inset-x-[10%] bottom-[26%] top-[16%] md:bottom-[22%] md:top-[12%]", " items-center justify-center transition-[opacity,transform] duration-300 ease-out", on ? "opacity-100" : "pointer-events-none scale-[0.97] opacity-0")} style={{ containerType: "size" }}>
+    <div aria-hidden={!on} className={cn("absolute flex", bleed ? "inset-x-[11%] bottom-0 top-[14%] items-start justify-center md:top-[11%]" : cn(tall ? "inset-x-[24%] bottom-[30%] top-[6%] md:bottom-[22%]" : "inset-x-[10%] bottom-[26%] top-[16%] md:bottom-[22%] md:top-[12%]", "items-center justify-center"), "transition-[opacity,transform] duration-300 ease-out", on ? "opacity-100" : "pointer-events-none scale-[0.97] opacity-0")} style={{ containerType: "size" }}>
       {children}
     </div>
   );
@@ -74,7 +74,7 @@ function Plain({ src, r, frame }: { src: string; r: number | null; frame?: Forma
   return <img src={src} alt="" style={fit(r)} className={cn("object-cover", LIFT, frame === "card" ? "rounded-[2cqmin]" : "rounded-[3px]", frame === "print" && "ring-1 ring-black/5")} />;
 }
 
-function InPlace({ mock, src, r, event }: { mock: Mockup; src: string; r: number; event?: { title: string; date: string | null } }) {
+function InPlace({ mock, src, r, event, crop }: { mock: Mockup; src: string; r: number; event?: { title: string; date: string | null }; /** In a tile: let the mock run off the bottom edge (calendar only). */ crop?: boolean }) {
   if (mock === "tv") return (
     <div className="relative" style={fit(r)}>
       <div className="absolute inset-[6%] bottom-[14%]">
@@ -99,7 +99,7 @@ function InPlace({ mock, src, r, event }: { mock: Mockup; src: string; r: number
   if (mock === "browser") return <Browser src={src} r={r} />;
   if (mock === "print") return <Print src={src} r={r} />;
   if (mock === "youtube") return <YouTube src={src} />;
-  if (mock === "calendar") return <CalendarPage src={src} />;
+  if (mock === "calendar") return <CalendarPage src={src} crop={crop} />;
   return (
     <Phone>
       {mock === "phone" && <div className="flex size-full items-center justify-center bg-black"><img src={src} alt="" className="max-h-full max-w-full object-contain" /></div>}
@@ -142,9 +142,9 @@ function Browser({ src, r }: { src: string; r: number }) {
  * /mockups/calendar-page.webp, kept in the repo). The picture area is 14.25 × 8.75 in, like the cover format.
  */
 const CAL = { w: 1762, top: 1081, bottom: 919 };
-function CalendarPage({ src }: { src: string }) {
+function CalendarPage({ src, crop }: { src: string; crop?: boolean }) {
   return (
-    <div className="flex flex-col overflow-hidden rounded-[1.2cqmin] bg-white shadow-[0_10px_28px_-10px_rgba(0,0,0,.4)] ring-1 ring-black/10" style={fit(CAL.w / (CAL.top + CAL.bottom))}>
+    <div className="flex flex-col overflow-hidden rounded-[1.2cqmin] bg-white shadow-[0_10px_28px_-10px_rgba(0,0,0,.4)] ring-1 ring-black/10" style={crop ? { width: "100cqw", aspectRatio: String(CAL.w / (CAL.top + CAL.bottom)), flexShrink: 0 } : fit(CAL.w / (CAL.top + CAL.bottom))}>
       <img src={src} alt="" className="w-full object-cover" style={{ aspectRatio: `${CAL.w} / ${CAL.top}` }} />
       <img src="/mockups/calendar-page.webp" alt="" className="w-full" style={{ aspectRatio: `${CAL.w} / ${CAL.bottom}` }} />
     </div>
