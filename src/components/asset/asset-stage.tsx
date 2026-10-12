@@ -8,6 +8,8 @@ import { UserAvatar } from "@/components/user-avatar";
 import { Icon } from "@/components/material-icon";
 import { StateBadge, type BadgeState } from "@/components/state-badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Lightbox } from "@/components/asset/lightbox";
 import { UploadPanel, UploadDropArea, requestUpload } from "@/components/asset/upload-panel";
 import { MockStage, hasMock } from "@/components/events/format-thumb";
@@ -30,7 +32,7 @@ export type Side = "front" | "back";
 export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number; /** The requested size the safe bands are measured in, when it differs from the file. */ specW?: number; specH?: number }
 export interface CommentView { id: string; version: number; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; draft?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
 export interface Member { id: string; name: string; handle: string; avatar?: string | null; kind?: "person" | "group" }
-export interface VersionChip { id: string; number: number; decision: string; canManage: boolean; hasBack: boolean; purged?: boolean }
+export interface VersionChip { id: string; number: number; decision: string; sent?: boolean; canManage: boolean; hasBack: boolean; purged?: boolean }
 export interface StatusView { state: BadgeState; version: number | null; uploader: string | null; uploadedAt: string | null; assigneeId?: string | null; canAssign?: boolean }
 
 
@@ -120,9 +122,9 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
     try { await setCommentFlag(id, f); router.refresh(); if (f === "addressed") toast.success("Marked as done", { action: { label: "Undo", onClick: () => flag(id, "unaddress") }, duration: 8000 }); }
     catch (e) { toast.error(errorMessage(e)); }
   });
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const removeVersion = (v: VersionChip) => start(async () => {
-    if (!confirm(`Delete v${v.number}? Its files are removed for good.`)) return;
-    try { await deleteVersion(v.id); toast.success(`Version ${v.number} deleted`); router.replace(`/events/${eventId}/slots/${slotId}`); router.refresh(); } catch (e) { toast.error(errorMessage(e)); }
+    try { await deleteVersion(v.id); setConfirmDelete(false); toast.success(`Version ${v.number} deleted`); router.replace(`/events/${eventId}/slots/${slotId}`); router.refresh(); } catch (e) { toast.error(errorMessage(e)); }
   });
 
   const hasGuides = sides.some((s) => { const g = guideGeometry(safe, print, s.specW || s.width, s.specH || s.height); return g.cut || g.safe.top + g.safe.right + g.safe.bottom + g.safe.left > 0; });
@@ -131,6 +133,11 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const shownVersions = byNumber.filter((v, i) => i >= byNumber.length - 2 || v.id === currentVersionId);
   const earlierVersions = byNumber.filter((v) => !shownVersions.includes(v));
   const manage = !readOnly && !!current?.canManage && !!upload;
+  // Upload asks only when the newest version is in review and nobody has reacted: fix it, or save a new version.
+  const newest = byNumber[byNumber.length - 1] ?? null;
+  const askNo = manage && newest && newest.sent && newest.decision === "pending" && newest.canManage && !comments.some((c) => c.version === newest.number && !c.draft) ? newest.number : null;
+  const commentsOn = (n: number) => comments.filter((c) => c.version === n && !c.draft).length;
+  const canAddBack = manage && !!upload?.isPrint && !!current && current.id === newest?.id && !current.hasBack && current.decision === "pending" && !!front && !readOnly;
   const pill = "rounded-full";
   const iconPill = "rounded-full max-sm:size-10 max-sm:px-0";
 
@@ -145,7 +152,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
               {shownVersions.map((v, idx) => {
                 const pillEl = (
                   <Button key={v.id} asChild variant="outline" role="tab" aria-selected={currentVersionId === v.id} title={v.purged ? `v${v.number}: comments only, files removed` : undefined} className={cn(pill, "px-3.5", v.purged && currentVersionId !== v.id && "border-dashed text-muted-foreground", currentVersionId === v.id && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")}>
-                    <Link href={`/events/${eventId}/slots/${slotId}?v=${v.number}`}>v{v.number}{v.decision === "approved" && <Icon name="check" className="!text-[16px]" />}</Link>
+                    <Link href={`/events/${eventId}/slots/${slotId}?v=${v.number}`}>v{v.number}{commentsOn(v.number) > 0 && currentVersionId !== v.id && <span className="text-xs font-normal opacity-60">{commentsOn(v.number)}</span>}{v.decision === "approved" && <Icon name="check" className="!text-[16px]" />}</Link>
                   </Button>
                 );
                 // Only the two newest versions are pills. The older of the two has the earlier ones peeking out from behind it.
@@ -155,31 +162,11 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
               })}
             </div>
           )}
-          {upload && !readOnly && <UploadPanel slotId={slotId} accept={upload.accept} isPrint={upload.isPrint} nextNumber={upload.nextNumber} variant="pill" label="Upload" compactOnPhone className={iconPill} title="Upload a new version, or drop a file anywhere on this page" />}
-          {manage && current && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={`More for v${current.number}`}><Icon name="more_vert" /></Button></DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56 rounded-xl p-1.5">
-                <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => requestUpload({ side: "front", replaceVersionId: current.id })}><Icon name="sync" />Replace v{current.number}</DropdownMenuItem>
-                {upload?.isPrint && !current.hasBack && <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => requestUpload({ side: "back", replaceVersionId: null })}><Icon name="flip" />Add back side</DropdownMenuItem>}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm text-destructive-text" disabled={pending} onSelect={() => removeVersion(current)}><Icon name="delete" />Delete v{current.number}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          {upload && !readOnly && <UploadPanel slotId={slotId} accept={upload.accept} isPrint={upload.isPrint} nextNumber={upload.nextNumber} ask={askNo} variant="pill" label="Upload" compactOnPhone className={iconPill} title="Upload a file, or drop one anywhere on this page" />}
           <div className="ml-auto flex items-center gap-2">
-            {canMock && !review && (
-              <div role="tablist" aria-label="View" className="flex h-10 items-center rounded-full border border-border p-1">
-                {([[false, "image", "Design"], [true, "devices", "In place"]] as const).map(([v, icon, label]) => (
-                  <button key={label} type="button" role="tab" aria-selected={inPlace === v} aria-label={label} onClick={() => setInPlace(v)}
-                    className={cn("flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-medium transition-colors max-sm:px-2.5", inPlace === v ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
-                    <Icon name={icon} className="!text-[18px]" /><span className="max-xl:hidden">{label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {canComment && versionId && !review && <Button variant="outline" onClick={() => { setInPlace(false); setReview(true); }} className={iconPill} aria-label="Start a review: comment on the design"><Icon name="add_comment" /><span className="max-sm:hidden">Comment</span></Button>}
-            {hasGuides && !showMock && <Button variant="outline" onClick={() => setShowGuides((v) => !v)} aria-pressed={showGuides} className={cn(iconPill, showGuides && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")} aria-label="Toggle guides"><Icon name="grid_on" /><span className="max-sm:hidden">Guides</span></Button>}
+            {canMock && !review && <Tip label={inPlace ? "Back to the design" : "See it in place"}><Button variant="outline" size="icon" onClick={() => setInPlace((v) => !v)} aria-pressed={inPlace} aria-label={inPlace ? "Back to the design" : "See it in place"} className={cn("rounded-full", inPlace && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")}><Icon name="devices" /></Button></Tip>}
+            {canComment && versionId && !review && <Tip label="Comment on the design"><Button variant="outline" size="icon" onClick={() => { setInPlace(false); setReview(true); }} className="rounded-full" aria-label="Start a review: comment on the design"><Icon name="add_comment" /></Button></Tip>}
+            {hasGuides && !showMock && <Tip label={showGuides ? "Hide guides" : "Show guides"}><Button variant="outline" size="icon" onClick={() => setShowGuides((v) => !v)} aria-pressed={showGuides} className={cn("rounded-full", showGuides && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")} aria-label="Toggle guides"><Icon name="grid_on" /></Button></Tip>}
           </div>
         </div>
 
@@ -210,6 +197,9 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                     {mode === "view" && <button type="button" onClick={() => setOpen(s.side)} aria-label="Enlarge" className="absolute bottom-2.5 right-2.5 flex size-9 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 max-md:opacity-70"><Icon name="zoom_out_map" className="!text-[18px]" /></button>}
                   </div>
                 ) : <div className="flex aspect-[4/5] w-64 items-center justify-center rounded-md bg-muted text-sm text-muted-foreground">No design yet</div>}
+                {s.side === "front" && canAddBack && !sides.some((x) => x.side === "back") && !review && (
+                  <button type="button" onClick={() => requestUpload({ side: "back" })} className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-foreground/25 py-8 text-sm font-medium text-muted-foreground transition-colors hover:border-info hover:bg-info-soft/50 hover:text-info-text"><Icon name="flip" className="!text-[20px]" />Add the back side</button>
+                )}
                 {sides.length > 1 && <figcaption className="mt-2.5 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">{s.side}</figcaption>}
               </figure>
             );
@@ -238,7 +228,19 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           )}
           {status.uploader && <p className="mt-3 flex justify-between gap-3 text-sm"><span className="text-muted-foreground">Uploaded by</span><span className="truncate text-right">{status.uploader}{status.uploadedAt ? <span className="text-muted-foreground"> · {relativeTime(status.uploadedAt)}</span> : null}</span></p>}
           {decision && <div className="mt-4 hidden md:block">{decision}</div>}
+          {manage && current && <button type="button" onClick={() => setConfirmDelete(true)} className="mt-3 text-[13px] text-muted-foreground underline-offset-4 hover:text-destructive-text hover:underline">Delete v{current.number}</button>}
         </div>
+        {manage && current && (
+          <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+            <DialogContent className="max-w-sm rounded-2xl">
+              <DialogHeader><DialogTitle>Delete v{current.number}?</DialogTitle><DialogDescription>Its files are removed for good{commentsOn(current.number) > 0 ? `, along with ${commentsOn(current.number)} comment${commentsOn(current.number) === 1 ? "" : "s"} on it` : ""}. Use this for a wrong file. To fix a file, just upload again.</DialogDescription></DialogHeader>
+              <div className="flex flex-col gap-2">
+                <Button size="lg" variant="destructive" disabled={pending} onClick={() => removeVersion(current)}>{pending ? "Deleting…" : `Delete v${current.number}`}</Button>
+                <Button size="lg" variant="outline" onClick={() => setConfirmDelete(false)}>Keep it</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
 
         <div className="flex max-h-[min(78dvh,880px)] flex-col rounded-2xl border border-border">
           <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 text-sm">
@@ -294,6 +296,9 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                     {done && <span className="flex items-center gap-1 text-[13px] text-success-text"><Icon name="check" className="!text-[16px]" />Resolved{c.confirmed_at ? " · confirmed" : ""}</span>}
                   </div>
                 </li>
+                {(i === shown.length - 1 || shown[i + 1].version !== c.version) && !c.draft && versions.some((v) => v.number > c.version) && (
+                  <li className="px-2 pb-1 pt-0.5"><Link href={`/events/${eventId}/slots/${slotId}?v=${Math.min(...versions.filter((v) => v.number > c.version).map((v) => v.number))}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Icon name="subdirectory_arrow_right" className="!text-[14px]" />Updated in v{Math.min(...versions.filter((v) => v.number > c.version).map((v) => v.number))}</Link></li>
+                )}
                 </Fragment>
               );
             })}
@@ -323,6 +328,10 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
       {decisionBar && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur md:hidden [&>div]:justify-end">{decisionBar}</div>}
     </UploadDropArea>
   );
+}
+
+function Tip({ label, children }: { label: string; children: React.ReactNode }) {
+  return <Tooltip><TooltipTrigger asChild>{children}</TooltipTrigger><TooltipContent>{label}</TooltipContent></Tooltip>;
 }
 
 /**

@@ -80,7 +80,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const canSend = !!current && current.decision === "pending" && (current.uploaded_by === user.id || slot.assignee_id === user.id || user.role === "core_admin");
   const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved, sent, canSend } : null;
 
-  const chips = vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, purged: !!x.purged_at, canManage: x.uploaded_by === user.id || user.role === "core_admin", hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }));
+  const chips = vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, sent: !!x.sent_at, purged: !!x.purged_at, canManage: x.uploaded_by === user.id || user.role === "core_admin", hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }));
   const decision = actionProps ? <ReviewActions {...actionProps} label={`${slotName(fmt.name, slot.label)} v${current?.number ?? ""}`} eventTitle={event.title} layout="fill" /> : null;
   const decisionRow = actionProps ? <ReviewActions {...actionProps} label={`${slotName(fmt.name, slot.label)} v${current?.number ?? ""}`} eventTitle={event.title} /> : null;
 

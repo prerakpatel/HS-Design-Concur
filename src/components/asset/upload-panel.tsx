@@ -5,56 +5,72 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createUploadUrl } from "@/app/actions/uploads";
 import { errorMessage } from "@/lib/user-error";
 
-export interface UploadTarget { side: "front" | "back"; replaceVersionId: string | null }
+export interface UploadTarget { side: "front" | "back" }
 
 /** Hidden file input + the upload flow. Renders a single Upload button; `openWith` lets a menu start a replace or back-side upload. */
-export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "button", label, compactOnPhone, className, title }: { slotId: string; title?: string; accept: string[]; isPrint: boolean; nextNumber: number; variant?: "button" | "dropzone" | "pill"; label?: string; compactOnPhone?: boolean; className?: string }) {
+export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "button", label, compactOnPhone, className, title, ask = null }: { slotId: string; title?: string; /** The newest version, when it is in review and untouched: a front upload asks whether to fix it or save a new version. */ ask?: number | null; accept: string[]; isPrint: boolean; nextNumber: number; variant?: "button" | "dropzone" | "pill"; label?: string; compactOnPhone?: boolean; className?: string }) {
   const [busy, setBusy] = useState<string | null>(null);
   // Progress lives in a small shared store: the drop zone / design overlay shows it inside the section.
   const setProgress = (next: Progress | null | ((p: Progress | null) => Progress | null)) => uploadState.set(typeof next === "function" ? next(uploadState.get()) : next);
   const xhr = useRef<XMLHttpRequest | null>(null);
-  const [target, setTarget] = useState<UploadTarget>({ side: "front", replaceVersionId: null });
+  const [target, setTarget] = useState<UploadTarget>({ side: "front" });
   const input = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  async function handle(file: File, t: UploadTarget = target) {
+  const [choosing, setChoosing] = useState<{ file: File; t: UploadTarget } | null>(null);
+  function handle(file: File, t: UploadTarget = target, mode: "auto" | "new" = "auto") {
     if (busy) return;
     if (accept.length && !accept.includes(file.type)) { toast.error(`${file.name} isn't a supported file. Use ${typesLabel(accept)}.`); return; }
+    if (ask != null && t.side === "front" && mode === "auto") { setChoosing({ file, t }); return; }
+    return send(file, t, mode);
+  }
+  async function send(file: File, t: UploadTarget, mode: "auto" | "new") {
     setBusy("Uploading…"); setProgress({ name: file.name, phase: "upload", pct: 0 });
     try {
       const start = await createUploadUrl(slotId, file.name, file.type, file.size);
       if ("error" in start) throw new Error(start.error);
       await putWithProgress(start.path, start.token, file, xhr, (pct) => setProgress((p) => p && { ...p, pct }));
       setBusy("Optimising…"); setProgress((p) => p && { ...p, phase: "optimise", pct: 100 });
-      const res = await fetch("/api/uploads/finalize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slotId, tmpPath: start.path, mime: file.type, side: t.side, replaceVersionId: t.replaceVersionId }) });
-      const done = await res.json().catch(() => ({ error: `Processing failed (${res.status})` })) as { error?: string; number?: number; keptInReview?: boolean };
+      const res = await fetch("/api/uploads/finalize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slotId, tmpPath: start.path, mime: file.type, side: t.side, mode }) });
+      const done = await res.json().catch(() => ({ error: `Processing failed (${res.status})` })) as { error?: string; number?: number; outcome?: "new" | "updated" | "replaced" | "back" };
       if (!res.ok || done.error) throw new Error(done.error ?? `Processing failed (${res.status})`);
-      setProgress({ name: t.replaceVersionId ? (done.keptInReview ? `Version ${done.number} updated · approvers already see it` : `Version ${done.number} replaced · send it for review`) : t.side === "back" ? "Back side added" : `Version ${done.number} uploaded`, phase: "done", pct: 100 });
+      setProgress({ name: outcomeMessage(done.outcome, done.number), phase: "done", pct: 100 });
       setTimeout(() => setProgress((p) => (p?.phase === "done" ? null : p)), 2400);
       router.refresh();
     } catch (e) {
       setProgress(null);
       if ((e as Error).name !== "AbortError") toast.error(errorMessage(e));
     }
-    finally { xhr.current = null; setBusy(null); setTarget({ side: "front", replaceVersionId: null }); if (input.current) input.current.value = ""; }
+    finally { xhr.current = null; setBusy(null); setTarget({ side: "front" }); if (input.current) input.current.value = ""; }
   }
   const openWith = (t: UploadTarget) => { setTarget(t); input.current?.click(); };
 
-  const bridge = <><input ref={input} type="file" accept={accept.join(",")} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f); }} />
-    <UploadBridge openWith={openWith} drop={(f) => handle(f, { side: "front", replaceVersionId: null })} />
+  const choose = (mode: "auto" | "new") => { const c = choosing; setChoosing(null); if (c) void send(c.file, c.t, mode); };
+  const bridge = <>
+    <Dialog open={!!choosing} onOpenChange={(o) => { if (!o) { setChoosing(null); if (input.current) input.current.value = ""; } }}>
+      <DialogContent className="max-w-sm rounded-2xl">
+        <DialogHeader><DialogTitle>Fix v{ask} or start v{(ask ?? 0) + 1}?</DialogTitle><DialogDescription>v{ask} is in review and nobody has reacted yet. Fixing it keeps everything in one place and doesn&apos;t notify anyone again.</DialogDescription></DialogHeader>
+        <div className="flex flex-col gap-2">
+          <Button size="lg" onClick={() => choose("auto")}>Fix v{ask}</Button>
+          <Button size="lg" variant="outline" onClick={() => choose("new")}>Save as v{(ask ?? 0) + 1}</Button>
+        </div>
+      </DialogContent>
+    </Dialog><input ref={input} type="file" accept={accept.join(",")} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f); }} />
+    <UploadBridge openWith={openWith} drop={(f) => handle(f, { side: "front" })} />
     <CancelBridge cancel={() => xhr.current?.abort()} /></>;
 
   // Empty format: the whole section is the drop target, Dropbox-style.
   if (variant === "dropzone") return (
-    <DropSurface fill onFile={(f) => handle(f, { side: "front", replaceVersionId: null })} className="mt-4 min-h-[calc(100dvh-270px)] md:min-h-[calc(100dvh-170px)]">
+    <DropSurface fill onFile={(f) => handle(f, { side: "front" })} className="mt-4 min-h-[calc(100dvh-270px)] md:min-h-[calc(100dvh-170px)]">
       {(dragging) => <>
         <p className="mt-7 text-base font-medium">{dragging ? "Drop to upload" : busy ? "Uploading your design" : <><span className="md:hidden">Add your design</span><span className="max-md:hidden">Drop your design here</span></>}</p>
         {busy ? <div className="mt-5 flex w-full justify-center"><UploadStatus /></div> : <>
           <p className="mt-1 text-sm text-muted-foreground max-md:hidden">or</p>
-          <Button onClick={() => openWith({ side: "front", replaceVersionId: null })} size="lg" className="mt-3"><Icon name="upload" />{label ?? "Upload design"}</Button>
+          <Button onClick={() => openWith({ side: "front" })} size="lg" className="mt-3"><Icon name="upload" />{label ?? "Upload design"}</Button>
         </>}
         <p className="mx-auto mt-6 max-w-md text-xs text-muted-foreground">{typesLabel(accept)} up to 8 MB. Shown with a DRAFT mark until approved. Nobody is notified until you send it for review.{isPrint && accept.includes("application/pdf") ? " A two-page PDF fills Front and Back at once." : ""}</p>
         {bridge}
@@ -64,7 +80,7 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
 
   return (
     <div className="contents" data-upload-panel>
-      <Button onClick={() => openWith({ side: "front", replaceVersionId: null })} disabled={!!busy} variant={variant === "pill" ? "default" : "secondary"} className={className} title={title} aria-label={compactOnPhone ? (label ?? "Upload") : undefined}>
+      <Button onClick={() => openWith({ side: "front" })} disabled={!!busy} variant={variant === "pill" ? "default" : "secondary"} className={className} title={title} aria-label={compactOnPhone ? (label ?? "Upload") : undefined}>
         <Icon name="upload" /><span className={compactOnPhone && !busy ? "hidden sm:inline" : undefined}>{busy ?? label ?? (nextNumber === 1 ? "Upload design" : "Upload new version")}</span>
       </Button>
       {bridge}
@@ -72,6 +88,12 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
   );
 }
 
+function outcomeMessage(outcome: string | undefined, n: number | undefined) {
+  if (outcome === "updated") return `v${n} updated · approvers already see it`;
+  if (outcome === "replaced") return `v${n} updated · send it for review when ready`;
+  if (outcome === "back") return "Back side added";
+  return `v${n} created`;
+}
 interface Progress { name: string; phase: "upload" | "optimise" | "done"; pct: number }
 const typesLabel = (accept: string[]) => accept.map((m) => m.split("/")[1].toUpperCase().replace("JPEG", "JPG")).join(", ");
 

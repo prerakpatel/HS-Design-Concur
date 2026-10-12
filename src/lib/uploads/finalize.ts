@@ -13,7 +13,7 @@ import { MARK_VERSION } from "@/config/marks";
  * version. Lives behind /api/uploads/finalize so the image and PDF libraries are traced into that one function
  * only, keeping page functions small and quick to start.
  */
-export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpPath: string, mime: string, side: "front" | "back" = "front", replaceVersionId?: string | null) {
+export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpPath: string, mime: string, side: "front" | "back" = "front", mode: "auto" | "new" = "auto") {
   const { supabase, user, org } = ctx;
   const { data: slot } = await supabase.from("slots").select("*,events(id,org_id,title,created_by,brief_locked_at),label,formats(name,class)").eq("id", slotId).maybeSingle();
   const event = slot?.events as unknown as { id: string; org_id: string; title: string; created_by: string; brief_locked_at: string | null } | null;
@@ -36,44 +36,43 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
   catch (e) { return { error: `Could not read that file: ${(e as Error).message}` }; }
   const firstSide = inputs[0].side;
 
-  // Attach a Back side to the latest version if it is a print format, same uploader, no back yet, within the hour.
+  // Attach a Back side to the latest version if it is a print format, same uploader, no back yet.
   let versionId: string | null = null; let number = 1;
   let keptInReview = false;
-  const { data: latest } = await supabase.from("versions").select("id,number,uploaded_by,created_at,version_sides(side)").eq("slot_id", slotId).order("number", { ascending: false }).limit(1).maybeSingle();
-  if (replaceVersionId) {
-    // Replace: same version number, files overwritten, decision back to pending.
-    const { data: rv } = await supabase.from("versions").select("id,number,uploaded_by,sent_at,decision").eq("id", replaceVersionId).eq("slot_id", slotId).maybeSingle();
-    if (!rv) return { error: "That version no longer exists" };
-    if (rv.uploaded_by !== user.id && user.role !== "core_admin") return { error: "Only the uploader or a Core Admin can replace a version" };
-    versionId = rv.id; number = rv.number;
-    const { data: old } = await supabase.from("version_sides").select("optimised_path,preview_path,thumb_path").eq("version_id", rv.id);
+  const { data: latest } = await supabase.from("versions").select("id,number,uploaded_by,created_at,sent_at,decision,version_sides(side)").eq("slot_id", slotId).order("number", { ascending: false }).limit(1).maybeSingle();
+  // One Upload button; the state of the newest version decides what it does:
+  //   not sent yet                       → replace it quietly (nobody has seen it)
+  //   sent, nobody has reacted           → replace it and keep it in review (approvers always see the newest file)
+  //   commented on, approved or changes requested → a new version, so feedback stays attached to what it was about
+  // `mode: "new"` forces a new version (the uploader chose "Save as new version" when asked).
+  let replacing: { id: string; sent: boolean } | null = null;
+  if (mode === "auto" && latest && (isPdf || side === "front") && latest.decision === "pending" && (latest.uploaded_by === user.id || user.role === "core_admin")) {
+    const { data: talked } = await supabase.from("comments").select("id").eq("version_id", latest.id).eq("is_draft", false).limit(1);
+    if (!talked?.length) replacing = { id: latest.id, sent: !!latest.sent_at };
+  }
+  if (replacing) {
+    versionId = replacing.id; number = latest!.number;
+    const { data: old } = await supabase.from("version_sides").select("optimised_path,preview_path,thumb_path").eq("version_id", replacing.id).in("side", inputs.map((i) => i.side));
     const gone = (old ?? []).flatMap((s) => [s.optimised_path, s.preview_path, s.thumb_path]).filter((p): p is string => !!p);
     if (gone.length) await supabase.storage.from(BUCKET).remove(gone);
-    if (isPdf || side === "front") await supabase.from("version_sides").delete().eq("version_id", rv.id);
-    // A replaced file has not been seen by anyone, so it has to be sent for review again, with one exception:
-    // a version that is in review and that nobody has decided on or commented on yet. Approvers always see the
-    // newest file, so it stays in review (no second send, no second message) and the log notes the update.
-    let unreviewed = false;
-    if (rv.sent_at && rv.decision === "pending") {
-      const { data: talked } = await supabase.from("comments").select("id").eq("version_id", rv.id).eq("is_draft", false).limit(1);
-      unreviewed = !talked?.length;
-    }
-    keptInReview = unreviewed;
-    await supabase.from("versions").update({ ...(unreviewed ? {} : { decision: "pending", decided_by: null, decided_at: null, sent_at: null }), uploaded_by: user.id, created_at: new Date().toISOString() }).eq("id", rv.id);
+    await supabase.from("version_sides").delete().eq("version_id", replacing.id).in("side", inputs.map((i) => i.side));
+    keptInReview = replacing.sent;
+    await supabase.from("versions").update({ uploaded_by: user.id, created_at: new Date().toISOString() }).eq("id", replacing.id);
   } else if (latest) {
     const sides = (latest.version_sides as { side: string }[]).map((s) => s.side);
-    const recent = Date.now() - new Date(latest.created_at).getTime() < 60 * 60 * 1000;
-    if (!isPdf && side === "back" && fmt.class === "print" && latest.uploaded_by === user.id && !sides.includes("back") && recent) { versionId = latest.id; number = latest.number; }
+    if (!isPdf && side === "back" && fmt.class === "print" && (latest.uploaded_by === user.id || user.role === "core_admin") && !sides.includes("back")) { versionId = latest.id; number = latest.number; }
     else number = latest.number + 1;
   }
+  let inserted = false;
   if (!versionId) {
+    inserted = true;
     const { data: v, error } = await supabase.from("versions").insert({ slot_id: slotId, number, uploaded_by: user.id }).select("id").single();
     if (error || !v) return { error: error?.message ?? "Could not create version" };
     versionId = v.id;
   }
   try {
     for (const { side: s, processed } of processedSides) {
-      const base = `${org.id}/${event.id}/${slotId}/v${number}/${s}${replaceVersionId ? `-${Date.now().toString(36)}` : ""}`;
+      const base = `${org.id}/${event.id}/${slotId}/v${number}/${s}${replacing ? `-${Date.now().toString(36)}` : ""}`;
       const put = async (name: string, r: { buf: Buffer; mime: string; ext: string }) => {
         const p = `${base}/${name}.${r.ext}`;
         const { error } = await supabase.storage.from(BUCKET).upload(p, r.buf, { contentType: r.mime, upsert: true });
@@ -92,11 +91,11 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
   if (firstSide === "front") {
     if (!event.brief_locked_at) await supabase.from("events").update({ brief_locked_at: new Date().toISOString() }).eq("id", event.id);
     await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slotId, version_id: versionId, actor_id: user.id, kind: keptInReview ? "version.updated" : "version.uploaded", payload: { format: slotName(fmt.name, slot.label), number } });
-    if (replaceVersionId) await recomputeSlotState(supabase, slotId);
+    if (replacing) await recomputeSlotState(supabase, slotId);
     // A new version pushes the oldest out: only the newest VERSIONS_KEPT keep files (approved ones always do).
     else await pruneOldVersions(supabase, slotId);
   }
   revalidatePath(`/events/${event.id}`);
   revalidatePath(`/events/${event.id}/slots/${slotId}`);
-  return { ok: true, versionId, number, keptInReview };
+  return { ok: true, versionId, number, keptInReview, outcome: replacing ? (keptInReview ? "updated" : "replaced") : side === "back" && !isPdf && !inserted ? "back" : "new" };
 }

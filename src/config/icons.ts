@@ -73,6 +73,7 @@ export const ICON_NAMES = [
   "schedule",
   "search",
   "settings",
+  "subdirectory_arrow_right",
   "sync",
   "text_format",
   "unfold_more",
