@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BriefMore } from "@/components/events/brief-more";
+import { EventBriefBody } from "@/components/events/brief-event";
 import { format } from "date-fns";
 import { StateBadge } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
@@ -21,26 +22,13 @@ export function BriefCard({ brief, locked, editHref, assets = false }: { brief: 
         // Requests are for people who know the drill: the end date and the first lines of what is needed. The rest
         // (what happens at the end, the type, the full text, notes) sits behind "See all details".
         <p className="mt-3 flex flex-wrap items-baseline gap-x-2 text-sm"><span className={dt}>Ends</span><span className="font-medium">{brief.date ? format(new Date(brief.date + "T00:00:00"), "EEEE, d MMMM yyyy") : <span className="font-normal text-muted-foreground">End date not set</span>}</span></p>
-      ) : (
-      <dl className="mt-4 grid gap-5 sm:grid-cols-2">
-        <div>
-          <dt className={dt}>When</dt>
-          <dd className="mt-1 text-sm font-medium">{brief.date ? format(new Date(brief.date + "T00:00:00"), "EEEE, d MMMM yyyy") : <span className="font-normal text-muted-foreground">Date not set</span>}</dd>
-          {brief.timeText && <dd className="whitespace-pre-line text-sm">{brief.timeText}</dd>}
+      ) : <EventBriefBody brief={brief} />}
+      {assets && (
+        <div className="mt-3">
+          <BriefMore label={ask} text={brief.inviteText} notes={brief.notes} empty="Not written yet. Say what is needed before designs start."
+            extra={<p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">Assets only.</span> Not tied to an event. Files are cleared the day after the end date, so download the finals before then; nothing is kept.</p>} />
         </div>
-        <div>
-          <dt className={dt}>Where</dt>
-          <dd className="mt-1 text-sm font-medium">{brief.venueName ?? <span className="font-normal text-muted-foreground">Venue not set</span>}</dd>
-          {brief.venueAddress && <dd className="whitespace-pre-line text-sm text-muted-foreground">{brief.venueAddress}</dd>}
-        </div>
-      </dl>
       )}
-      {/* Invite text and notes are the long part: two lines by default, the rest behind "See all details". */}
-      <div className={assets ? "mt-3" : "mt-5"}>
-        <BriefMore label={ask} text={brief.inviteText} notes={brief.notes}
-          empty={assets ? "Not written yet. Say what is needed before designs start." : "Not written yet. Add the invite text before designs start."}
-          extra={assets ? <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">Assets only.</span> Not tied to an event. Files are cleared the day after the end date, so download the finals before then; nothing is kept.</p> : null} />
-      </div>
     </section>
   );
 }

@@ -66,11 +66,11 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta, downloada
                   {c.version != null && <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium shadow-sm">v{c.version}</span>}
                   {c.isPrimary && <span className={cn("absolute top-3 rounded-full bg-brand px-2.5 py-1 text-xs font-medium text-brand-foreground shadow-sm", selectable ? "left-11" : "left-3")}>Primary</span>}
                 </div>
-                <div className="space-y-1.5 p-3.5">
+                <div className="@container space-y-1.5 p-3.5">
                   <p className="line-clamp-2 break-words text-sm font-medium leading-5">{c.name}</p>
-                  <p className="flex items-baseline gap-x-3 text-sm text-muted-foreground"><span className="flex min-w-0 items-center gap-2"><span className="truncate">{c.size}</span><AspectIcon size={c.size} box={14} className="self-center" /></span>{c.due && <span className="ml-auto shrink-0 whitespace-nowrap text-xs max-sm:hidden">Due {format(new Date(c.due + "T00:00:00"), "d MMM")}</span>}</p>
-                  {/* Phones: the date gets its own quiet line under the size instead of wrapping to the right edge. */}
-                  {c.due && <p className="flex items-center gap-1.5 text-xs text-muted-foreground sm:hidden"><Icon name="schedule" className="!text-[14px]" />Due {format(new Date(c.due + "T00:00:00"), "d MMM")}</p>}
+                  <p className="flex items-baseline gap-x-3 text-sm text-muted-foreground"><span className="flex min-w-0 items-center gap-2"><span className="truncate">{c.size}</span><AspectIcon size={c.size} box={14} className="self-center" /></span>{c.due && <span className="ml-auto shrink-0 whitespace-nowrap text-xs hidden @min-[230px]:block">Due {format(new Date(c.due + "T00:00:00"), "d MMM")}</span>}</p>
+                  {/* Narrow tiles (phones, or three columns beside the Activity panel): the date gets its own quiet line under the size. Wide tiles keep it inline. */}
+                  {c.due && <p className="flex items-center gap-1.5 text-xs text-muted-foreground @min-[230px]:hidden"><Icon name="schedule" className="!text-[14px]" />Due {format(new Date(c.due + "T00:00:00"), "d MMM")}</p>}
                   {c.assignee && <p className="flex items-center gap-2 pt-1 text-sm text-muted-foreground"><UserAvatar initials={c.assignee.initials} src={c.assignee.avatar} size={24} /><span className="truncate">{c.assignee.name}</span></p>}
                 </div>
               </Link>
