@@ -54,14 +54,15 @@ export function EventList({ items, emptyTitle = "No events yet", emptyBody }: { 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-base font-medium leading-6">{e.title}</p>
                 <p className="mt-0.5 truncate text-sm text-muted-foreground">{e.kind === "assets" ? <>Assets only{d ? ` · ends ${format(d, "d MMM")}` : ""}</> : (e.venue ?? "Venue not set")}</p>
-                <div className="mt-1.5 space-y-1.5 md:hidden"><p className="truncate text-xs text-muted-foreground"><Counts e={e} /></p><Progress e={e} className="max-w-40" /></div>
+                <div className="mt-1.5 space-y-1.5 lg:hidden"><p className="truncate text-xs text-muted-foreground"><Counts e={e} /></p><Progress e={e} className="max-w-40" /></div>
               </div>
-              <div className="hidden w-[210px] md:block">
+              <div className="hidden w-[210px] lg:block">
                 <p className="text-sm text-muted-foreground"><Counts e={e} /></p>
                 <Progress e={e} className="mt-2" />
               </div>
-              <div className="hidden w-[92px] items-center gap-1 md:flex">{e.people.slice(0, 3).map((p, i) => <UserAvatar key={i} initials={p.initials} src={p.avatar} size={28} />)}</div>
-              <div className="hidden w-[120px] md:block"><StateBadge state={b.state} label={b.label} /></div>
+              <div className="hidden w-[92px] items-center gap-1 lg:flex">{e.people.slice(0, 3).map((p, i) => <UserAvatar key={i} initials={p.initials} src={p.avatar} size={28} />)}</div>
+              <div className="hidden w-[120px] lg:block"><StateBadge state={b.state} label={b.label} /></div>
+              <div className="hidden shrink-0 md:block lg:hidden"><StateBadge state={b.state} label={b.label} /></div>
               <Icon name="chevron_right" className="shrink-0 text-muted-foreground" />
             </Link>
           </li>
