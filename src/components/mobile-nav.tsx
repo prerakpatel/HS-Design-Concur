@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/material-icon";
+import { CountBubble, useUnreadCount } from "@/components/unread-count";
 import { UserAvatar } from "@/components/user-avatar";
 
 const TABS = [
@@ -16,6 +17,7 @@ const isTaskScreen = (path: string) => /\/events\/[^/]+\/slots\/|\/preview\/slot
 
 export function MobileNav({ user }: { user: { initials: string; avatar?: string | null } }) {
   const pathname = usePathname();
+  const unread = useUnreadCount();
   if (isTaskScreen(pathname)) return null;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-[max(env(safe-area-inset-bottom),12px)] pt-2.5 backdrop-blur md:hidden">
@@ -23,9 +25,9 @@ export function MobileNav({ user }: { user: { initials: string; avatar?: string 
         {TABS.map((t) => { const active = pathname === t.href || pathname.startsWith(t.href + "/"); return (
           <li key={t.href} className="flex-1">
             <Link href={t.href} className={"flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium " + (active ? "text-foreground" : "text-muted-foreground")}>
-              <span className={"flex h-8 w-14 items-center justify-center rounded-full " + (active ? "bg-sidebar-accent" : "")}>
+              <span className={"relative flex h-8 w-14 items-center justify-center rounded-full " + (active ? "bg-sidebar-accent" : "")}>
                 {t.href === "/profile" ? <UserAvatar initials={user.initials} src={user.avatar} size={24} className={active ? "ring-2 ring-foreground" : ""} /> : <Icon name={t.icon} size={24} fill={active} />}
-              </span>{t.label}
+              {t.href === "/inbox" && <CountBubble count={unread} className="absolute left-1/2 top-[-2px] ml-1.5 ring-2 ring-card" />}</span>{t.label}
             </Link>
           </li>
         ); })}

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarRail, useSidebar } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/material-icon";
+import { CountBubble, useUnreadCount } from "@/components/unread-count";
 import { UserAvatar } from "@/components/user-avatar";
 import { InfoTip } from "@/components/info-tip";
 import { OrgMark } from "@/components/org-mark";
@@ -27,6 +28,7 @@ export function AppSidebar({ org, orgs, user, slots, whatsNewUnseen }: { org: Or
   const pathname = usePathname();
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
+  const unread = useUnreadCount();
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className={cn("p-3", collapsed ? "flex-col items-center gap-2" : "flex-row items-center gap-1")}>
@@ -54,8 +56,8 @@ export function AppSidebar({ org, orgs, user, slots, whatsNewUnseen }: { org: Or
         <SidebarMenu className="gap-1">
           {NAV.map((item) => { const active = pathname === item.href || pathname.startsWith(item.href + "/"); return (
             <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton asChild isActive={active} tooltip={item.label} className="h-10 gap-3 rounded-lg px-3 text-sm font-medium text-sidebar-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!">
-                <Link href={item.href}><Icon name={item.icon} size={20} fill={active} /><span className="group-data-[collapsible=icon]:hidden">{item.label}</span></Link>
+              <SidebarMenuButton asChild isActive={active} tooltip={item.label} className="relative h-10 gap-3 rounded-lg px-3 text-sm font-medium text-sidebar-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!">
+                <Link href={item.href}><Icon name={item.icon} size={20} fill={active} /><span className="group-data-[collapsible=icon]:hidden">{item.label}</span>{item.href === "/inbox" && <CountBubble count={unread} className="ml-auto group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:right-0.5 group-data-[collapsible=icon]:top-0.5 group-data-[collapsible=icon]:ml-0 group-data-[collapsible=icon]:ring-2 group-data-[collapsible=icon]:ring-sidebar" />}</Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ); })}

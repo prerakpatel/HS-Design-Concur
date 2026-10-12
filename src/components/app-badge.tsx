@@ -1,6 +1,6 @@
 "use client";
 import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { useUnreadCount } from "@/components/unread-count";
 
 type BadgingNavigator = Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
 
@@ -10,25 +10,11 @@ type BadgingNavigator = Navigator & { setAppBadge?: (n?: number) => Promise<void
  * whenever the app is opened, regains focus or moves between pages.
  */
 export function AppBadge() {
-  const pathname = usePathname();
+  const count = useUnreadCount();
   useEffect(() => {
     const nav = navigator as BadgingNavigator;
     if (!nav.setAppBadge) return;
-    let alive = true;
-    const sync = async () => {
-      try {
-        const r = await fetch("/api/unread", { cache: "no-store" });
-        if (!r.ok || !alive) return;
-        const { count } = (await r.json()) as { count: number };
-        if (count > 0) await nav.setAppBadge?.(count); else await nav.clearAppBadge?.();
-      } catch { /* badges are a nicety; never get in the way */ }
-    };
-    void sync();
-    // Opening the Inbox marks everything read just after it renders; check again once that has happened.
-    const later = pathname.startsWith("/inbox") ? setTimeout(sync, 2500) : null;
-    const onVisible = () => { if (document.visibilityState === "visible") void sync(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => { alive = false; if (later) clearTimeout(later); document.removeEventListener("visibilitychange", onVisible); };
-  }, [pathname]);
+    void (count > 0 ? nav.setAppBadge(count) : nav.clearAppBadge?.()).catch(() => {});
+  }, [count]);
   return null;
 }

@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { MainFrame } from "@/components/main-frame";
+import { UnreadProvider } from "@/components/unread-count";
 import { AppBadge } from "@/components/app-badge";
 import { PushPrompt } from "@/components/push-prompt";
 import { InstallNudge } from "@/components/install-nudge";
@@ -16,6 +17,7 @@ export interface ShellProps { org: Organization; orgs: Organization[]; user: { n
 export function AppShell({ org, orgs, user, slots, sidebarOpen = true, changelog, children, wide }: ShellProps & { children: React.ReactNode; wide?: boolean }) {
   return (
     <TooltipProvider delayDuration={200}>
+    <UnreadProvider>
     <SidebarProvider defaultOpen={sidebarOpen} style={{ "--sidebar-width": "17rem" } as React.CSSProperties}>
       <AppBadge />
       <PushPrompt />
@@ -27,6 +29,7 @@ export function AppShell({ org, orgs, user, slots, sidebarOpen = true, changelog
         <MobileNav user={{ initials: user.initials, avatar: user.avatar }} />
       </SidebarInset>
     </SidebarProvider>
+    </UnreadProvider>
     </TooltipProvider>
   );
 }
