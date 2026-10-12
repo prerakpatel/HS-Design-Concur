@@ -32,7 +32,7 @@ export const CARDS: FormatCardData[] = [
   { slotId: "s-5", name: "LED wall", frame: "led", size: "3840 × 1152 px", state: "requested", requested: true, version: null, versionId: null, thumb: "/preview/flyer.webp", due: null, assignee: null },
   { slotId: "s-6", name: "Print 7 × 5 in", frame: "print", size: "7.25 × 5.25 in", state: "approved", requested: true, version: 1, versionId: "v-1", thumb: "/preview/flyer.webp", due: "2026-10-18", assignee: { name: "Mihir Shah", initials: "MS" } },
   { slotId: "s-7", name: "Banner 6 × 3 ft", size: "72 × 36 in", state: "requested", requested: false, version: null, versionId: null, thumb: null, due: null, assignee: null },
-  { slotId: "s-8", name: "Email header", size: "1200 × 400 px", state: "requested", requested: false, version: null, versionId: null, thumb: null, due: null, assignee: null },
+  { slotId: "s-8", name: "Website Hero", formatKey: "web_hero", frame: "flat", size: "1920 × 540", state: "in_review", requested: true, version: 1, versionId: "v-81", thumb: "/preview/flyer.webp", due: null, assignee: null },
 ];
 
 export const ACTIVITY: ActivityItem[] = [

@@ -5,6 +5,7 @@ import { formatSize } from "@/lib/labels";
 import { loadGroups, groupHandle } from "@/lib/groups";
 import { orderSlots } from "@/lib/slot-order";
 import { UploadPanel } from "@/components/asset/upload-panel";
+import { Icon } from "@/components/material-icon";
 import { AssetHeader } from "@/components/asset/asset-header";
 import { ReviewActions } from "@/components/asset/review-actions";
 import { PreviewRefresher } from "@/components/asset/preview-refresher";
@@ -62,11 +63,14 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const isPrint = fmt.class === "print";
   const print = isPrint && fmt.unit === "in" && fmt.width && fmt.height ? { bleedIn: Number(fmt.bleed_in ?? 0), safeIn: Number(fmt.safe_margin_in ?? 0), widthIn: Number(fmt.width), heightIn: Number(fmt.height) } : null;
   const safe = { top: fmt.safe_top, right: fmt.safe_right, bottom: fmt.safe_bottom, left: fmt.safe_left };
-  // Safe bands are in pixels of the requested size; map them onto the uploaded pixels.
+  // Safe bands are in pixels of the requested size; map them onto the uploaded pixels. The picture itself keeps
+  // the file's own proportions (forcing the requested ratio stretched designs that were a few pixels off).
   const front = rawSides.find((s) => s.side === "front");
   const nativeW = fmt.allow_custom_size ? (slot.custom_w ?? front?.width ?? 0) : fmt.unit === "px" ? Number(fmt.width) : (front?.width ?? 0);
   const nativeH = fmt.allow_custom_size ? (slot.custom_h ?? front?.height ?? 0) : fmt.unit === "px" ? Number(fmt.height) : (front?.height ?? 0);
-  const scaledSides = sides.map((s) => ({ ...s, width: nativeW || s.width, height: nativeH || s.height }));
+  // A pixel format with a fixed size: say so when the file is a different size (it is shown as uploaded, not stretched).
+  const sizeOff = !purged && fmt.unit === "px" && nativeW && nativeH && front?.width && front?.height && (front.width !== nativeW || front.height !== nativeH) ? `${front.width} × ${front.height}` : null;
+  const scaledSides = sides.map((s) => ({ ...s, specW: nativeW || s.width, specH: nativeH || s.height }));
   const sent = !!current?.sent_at;
   const state = !slot.requested ? "na" : current && !sent ? "unsent" : slot.state;
   const who = uploader ? (uploader.name ?? uploader.email) : null;
@@ -93,6 +97,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
         </>
       ) : (
         <>
+          {sizeOff && <p className="flex items-start gap-2 rounded-2xl bg-warning-soft px-5 py-3 text-sm text-warning-text"><Icon name="aspect_ratio" className="mt-px !text-[18px]" /><span>This file is {sizeOff} px; the format asks for {nativeW} × {nativeH}. It is shown as uploaded. Upload a corrected version if the size matters.</span></p>}
           {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{readOnly ? (sides[0]?.src ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept.") : `Only the two most recent versions keep their files. v${current?.number}'s were removed when a newer version arrived; its comments are kept below.`}</p>}
           {stalePreviews.length > 0 && <PreviewRefresher sideIds={stalePreviews} />}
           <AssetStage versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} comments={cviews} members={mlist} canComment={!readOnly} canModerate={user.role === "core_admin"}

@@ -2,7 +2,7 @@
 import { useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { format } from "date-fns";
 import { ratioFromSize } from "@/lib/aspect";
-import { mockupFor, MOCK_COLORS as C, type Mockup } from "@/config/mockups";
+import { mockupFor, MOCK_COLORS as C, PHONE_MOCKS, type Mockup } from "@/config/mockups";
 import type { Format } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Icon } from "@/components/material-icon";
@@ -29,7 +29,7 @@ export function FormatThumb({ src, size, formatKey, frame, event }: { src: strin
   return (
     <>
       <Layer on={!inPlace}><Plain src={src} r={r} frame={frame} /></Layer>
-      {mock && <Layer on={inPlace} tall={mock !== "tv" && mock !== "led"}><InPlace mock={mock} src={src} r={r ?? SCREEN} event={event} /></Layer>}
+      {mock && <Layer on={inPlace} tall={PHONE_MOCKS.includes(mock)}><InPlace mock={mock} src={src} r={r ?? SCREEN} event={event} /></Layer>}
       {mock && (
         <button type="button" onClick={flip} aria-pressed={inPlace} aria-label={inPlace ? "Show the design" : "Show it in place"}
           className={cn("absolute top-1/2 z-[1] flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-[0_1px_4px_rgba(0,0,0,.18)] ring-1 ring-black/5 transition hover:bg-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", inPlace ? "left-2" : "right-2")}>
@@ -96,9 +96,13 @@ function InPlace({ mock, src, r, event }: { mock: Mockup; src: string; r: number
       </div>
     </div>
   );
+  if (mock === "browser") return <Browser src={src} r={r} />;
+  if (mock === "print") return <Print src={src} r={r} />;
   return (
     <Phone>
       {mock === "phone" && <div className="flex size-full items-center justify-center bg-black"><img src={src} alt="" className="max-h-full max-w-full object-contain" /></div>}
+      {mock === "igpost" && <InstagramPost src={src} r={r} />}
+      {mock === "appcard" && <AppCard src={src} r={r} />}
       {mock === "instagram" && <Instagram src={src} />}
       {mock === "sambandh" && <Sambandh src={src} r={r} event={event} />}
     </Phone>
@@ -110,6 +114,64 @@ function Phone({ children }: { children: ReactNode }) {
   return (
     <div className="relative rounded-[3.5cqmin] bg-neutral-900 p-[1.4cqmin] shadow-[0_10px_28px_-10px_rgba(0,0,0,.5)]" style={fit(SCREEN)}>
       <div className="relative size-full overflow-hidden rounded-[2.2cqmin] bg-black" style={{ containerType: "size" }}>{children}</div>
+    </div>
+  );
+}
+
+const Lines = ({ widths, className }: { widths: number[]; className?: string }) => <div className={cn("space-y-[1.6cqw]", className)}>{widths.map((w, i) => <span key={i} className="block h-[1.8cqw] rounded-full bg-neutral-200" style={{ width: `${w}%` }} />)}</div>;
+
+/** Website: a browser window with the banner as the hero under a simple nav, page content sketched below. */
+function Browser({ src, r }: { src: string; r: number }) {
+  return (
+    <div className="flex flex-col overflow-hidden rounded-[1.4cqmin] bg-white shadow-[0_10px_28px_-10px_rgba(0,0,0,.4)] ring-1 ring-black/10" style={{ ...fit(1.5), containerType: "size" }}>
+      <div className="flex h-[6cqh] shrink-0 items-center gap-[1cqw] bg-neutral-100 px-[2cqw]">
+        {C.browserDots.map((c) => <span key={c} className="size-[1.4cqw] rounded-full" style={{ background: c }} />)}
+        <span className="mx-auto h-[3cqh] w-[40%] rounded-full bg-white" />
+      </div>
+      <div className="flex h-[6cqh] shrink-0 items-center gap-[2cqw] px-[3cqw]"><span className="h-[2.4cqh] w-[10%] rounded-sm bg-neutral-300" /><span className="ml-auto h-[1.4cqh] w-[8%] rounded-full bg-neutral-200" /><span className="h-[1.4cqh] w-[8%] rounded-full bg-neutral-200" /><span className="h-[1.4cqh] w-[8%] rounded-full bg-neutral-200" /></div>
+      <img src={src} alt="" className="w-full shrink-0 object-cover" style={{ aspectRatio: String(r) }} />
+      <div className="grid flex-1 grid-cols-3 gap-[2cqw] p-[3cqw]">{[0, 1, 2].map((i) => <div key={i}><span className="block aspect-[4/3] rounded-[0.8cqw] bg-neutral-100" /><Lines widths={[90, 60]} className="mt-[1.4cqw]" /></div>)}</div>
+    </div>
+  );
+}
+
+/** Print: the sheet lying on a desk, slightly turned, with a soft shadow. */
+function Print({ src, r }: { src: string; r: number }) {
+  return (
+    <div className="relative flex items-center justify-center overflow-hidden rounded-[1.6cqmin]" style={{ ...fit(1.33), containerType: "size", background: C.desk }}>
+      <img src={src} alt="" className="-rotate-3 object-cover shadow-[0_2px_4px_rgba(0,0,0,.15),0_18px_30px_-12px_rgba(0,0,0,.45)]" style={{ width: `min(72cqw, ${r} * 72cqh)`, aspectRatio: String(r) }} />
+    </div>
+  );
+}
+
+/** Instagram feed post: account row, the post (cropped to Instagram's 4:5 at most), actions, likes, caption. */
+function InstagramPost({ src, r }: { src: string; r: number }) {
+  return (
+    <div className="flex size-full flex-col bg-white text-neutral-900">
+      <div className="h-[6.5cqh] shrink-0" />
+      <div className="flex items-center gap-[2cqw] px-[3cqw] py-[2.5cqw] text-[3.6cqw] font-semibold leading-none">
+        <span className="size-[8cqw] rounded-full p-[0.6cqw]" style={{ background: C.igRing }}><span className="block size-full rounded-full border-[0.6cqw] border-white bg-neutral-300" /></span>
+        harisumiran<span className="ml-auto tracking-widest">···</span>
+      </div>
+      <img src={src} alt="" className="w-full object-cover" style={{ aspectRatio: String(Math.max(r, 0.8)) }} />
+      <div className="flex items-center gap-[3.5cqw] px-[3cqw] py-[2.5cqw]">
+        {["M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z", "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z", "M21 3 10 14M21 3l-7 18-4-7-7-4z"].map((d) => <svg key={d} viewBox="0 0 24 24" className="size-[6cqw] fill-none stroke-neutral-900 stroke-2"><path d={d} /></svg>)}
+        <svg viewBox="0 0 24 24" className="ml-auto size-[6cqw] fill-none stroke-neutral-900 stroke-2"><path d="M6 3h12v18l-6-4-6 4z" /></svg>
+      </div>
+      <p className="px-[3cqw] text-[3.4cqw] font-semibold">1,248 likes</p>
+      <Lines widths={[92, 70]} className="px-[3cqw] pt-[2cqw]" />
+    </div>
+  );
+}
+
+/** An app card: the design as a rounded card at the top of a feed. */
+function AppCard({ src, r }: { src: string; r: number }) {
+  return (
+    <div className="flex size-full flex-col gap-[3cqw] bg-neutral-50 px-[4cqw]">
+      <div className="h-[6.5cqh] shrink-0" />
+      <p className="text-[6cqw] font-bold text-neutral-900">Glimpses</p>
+      <div className="overflow-hidden rounded-[3cqw] bg-white shadow-sm"><img src={src} alt="" className="w-full object-cover" style={{ aspectRatio: String(r) }} /><Lines widths={[70, 45]} className="p-[3cqw]" /></div>
+      <div className="overflow-hidden rounded-[3cqw] bg-white shadow-sm"><span className="block aspect-[5/3] bg-neutral-200" /><Lines widths={[60, 40]} className="p-[3cqw]" /></div>
     </div>
   );
 }

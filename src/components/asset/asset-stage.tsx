@@ -27,7 +27,7 @@ import { errorMessage } from "@/lib/user-error";
 
 // icons: forum add_comment history grid_on zoom_out_map check close arrow_upward more_vert upload sync flip delete replay edit chat_bubble
 export type Side = "front" | "back";
-export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number }
+export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number; /** The requested size the safe bands are measured in, when it differs from the file. */ specW?: number; specH?: number }
 export interface CommentView { id: string; version: number; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; draft?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
 export interface Member { id: string; name: string; handle: string; avatar?: string | null; kind?: "person" | "group" }
 export interface VersionChip { id: string; number: number; decision: string; canManage: boolean; hasBack: boolean; purged?: boolean }
@@ -125,7 +125,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
     try { await deleteVersion(v.id); toast.success(`Version ${v.number} deleted`); router.replace(`/events/${eventId}/slots/${slotId}`); router.refresh(); } catch (e) { toast.error(errorMessage(e)); }
   });
 
-  const hasGuides = sides.some((s) => { const g = guideGeometry(safe, print, s.width, s.height); return g.cut || g.safe.top + g.safe.right + g.safe.bottom + g.safe.left > 0; });
+  const hasGuides = sides.some((s) => { const g = guideGeometry(safe, print, s.specW || s.width, s.specH || s.height); return g.cut || g.safe.top + g.safe.right + g.safe.bottom + g.safe.left > 0; });
   const current = versions.find((v) => v.id === currentVersionId) ?? null;
   const byNumber = [...versions].sort((a, b) => a.number - b.number);
   const shownVersions = byNumber.filter((v, i) => i >= byNumber.length - 2 || v.id === currentVersionId);
@@ -173,7 +173,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                 {([[false, "image", "Design"], [true, "devices", "In place"]] as const).map(([v, icon, label]) => (
                   <button key={label} type="button" role="tab" aria-selected={inPlace === v} aria-label={label} onClick={() => setInPlace(v)}
                     className={cn("flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-medium transition-colors max-sm:px-2.5", inPlace === v ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
-                    <Icon name={icon} className="!text-[18px]" /><span className="max-md:hidden">{label}</span>
+                    <Icon name={icon} className="!text-[18px]" /><span className="max-xl:hidden">{label}</span>
                   </button>
                 ))}
               </div>
@@ -186,7 +186,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
         {showMock && front && mockup && <MockStage src={front} size={mockup.size} formatKey={mockup.formatKey} frame={mockup.frame} event={mockup.event} />}
         <div className={cn("flex flex-col items-center gap-8", showMock && "hidden")}>
           {sides.map((s) => {
-            const g = guideGeometry(safe, print, s.width, s.height);
+            const g = guideGeometry(safe, print, s.specW || s.width, s.specH || s.height);
             const pins = pinsFor(s.side);
             return (
               <figure key={s.side} className="group max-w-full">

@@ -9,6 +9,7 @@ export const ICON_NAMES = [
   "arrow_back",
   "arrow_outward",
   "arrow_upward",
+  "aspect_ratio",
   "assignment_ind",
   "auto_awesome",
   "auto_delete",
