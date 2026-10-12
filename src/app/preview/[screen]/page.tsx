@@ -31,7 +31,7 @@ import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
 
 export const dynamic = "force-dynamic";
-const SCREENS = ["events", "replace-flow", "wizard-assets-brief", "wizard-assets-items", "project-assets", "event", "event-archived", "upload-progress", "slot-empty", "slot", "slot-review", "slot-versions", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
+const SCREENS = ["events", "replace-flow", "wizard-assets-brief", "wizard-assets-items", "project-assets", "event", "event-archived", "upload-progress", "slot-empty", "slot", "slot-review", "slot-print", "slot-versions", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
 
 /** Design preview harness. Renders real components with fixture data so screens can be reviewed without a database. */
 export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
@@ -95,11 +95,11 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     </div>
   </>); }
 
-  if (screen === "slot" || screen === "slot-review" || screen === "slot-versions") return shell(<div className="pb-8 max-md:pb-24">
+  if (screen === "slot" || screen === "slot-print" || screen === "slot-review" || screen === "slot-versions") return shell(<div className="pb-8 max-md:pb-24">
     <AssetHeader eventId="e-1" eventTitle="Diwali Annakut Darshan" formatName="WhatsApp flyer" position={{ at: 3, total: 6 }} prev={{ id: "s-2", name: "Instagram story" }} next={{ id: "s-4", name: "Lobby TV" }} />
     <div className="mx-auto max-w-[1440px] px-4 pt-4 md:px-6 md:pt-6">
       <AssetStage versionId="v-1" sides={[{ side: "front", src: "/preview/flyer.webp", isGif: false, width: 1080, height: 1350 }]} safe={{ top: 90, right: 60, bottom: 110, left: 60 }} print={{ bleedIn: 0.125, safeIn: 0.25, widthIn: 5, heightIn: 6.25 }} comments={screen === "slot-review" ? [...F.COMMENTS, { ...F.COMMENTS[0], id: "c-draft", draft: true, mine: true, pin_x: 0.5, pin_y: 0.4, addressed_at: null, confirmed_at: null }] : F.COMMENTS} members={F.MEMBERS} canComment canModerate
-        versions={screen === "slot-versions" ? [1, 2, 3, 4, 5, 6].map((n) => ({ id: n === 6 ? "v-1" : `v-${n + 10}`, number: n, decision: n === 6 ? "changes_requested" : "superseded", canManage: true, hasBack: false, purged: n < 5 })) : [{ id: "v-1", number: 1, decision: "changes_requested", canManage: true, hasBack: false }]} currentVersionId="v-1" eventId="e-1" slotId="s-3" upload={{ accept: ["image/png", "image/jpeg", "image/webp"], isPrint: false, nextNumber: 2 }} readOnly={false}
+        versions={screen === "slot-versions" ? [1, 2, 3, 4, 5, 6].map((n) => ({ id: n === 6 ? "v-1" : `v-${n + 10}`, number: n, decision: n === 6 ? "changes_requested" : "superseded", canManage: true, hasBack: false, purged: n < 5 })) : [{ id: "v-1", number: 1, decision: "changes_requested", canManage: true, hasBack: false }]} currentVersionId="v-1" eventId="e-1" slotId="s-3" upload={{ accept: ["image/png", "image/jpeg", "image/webp"], isPrint: screen === "slot-print", nextNumber: 2 }} readOnly={false}
         status={{ state: "changes_requested", version: 1, uploader: "Kinjal Patel", uploadedAt: F.COMMENTS[0].created_at }}
         decision={<ReviewActions versionId="v-1" label="WhatsApp flyer v1" eventTitle="Diwali Annakut Darshan" decision="changes_requested" canApprove isOwnUpload={false} hasBack={false} layout="fill" />}
         decisionBar={<ReviewActions versionId="v-1" label="WhatsApp flyer v1" eventTitle="Diwali Annakut Darshan" decision="changes_requested" canApprove isOwnUpload={false} hasBack={false} />}  mockup={{ size: "1125 × 1200", formatKey: "sambandh_event", frame: "phone", event: { title: "Diwali Annakut Darshan", date: "2026-11-08" } }} />

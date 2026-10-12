@@ -133,17 +133,18 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const shownVersions = byNumber.filter((v, i) => i >= byNumber.length - 2 || v.id === currentVersionId);
   const earlierVersions = byNumber.filter((v) => !shownVersions.includes(v));
   const manage = !readOnly && !!current?.canManage && !!upload;
-  // Upload asks only when the newest version is in review and nobody has reacted: fix it, or save a new version.
+  // What Upload may ask (see UploadPanel): can the newest version be changed in place, and is it already in review?
   const newest = byNumber[byNumber.length - 1] ?? null;
-  const askNo = manage && newest && newest.sent && newest.decision === "pending" && newest.canManage && !comments.some((c) => c.version === newest.number && !c.draft) ? newest.number : null;
+  const newestTalked = !!newest && comments.some((c) => c.version === newest.number && !c.draft);
+  const latest = manage && newest ? { number: newest.number, canEdit: newest.canManage && newest.decision === "pending" && !newestTalked, sent: !!newest.sent } : null;
   const commentsOn = (n: number) => comments.filter((c) => c.version === n && !c.draft).length;
-  const canAddBack = manage && !!upload?.isPrint && !!current && current.id === newest?.id && !current.hasBack && current.decision === "pending" && !!front && !readOnly;
+  const canAddBack = manage && !!upload?.isPrint && !!current && current.id === newest?.id && !current.hasBack && !!front && !readOnly;
   const pill = "rounded-full";
   const iconPill = "rounded-full max-sm:size-10 max-sm:px-0";
 
   return (
     // The whole page takes a dropped file as a new version (no outline until a file is dragged over it).
-    <UploadDropArea enabled={!!upload && !readOnly} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+    <UploadDropArea enabled={!!upload && !readOnly} split={!!upload?.isPrint} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="min-w-0">
         {/* Toolbar: what changes the file on the left, how everyone looks at it on the right */}
         <div className="mb-4 flex items-center gap-2">
@@ -162,7 +163,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
               })}
             </div>
           )}
-          {upload && !readOnly && <UploadPanel slotId={slotId} accept={upload.accept} isPrint={upload.isPrint} nextNumber={upload.nextNumber} ask={askNo} variant="pill" label="Upload" compactOnPhone className={iconPill} title="Upload a file, or drop one anywhere on this page" />}
+          {upload && !readOnly && <UploadPanel slotId={slotId} accept={upload.accept} isPrint={upload.isPrint} nextNumber={upload.nextNumber} latest={latest} variant="pill" label="Upload" compactOnPhone className={iconPill} title="Upload a file, or drop one anywhere on this page" />}
           <div className="ml-auto flex items-center gap-2">
             {canMock && !review && <Tip label={inPlace ? "Back to the design" : "See it in place"}><Button variant="outline" size="icon" onClick={() => setInPlace((v) => !v)} aria-pressed={inPlace} aria-label={inPlace ? "Back to the design" : "See it in place"} className={cn("rounded-full", inPlace && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")}><Icon name="devices" /></Button></Tip>}
             {canComment && versionId && !review && <Tip label="Comment on the design"><Button variant="outline" size="icon" onClick={() => { setInPlace(false); setReview(true); }} className="rounded-full" aria-label="Start a review: comment on the design"><Icon name="add_comment" /></Button></Tip>}
@@ -194,11 +195,16 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                         </div>
                       </div>
                     )}
-                    {mode === "view" && <button type="button" onClick={() => setOpen(s.side)} aria-label="Enlarge" className="absolute bottom-2.5 right-2.5 flex size-9 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 max-md:opacity-70"><Icon name="zoom_out_map" className="!text-[18px]" /></button>}
+                    {mode === "view" && (
+                      <div className="absolute bottom-2.5 right-2.5 flex gap-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 max-md:opacity-70">
+                        {manage && upload?.isPrint && current?.id === newest?.id && <button type="button" onClick={() => requestUpload({ side: s.side })} aria-label={`Replace the ${s.side}`} title={`Replace the ${s.side}`} className="flex size-9 items-center justify-center rounded-full bg-black/55 text-white"><Icon name="upload" className="!text-[18px]" /></button>}
+                        <button type="button" onClick={() => setOpen(s.side)} aria-label="Enlarge" className="flex size-9 items-center justify-center rounded-full bg-black/55 text-white"><Icon name="zoom_out_map" className="!text-[18px]" /></button>
+                      </div>
+                    )}
                   </div>
                 ) : <div className="flex aspect-[4/5] w-64 items-center justify-center rounded-md bg-muted text-sm text-muted-foreground">No design yet</div>}
                 {s.side === "front" && canAddBack && !sides.some((x) => x.side === "back") && !review && (
-                  <button type="button" onClick={() => requestUpload({ side: "back" })} className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-foreground/25 py-8 text-sm font-medium text-muted-foreground transition-colors hover:border-info hover:bg-info-soft/50 hover:text-info-text"><Icon name="flip" className="!text-[20px]" />Add the back side</button>
+                  <button type="button" onClick={() => requestUpload({ side: "back" })} data-drop-side="back" className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-foreground/25 py-8 text-sm font-medium text-muted-foreground transition-colors hover:border-info hover:bg-info-soft/50 hover:text-info-text"><Icon name="flip" className="!text-[20px]" />Add the back side</button>
                 )}
                 {sides.length > 1 && <figcaption className="mt-2.5 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">{s.side}</figcaption>}
               </figure>

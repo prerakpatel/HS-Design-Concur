@@ -74,6 +74,7 @@ export const ICON_NAMES = [
   "search",
   "settings",
   "subdirectory_arrow_right",
+  "swap_horiz",
   "sync",
   "text_format",
   "unfold_more",
