@@ -1,6 +1,6 @@
 import { APP_TIMEZONE } from "@/config/orgs";
-import { REMINDER_LEAD_DAYS } from "@/config/limits";
-import { todayIso, daysFromNowIso } from "@/lib/time";
+import { REMINDER_LEAD_DAYS, REVIEW_WAIT_HOURS, UNSENT_NUDGE_HOURS } from "@/config/limits";
+import { todayIso, daysFromNowIso, DAY_MS, HOUR_MS } from "@/lib/time";
 import { NextResponse } from "next/server";
 import { slotName } from "@/lib/project";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -61,14 +61,14 @@ export async function GET(req: Request) {
 
   // 1b. Designs waiting for review for a day or more: one reminder per organization per day to its approvers (one
   // chat post, one push, one in-app item), listing every design, until each is decided.
-  const { data: waiting } = await db.from("versions").select("id,number,sent_at,uploaded_by,slots!inner(id,event_id,state,label,formats(name),events(title,status,org_id)),uploader:uploaded_by(name,email)").eq("decision", "pending").not("sent_at", "is", null).lte("sent_at", new Date(Date.now() - 86400_000).toISOString()).eq("slots.state", "in_review");
+  const { data: waiting } = await db.from("versions").select("id,number,sent_at,uploaded_by,slots!inner(id,event_id,state,label,formats(name),events(title,status,org_id)),uploader:uploaded_by(name,email)").eq("decision", "pending").not("sent_at", "is", null).lte("sent_at", new Date(Date.now() - REVIEW_WAIT_HOURS * HOUR_MS).toISOString()).eq("slots.state", "in_review");
   type Waiting = { eventId: string; slotId: string; versionId: string; title: string; format: string; number: number; days: number; by: string | undefined; since: string; uploadedBy: string };
   const waitingByOrg = new Map<string, Waiting[]>();
   for (const v of waiting ?? []) {
     const slot = v.slots as unknown as { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string } };
     if (slot.events.status !== "active") continue;
     const up = v.uploader as unknown as { name: string | null; email: string } | null;
-    const row: Waiting = { eventId: slot.event_id, slotId: slot.id, versionId: v.id, title: slot.events.title, format: slotName(slot.formats.name, slot.label), number: v.number, days: Math.floor((Date.now() - new Date(v.sent_at).getTime()) / 86400_000), by: up?.name ?? up?.email, since: v.sent_at, uploadedBy: v.uploaded_by };
+    const row: Waiting = { eventId: slot.event_id, slotId: slot.id, versionId: v.id, title: slot.events.title, format: slotName(slot.formats.name, slot.label), number: v.number, days: Math.floor((Date.now() - new Date(v.sent_at).getTime()) / DAY_MS), by: up?.name ?? up?.email, since: v.sent_at, uploadedBy: v.uploaded_by };
     waitingByOrg.set(slot.events.org_id, [...(waitingByOrg.get(slot.events.org_id) ?? []), row]);
   }
   for (const [orgId, rows] of waitingByOrg) {
@@ -90,7 +90,7 @@ export async function GET(req: Request) {
   }
 
   // 1c. Review-mode comments nobody sent: nudge their author (in-app and push only, never chat), once a day.
-  const { data: unsent } = await db.from("comments").select("author_id,version_id,versions!inner(number,slots!inner(id,event_id,label,formats(name),events(title,status,org_id)))").eq("is_draft", true).lte("created_at", new Date(Date.now() - 3 * 3600_000).toISOString());
+  const { data: unsent } = await db.from("comments").select("author_id,version_id,versions!inner(number,slots!inner(id,event_id,label,formats(name),events(title,status,org_id)))").eq("is_draft", true).lte("created_at", new Date(Date.now() - UNSENT_NUDGE_HOURS * HOUR_MS).toISOString());
   const unsentBy = new Map<string, { author: string; row: NonNullable<typeof unsent>[number]; count: number }>();
   for (const c of unsent ?? []) { const k = `${c.author_id}:${c.version_id}`; const e = unsentBy.get(k); if (e) e.count++; else unsentBy.set(k, { author: c.author_id as string, row: c, count: 1 }); }
   report.unsent = 0;
@@ -107,7 +107,7 @@ export async function GET(req: Request) {
   // done, so nothing sits open by mistake. One in-app / push / email reminder per person per day, plus one chat post
   // per organization listing who has comments waiting.
   type OpenComment = { id: string; author_id: string; body: string; mentions: string[] | null; versions: { number: number; slots: { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } } } };
-  const { data: openRaw } = await db.from("comments").select("id,author_id,body,mentions,versions!inner(number,slots!inner(id,event_id,label,formats(name),events!inner(title,status,org_id,deleted_at)))").eq("is_draft", false).is("addressed_at", null).is("confirmed_at", null).lte("created_at", new Date(Date.now() - 86400_000).toISOString()).limit(2000);
+  const { data: openRaw } = await db.from("comments").select("id,author_id,body,mentions,versions!inner(number,slots!inner(id,event_id,label,formats(name),events!inner(title,status,org_id,deleted_at)))").eq("is_draft", false).is("addressed_at", null).is("confirmed_at", null).lte("created_at", new Date(Date.now() - REVIEW_WAIT_HOURS * HOUR_MS).toISOString()).limit(2000);
   const openComments = ((openRaw ?? []) as unknown as OpenComment[]).filter((c) => (c.mentions?.length ?? 0) > 0 && c.versions.slots.events.status === "active" && !c.versions.slots.events.deleted_at);
   const groupIds = [...new Set(openComments.flatMap((c) => groupMentionIds(c.body)))];
   const { data: gm } = groupIds.length ? await db.from("group_members").select("group_id,user_id").in("group_id", groupIds) : { data: [] as { group_id: string; user_id: string }[] };
@@ -147,7 +147,7 @@ export async function GET(req: Request) {
     report.openComments = (report.openComments as number) + all.length;
   }
   // The whole-channel ping goes out on alternate days; the post itself is daily.
-  const pingToday = Math.floor(new Date(`${today}T00:00:00Z`).getTime() / 86400_000) % 2 === 0;
+  const pingToday = Math.floor(new Date(`${today}T00:00:00Z`).getTime() / DAY_MS) % 2 === 0;
   for (const [orgId, byAsset] of assetsByOrg) {
     const assets = [...byAsset.values()].sort((x, y) => y.open - x.open).slice(0, 15);
     await notify(db, [], "comments.pending", { assets, total: byAsset.size, day: today, orgId, pingAll: pingToday, ...(assets.length === 1 ? { eventId: assets[0].eventId, slotId: assets[0].slotId } : {}) }, undefined, { orgId, mention: [] });

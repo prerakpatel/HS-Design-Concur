@@ -1,4 +1,4 @@
-import { ASSET_MAX_DAYS } from "@/config/limits";
+import { ASSET_MAX_DAYS, MAX_LOGO_BYTES } from "@/config/limits";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireActiveUser, initials } from "@/lib/auth";
@@ -78,7 +78,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <form key={o.id} action={updateOrgSettings.bind(null, o.id)} className="space-y-5 rounded-2xl border border-border p-5">
                 <div className="flex items-center gap-4">
                   <OrgMark org={o} size={48} />
-                  <div className="min-w-0 flex-1"><h2 className="text-lg font-semibold tracking-[-0.01em]">{o.name}</h2><p className="text-sm text-muted-foreground">{o.logo_path ? "Logo shown in the sidebar, on phones and on the sign-in page." : "No logo yet. Upload a PNG or SVG, ideally square, under 1 MB."}</p></div>
+                  <div className="min-w-0 flex-1"><h2 className="text-lg font-semibold tracking-[-0.01em]">{o.name}</h2><p className="text-sm text-muted-foreground">{o.logo_path ? "Logo shown in the sidebar, on phones and on the sign-in page." : `No logo yet. Upload a PNG or SVG, ideally square, under ${MAX_LOGO_BYTES / 1_000_000} MB.`}</p></div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor={`logo-${o.id}`}>Logo</Label>

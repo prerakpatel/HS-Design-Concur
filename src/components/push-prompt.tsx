@@ -1,4 +1,5 @@
 "use client";
+import { DAY_MS } from "@/lib/time";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ export function PushPrompt() {
     if (!publicKey || !standalone() || !pushSupported() || Notification.permission !== "default") return;
     const seen = read();
     if (seen === "denied") return;
-    if (seen && Date.now() - Number(seen) < COOLDOWN_DAYS * 86400_000) return;
+    if (seen && Date.now() - Number(seen) < COOLDOWN_DAYS * DAY_MS) return;
     let alive = true;
     (async () => {
       const reg = await navigator.serviceWorker.register("/sw.js");

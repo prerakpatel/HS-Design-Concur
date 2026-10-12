@@ -1,3 +1,4 @@
+import { DAY_MS } from "@/lib/time";
 import Link from "next/link";
 import { format } from "date-fns";
 import { requireActiveUser } from "@/lib/auth";
@@ -13,7 +14,7 @@ export const metadata = { title: "Archive" };
 
 interface ArchivedRow { id: string; title: string; event_date: string | null; archived_at: string | null; slots: { state: string; requested: boolean; versions: { decision: string; version_sides: { side: string; reference_path: string | null; thumb_path: string | null }[] }[] }[] }
 /** Whole days left in the restore window; 0 once it has passed. */
-function daysLeft(deletedAt: string) { return Math.max(0, Math.ceil(DELETE_RESTORE_DAYS - (Date.now() - new Date(deletedAt).getTime()) / 86400_000)); }
+function daysLeft(deletedAt: string) { return Math.max(0, Math.ceil(DELETE_RESTORE_DAYS - (Date.now() - new Date(deletedAt).getTime()) / DAY_MS)); }
 
 interface DeletedRow { id: string; title: string; event_date: string | null; status: string; deleted_at: string }
 

@@ -1,4 +1,5 @@
 "use server";
+import { DAY_MS } from "@/lib/time";
 import { capFor } from "@/lib/project";
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
@@ -6,7 +7,7 @@ import { notify } from "@/lib/notify";
 import { normaliseSlackId } from "@/lib/chat";
 import { matchSlackIds, slackConfigured } from "@/lib/slack";
 import type { FunctionTag } from "@/lib/types";
-import { DELETE_RESTORE_DAYS } from "@/config/limits";
+import { DELETE_RESTORE_DAYS, MAX_LOGO_BYTES } from "@/config/limits";
 import { UserError } from "@/lib/user-error";
 
 async function requireCoreAdmin() {
@@ -94,7 +95,7 @@ export async function updateOrgSettings(orgId: string, formData: FormData) {
   } else if (logo instanceof File && logo.size > 0) {
     const ext = LOGO_EXT[logo.type];
     if (!ext) throw new UserError("Logo must be PNG, SVG, WebP or JPG");
-    if (logo.size > 1_000_000) throw new UserError("Logo must be under 1 MB");
+    if (logo.size > MAX_LOGO_BYTES) throw new UserError(`Logo must be under ${MAX_LOGO_BYTES / 1_000_000} MB`);
     const path = `${cur?.slug ?? orgId}/logo-${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("branding").upload(path, Buffer.from(await logo.arrayBuffer()), { contentType: logo.type, upsert: true });
     if (error) throw new UserError(error.message);
@@ -129,7 +130,7 @@ export async function restoreEvent(eventId: string) {
   const { supabase, user, org } = await requireCoreAdmin();
   const { data: event } = await supabase.from("events").select("id,org_id,title,status,deleted_at").eq("id", eventId).maybeSingle();
   if (!event || event.org_id !== org.id || !event.deleted_at) throw new UserError("Nothing to restore");
-  if (Date.now() - new Date(event.deleted_at).getTime() > DELETE_RESTORE_DAYS * 86400_000) throw new UserError("The restore window has passed");
+  if (Date.now() - new Date(event.deleted_at).getTime() > DELETE_RESTORE_DAYS * DAY_MS) throw new UserError("The restore window has passed");
   if (event.status === "active") {
     const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("org_id", org.id).eq("status", "active").is("deleted_at", null);
     if ((count ?? 0) >= capFor(org)) throw new UserError(`All ${capFor(org)} project slots are in use; free one before restoring.`);

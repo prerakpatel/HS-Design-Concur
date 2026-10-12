@@ -1,3 +1,4 @@
+import { DAY_MS, MINUTE_MS } from "@/lib/time";
 import { REMINDER_LEAD_DAYS } from "@/config/limits";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { after } from "next/server";
@@ -103,7 +104,7 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
     const results = await Promise.allSettled((users ?? []).map((u) =>
       sendEmail(u.email, SUBJECT[kind](payload), { heading: text, body: payload.excerpt ? `“${payload.excerpt}”` : `${payload.title ?? ""}`.trim() || " ", cta: { label: "Open in Design & Concur", href } })));
     const sent = (users ?? []).filter((_, i) => results[i].status === "fulfilled" && "ok" in (results[i] as PromiseFulfilledResult<{ ok?: true }>).value).map((u) => u.id);
-    if (sent.length) await supabase.from("notifications").update({ emailed_at: new Date().toISOString() }).in("user_id", sent).eq("kind", kind).is("emailed_at", null).gte("created_at", new Date(Date.now() - 60_000).toISOString());
+    if (sent.length) await supabase.from("notifications").update({ emailed_at: new Date().toISOString() }).in("user_id", sent).eq("kind", kind).is("emailed_at", null).gte("created_at", new Date(Date.now() - MINUTE_MS).toISOString());
     for (const r of results) if (r.status === "fulfilled" && "error" in r.value) console.error("[email]", r.value.error);
   }
 
@@ -165,7 +166,7 @@ async function previewImage(supabase: SupabaseClient, payload: Record<string, un
   if (typeof payload.versionId !== "string") return null;
   try {
     const { data } = await supabase.from("version_sides").select("preview_path,thumb_path").eq("version_id", payload.versionId).eq("side", "front").maybeSingle();
-    const url = await signedUrl(supabase, data?.preview_path ?? data?.thumb_path, PREVIEW_LINK_DAYS * 86400);
+    const url = await signedUrl(supabase, data?.preview_path ?? data?.thumb_path, PREVIEW_LINK_DAYS * DAY_MS / 1000);
     return url ? { url, alt: alt.replace(/^\S+\s/, ""), href } : null;
   } catch (e) { console.error("[chat preview]", (e as Error).message); return null; }
 }

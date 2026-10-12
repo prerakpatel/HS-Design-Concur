@@ -1,6 +1,7 @@
 import { APP_TIMEZONE } from "@/config/orgs";
 
 export const MINUTE_MS = 60_000;
+export const HOUR_MS = 3_600_000;
 export const DAY_MS = 86_400_000;
 
 /** A moment as a YYYY-MM-DD day in the app's own time zone (not the server's, which is UTC and a day ahead on a US evening). */

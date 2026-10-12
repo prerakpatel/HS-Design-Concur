@@ -1,4 +1,5 @@
 "use server";
+import { MAX_GLOSSARY_CHARS } from "@/config/limits";
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
 import { UserError } from "@/lib/user-error";
@@ -83,7 +84,7 @@ async function classify(supabase: Awaited<ReturnType<typeof requireSteward>>["su
 /** Read a Markdown file and report what an import would do, without saving anything. */
 export async function previewImport(markdown: string): Promise<ImportPreview> {
   const { supabase } = await requireSteward();
-  if (markdown.length > 1_000_000) throw new UserError("That file is too large for a glossary");
+  if (markdown.length > MAX_GLOSSARY_CHARS) throw new UserError("That file is too large for a glossary");
   const { rows, skipped } = parseGlossaryMarkdown(markdown);
   if (rows.length === 0) throw new UserError("No words found. Use one line per word, like: - **aarti** – A ritual of light");
   return { rows: await classify(supabase, rows), skipped: skipped.slice(0, 50) };

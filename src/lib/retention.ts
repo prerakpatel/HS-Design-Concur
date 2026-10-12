@@ -1,3 +1,4 @@
+import { DAY_MS } from "@/lib/time";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { makeReference } from "@/lib/images";
 import { BUCKET } from "@/lib/storage";
@@ -10,8 +11,8 @@ interface SideRow { id: string; side: string; optimised_path: string | null; pre
 interface VersionRow { id: string; number: number; decision: string; purged_at: string | null; created_at: string; version_sides: SideRow[] }
 interface SlotRow { id: string; state: string; is_primary: boolean; versions: VersionRow[] }
 
-const daysAgoIso = (days: number) => new Date(Date.now() - days * 86400_000).toISOString();
-const daysAgoDate = (days: number, tz: string) => new Date(Date.now() - days * 86400_000).toLocaleDateString("en-CA", { timeZone: tz });
+const daysAgoIso = (days: number) => new Date(Date.now() - days * DAY_MS).toISOString();
+const daysAgoDate = (days: number, tz: string) => new Date(Date.now() - days * DAY_MS).toLocaleDateString("en-CA", { timeZone: tz });
 
 /**
  * Nightly retention (PRD §8), run with the service client:

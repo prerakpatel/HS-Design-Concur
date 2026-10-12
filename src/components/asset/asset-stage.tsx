@@ -56,10 +56,13 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const [showGuides, setShowGuides] = useState(false);
   const [open, setOpen] = useState<Side | null>(null);
   const [draft, setDraft] = useState<{ side: Side; x: number; y: number } | null>(null);
-  const [draftText, setDraftText] = useState(""); const [draftEmpty, setDraftEmpty] = useState(true);
+  // What people type lives in the editor and in these refs, not in state: only "is it empty?" is state, so a keystroke
+  // does not redraw the whole thread. Bumping composerKey starts the main box over after a post.
+  const draftHtml = useRef(""); const textHtml = useRef(""); const editHtml = useRef("");
+  const [draftEmpty, setDraftEmpty] = useState(true); const [composerKey, setComposerKey] = useState(0);
   const [active, setActive] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
-  const [text, setText] = useState(""); const [textEmpty, setTextEmpty] = useState(true);
+  const [textEmpty, setTextEmpty] = useState(true);
   const [pending, start] = useTransition();
   const router = useRouter();
   // Review mode: comments are saved privately and go out together as one message when the reviewer sends them.
@@ -104,9 +107,9 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
     setFrom("list"); setActive(active === c.id ? null : c.id);
   };
 
-  const stop = () => { setDraft(null); setDraftText(""); setDraftEmpty(true); };
+  const stop = () => { setDraft(null); draftHtml.current = ""; setDraftEmpty(true); };
   const post = (body: string, pin: { side: Side; x: number; y: number } | null) => start(async () => {
-    try { await addComment(versionId!, body, pin, { draft: review }); setText(""); setTextEmpty(true); stop(); if (!review) toast.success(pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
+    try { await addComment(versionId!, body, pin, { draft: review }); textHtml.current = ""; setTextEmpty(true); setComposerKey((k) => k + 1); stop(); if (!review) toast.success(pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
     catch (e) { toast.error(errorMessage(e)); }
   });
   const sendReview = () => start(async () => {
@@ -200,10 +203,10 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                     {draft?.side === s.side && <PinBubble n={numbered.size + 1} x={draft.x} y={draft.y} draft />}
                     {draft?.side === s.side && (
                       <div className={cn("absolute z-10 w-[min(340px,calc(100vw-2rem))] rounded-2xl bg-card p-2 shadow-xl ring-1 ring-border", draft.y > 0.7 ? "-translate-y-[calc(100%+26px)]" : "translate-y-[26px]")} style={{ left: `clamp(0px, ${draft.x * 100}% - 24px, calc(100% - min(340px, calc(100vw - 2rem))))`, top: `${draft.y * 100}%` }} onClick={(e) => e.stopPropagation()}>
-                        <CommentEditor value={draftText} onChange={(h, empty) => { setDraftText(h); setDraftEmpty(empty); }} onSubmit={() => { if (!draftEmpty && !pending) post(draftText, draft); }} placeholder="Describe the change · @ to mention" members={members} autoFocus compact className="border-0 focus-within:ring-0" />
+                        <CommentEditor value="" onChange={(h, empty) => { draftHtml.current = h; setDraftEmpty(empty); }} onSubmit={() => { if (!draftEmpty && !pending) post(draftHtml.current, draft); }} placeholder="Describe the change · @ to mention" members={members} autoFocus compact className="border-0 focus-within:ring-0" />
                         <div className="flex justify-end gap-1">
                           <Button type="button" variant="ghost" size="icon-sm" onClick={stop} aria-label="Cancel this comment"><Icon name="close" className="!text-[18px]" /></Button>
-                          <Button type="button" size="icon-sm" disabled={draftEmpty || pending} onClick={() => post(draftText, draft)} aria-label={review ? "Add to review" : "Post comment"}><Icon name="check" className="!text-[18px]" /></Button>
+                          <Button type="button" size="icon-sm" disabled={draftEmpty || pending} onClick={() => post(draftHtml.current, draft)} aria-label={review ? "Add to review" : "Post comment"}><Icon name="check" className="!text-[18px]" /></Button>
                         </div>
                       </div>
                     )}
@@ -298,7 +301,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                           <DropdownMenuContent align="end" className="w-44 rounded-xl p-1.5">
                             {c.draft ? null : done ? <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "reopen")}><Icon name="replay" />Reopen</DropdownMenuItem> : <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "addressed")}><Icon name="check" />Mark as done</DropdownMenuItem>}
                             {(c.mine || canModerate) && <>
-                              <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => setEditing({ id: c.id, text: c.body })}><Icon name="edit" />Edit</DropdownMenuItem>
+                              <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => { editHtml.current = c.body; setEditing({ id: c.id, text: c.body }); }}><Icon name="edit" />Edit</DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm text-destructive-text" onSelect={() => start(async () => { if (!confirm("Delete this comment?")) return; try { await deleteComment(c.id); toast.success("Comment deleted"); router.refresh(); } catch (err) { toast.error(errorMessage(err)); } })}><Icon name="delete" />Delete</DropdownMenuItem>
                             </>}
@@ -308,8 +311,8 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                     </div>
                     {editing?.id === c.id ? (
                       <div className="space-y-2">
-                        <CommentEditor value={editing.text} onChange={(h) => setEditing({ id: c.id, text: h })} members={members} autoFocus compact />
-                        <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending} onClick={() => start(async () => { try { await editComment(c.id, editing.text); setEditing(null); toast.success("Saved"); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } })}>Save</Button></div>
+                        <CommentEditor value={editing.text} onChange={(h) => { editHtml.current = h; }} members={members} autoFocus compact />
+                        <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending} onClick={() => start(async () => { try { await editComment(c.id, editHtml.current); setEditing(null); toast.success("Saved"); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } })}>Save</Button></div>
                       </div>
                     ) : <RichBody body={c.body} />}
                     {!done && !c.draft && canComment && <button className="text-[13px] font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "addressed"); }} disabled={pending}>Mark as done</button>}
@@ -326,8 +329,8 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           {canComment && versionId && (
             <div className="relative border-t border-border p-3">
               <div className="flex items-end gap-2">
-                <CommentEditor value={text} onChange={(h, empty) => { setText(h); setTextEmpty(empty); }} onSubmit={() => { if (!textEmpty && !pending) post(text, null); }} placeholder={review ? "Add a general note to your review… @ to mention" : "Write a comment… @ to mention"} members={members} className="min-w-0 flex-1" />
-                <Button size="icon" disabled={pending || textEmpty} onClick={() => post(text, null)} aria-label={review ? "Add to review" : "Post"}><Icon name="arrow_upward" /></Button>
+                <CommentEditor key={composerKey} value="" onChange={(h, empty) => { textHtml.current = h; setTextEmpty(empty); }} onSubmit={() => { if (!textEmpty && !pending) post(textHtml.current, null); }} placeholder={review ? "Add a general note to your review… @ to mention" : "Write a comment… @ to mention"} members={members} className="min-w-0 flex-1" />
+                <Button size="icon" disabled={pending || textEmpty} onClick={() => post(textHtml.current, null)} aria-label={review ? "Add to review" : "Post"}><Icon name="arrow_upward" /></Button>
               </div>
             </div>
           )}

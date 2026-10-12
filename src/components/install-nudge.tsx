@@ -1,4 +1,5 @@
 "use client";
+import { DAY_MS } from "@/lib/time";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/material-icon";
 import { isIOS, standalone } from "@/lib/push-client";
@@ -34,7 +35,7 @@ export function InstallNudge() {
     const seen = force ? null : read();
     if (seen === "installed") return;
     if (seen && !force && dismissals() >= MAX_DISMISSALS) return;
-    if (seen && Date.now() - Number(seen) < COOLDOWN_DAYS * 86400_000) return;
+    if (seen && Date.now() - Number(seen) < COOLDOWN_DAYS * DAY_MS) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const reveal = (m: "install" | "ios-safari" | "ios-other") => { if (!timer) timer = setTimeout(() => { setMode(m); setShow(true); }, force ? 600 : DELAY_MS); };
     const onPrompt = (e: Event) => { e.preventDefault(); deferred.current = e as InstallEvent; reveal("install"); };
