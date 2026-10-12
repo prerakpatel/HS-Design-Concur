@@ -109,12 +109,14 @@ export async function approveVersion(versionId: string) {
 export async function requestChanges(versionId: string, body: string) {
   const { supabase, user, org, version, slot, event, formatName, isApprover } = await loadVersion(versionId);
   if (!isApprover) throw new UserError("Only approvers of this organization can request changes");
-  if (!body.trim()) throw new UserError("Say what needs to change");
+  // Cleaned like every other comment: comments are shown as HTML, so nothing unfiltered may be stored.
+  const html = sanitizeComment(body);
+  if (!plainText(html)) throw new UserError("Say what needs to change");
   if (!version.sent_at) throw new UserError("The designer has not sent this version for review yet");
   const now = new Date().toISOString();
   // Anything queued in review mode goes out with the request, not as a second post.
   await supabase.from("comments").update({ is_draft: false }).eq("version_id", versionId).eq("author_id", user.id).eq("is_draft", true);
-  await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: body.trim() });
+  await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: html });
   await supabase.from("versions").update({ decision: "changes_requested", decided_by: user.id, decided_at: now }).eq("id", versionId);
   await supabase.from("slots").update({ state: "changes_requested", updated_at: now }).eq("id", slot.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.changes_requested", payload: { format: formatName, number: version.number } });
@@ -153,7 +155,7 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
   for (const m of members ?? []) {
     const name = (m.name ?? "").toLowerCase(); const first = name.split(" ")[0]; const handle = m.email.split("@")[0].toLowerCase();
     const lower = text.toLowerCase();
-    if ((name && lower.includes("@" + name)) || (first && new RegExp(`@${first}(\\b|$)`).test(lower)) || lower.includes("@" + handle)) mentions.add(m.id);
+    if ((name && lower.includes("@" + name)) || (first && new RegExp(`@${first.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\b|$)`).test(lower)) || lower.includes("@" + handle)) mentions.add(m.id);
   }
   // Review mode: the comment is saved but stays private to its author until the batch is sent.
   const { error } = await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: html, mentions: [...mentions], pin_x: pin?.x ?? null, pin_y: pin?.y ?? null, pin_side: pin?.side ?? "front", is_draft: !!opts?.draft });

@@ -19,7 +19,9 @@ import type { Format } from "@/lib/types";
 import { Guides, PinBubble, PinChip, DraftMark, guideGeometry, type SafeArea, type Pin, type PrintGuides } from "@/components/asset/viewer";
 import { addComment, sendCommentBatch, discardCommentBatch, setCommentFlag, editComment, deleteComment, deleteVersion } from "@/app/actions/reviews";
 import { assignSlot } from "@/app/actions/events";
-import { CommentEditor } from "@/components/rich/comment-editor";
+import dynamic from "next/dynamic";
+// The rich editor (Tiptap) is the heaviest part of this page and only matters once someone writes: load it after the page is interactive.
+const CommentEditor = dynamic(() => import("@/components/rich/comment-editor").then((m) => m.CommentEditor), { ssr: false, loading: () => <div className="h-10 w-full rounded-xl border border-input" aria-hidden /> });
 import { RichBody } from "@/components/rich/rich-body";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SelectField } from "@/components/ui/select-field";

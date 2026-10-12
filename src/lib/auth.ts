@@ -19,13 +19,14 @@ export const getSession = cache(async () => {
   const [{ data: user }, { data: memberships }, { data: orgs }] = await Promise.all([
     supabase.from("users").select("*").eq("id", uid).single<AppUser>(),
     supabase.from("org_memberships").select("org_id,is_approver").eq("user_id", uid),
-    supabase.from("organisations").select("*").order("name").returns<Organization[]>(),
+    // Everything except the webhook URLs: they are secrets, and this object is handed to client components.
+    supabase.from("organisations").select("id,slug,name,short_name,accepting_signups,email_enabled,chat_enabled,slack_enabled,logo_path,event_cap,asset_requests").order("name").returns<Omit<Organization, "chat_webhook_url" | "slack_webhook_url">[]>(),
   ]);
   if (!user) return null;
   const memberOrgIds = new Set((memberships ?? []).map((m) => m.org_id));
   // Approving is per organization: the flag sits on the membership, not on the person.
   const approverOrgIds = new Set((memberships ?? []).filter((m) => m.is_approver).map((m) => m.org_id as string));
-  const myOrgs = (orgs ?? []).filter((o) => memberOrgIds.has(o.id));
+  const myOrgs: Organization[] = (orgs ?? []).filter((o) => memberOrgIds.has(o.id)).map((o) => ({ ...o, chat_webhook_url: null, slack_webhook_url: null }));
   return { supabase, user, orgs: myOrgs, approverOrgIds };
 });
 

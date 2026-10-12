@@ -17,7 +17,7 @@ export async function createUploadUrl(slotId: string, filename: string, mime: st
   if (ev.status === "archived") return { error: "This event is archived and read-only." };
   const fmt = slot.formats as unknown as { allowed_mimes: string[] } | null;
   if (fmt && !fmt.allowed_mimes.includes(mime)) return { error: `This format accepts ${fmt.allowed_mimes.map((m) => m.split("/")[1].toUpperCase()).join(", ")}.` };
-  const ext = filename.split(".").pop()?.toLowerCase() ?? "bin";
+  const ext = filename.match(/\.([a-z0-9]{1,5})$/i)?.[1].toLowerCase() ?? "bin";
   const path = `tmp/${slotId}/${crypto.randomUUID()}.${ext}`;
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
   if (error || !data) return { error: error?.message ?? "Could not start upload" };
