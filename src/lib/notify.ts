@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { after } from "next/server";
 import { sendEmail, appUrl } from "@/lib/email";
-import { postChat, chat, mention, everyone, platformOf, type ChatUser, type ChatImage } from "@/lib/chat";
+import { postChat, chat, mention, everyone, platformOf, chatSafePayload, type ChatUser, type ChatImage } from "@/lib/chat";
 import { signedUrl } from "@/lib/storage";
 import { sendPush } from "@/lib/push";
 import { notificationText, notificationHref, chatLines } from "@/lib/labels";
@@ -126,7 +126,8 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
     // One post per distinct webhook, so two groups sharing a channel do not double up.
     const hooks = [...new Set(hookList)];
     if (hooks.length === 0) return;
-    const { head, body } = chatLines(kind, payload);
+    const safe = chatSafePayload(payload);
+    const { head, body } = chatLines(kind, safe);
     const image = await previewImage(supabase, payload, head, href);
     const placeholderIds = [...body.matchAll(/\{@([0-9a-f-]{36})\}/g)].map((m) => m[1]);
     const excerptHtml = typeof payload.excerptHtml === "string" ? payload.excerptHtml : null;
@@ -141,8 +142,8 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
       const at = (id: string) => { const u = people.get(id); return u ? mention(u, platform) : ""; };
       // A formatted comment keeps its bold, italics, bullets, links and mentions in the platform's own markup.
       const render = (html: string) => htmlToChat(html, platform, (id, label) => at(id) || chat.bold(`@${label}`));
-      const rendered = excerptHtml ? chatLines(kind, { ...payload, excerpt: render(excerptHtml) }).body
-        : items.length ? chatLines(kind, { ...payload, excerpt: items.map((h) => `• ${render(h).replace(/\n/g, "\n   ")}`).join("\n") }).body : body;
+      const rendered = excerptHtml ? chatLines(kind, { ...safe, excerpt: render(excerptHtml) }).body
+        : items.length ? chatLines(kind, { ...safe, excerpt: items.map((h) => `• ${render(h).replace(/\n/g, "\n   ")}`).join("\n") }).body : body;
       const bodyText = rendered.replace(/\{@([0-9a-f-]{36})\}/g, (_, id) => at(id) || "someone");
       const inlined = new Set([...placeholderIds, ...allHtml.flatMap(mentionIds)]);
       const who = mentions.filter((id) => !inlined.has(id)).map(at).filter(Boolean).join(" ");

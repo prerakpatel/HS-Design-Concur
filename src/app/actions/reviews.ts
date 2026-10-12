@@ -22,6 +22,13 @@ async function loadVersion(versionId: string) {
 
 type Loaded = Awaited<ReturnType<typeof loadVersion>>;
 
+/** A decision applies to a version that is waiting for one and is the newest of its format, never to an older or already decided one. */
+async function assertDecidable({ supabase, version, slot }: Loaded, verb: string) {
+  if (version.decision !== "pending") throw new UserError(`This version is already ${version.decision === "approved" ? "approved" : "decided"}, so it can't be ${verb} again. Reload the page to see where it stands.`);
+  const { data: newest } = await supabase.from("versions").select("number").eq("slot_id", slot.id).order("number", { ascending: false }).limit(1).maybeSingle();
+  if (newest && newest.number !== version.number) throw new UserError(`A newer version (v${newest.number}) exists, so v${version.number} can't be ${verb}. Open the newest version.`);
+}
+
 /**
  * Send an uploaded version to the approvers (PRD §6.2). Uploading is private so a designer can check the file,
  * replace it or add the back side first; this is the moment the slot moves to In review and people are told.
@@ -64,6 +71,7 @@ async function approveOne(versionId: string): Promise<Loaded> {
   if (!isApprover) throw new UserError("Only approvers of this organization can approve");
   if (version.uploaded_by === user.id) throw new UserError("You cannot approve a version you uploaded");
   if (!version.sent_at) throw new UserError("The designer has not sent this version for review yet");
+  await assertDecidable(ctx, "approved");
   const now = new Date().toISOString();
   await supabase.from("versions").update({ decision: "superseded" }).eq("slot_id", slot.id).neq("id", versionId).eq("decision", "approved");
   await supabase.from("versions").update({ decision: "approved", decided_by: user.id, decided_at: now }).eq("id", versionId);
@@ -107,12 +115,14 @@ export async function approveVersion(versionId: string) {
 }
 
 export async function requestChanges(versionId: string, body: string) {
-  const { supabase, user, org, version, slot, event, formatName, isApprover } = await loadVersion(versionId);
+  const ctx = await loadVersion(versionId);
+  const { supabase, user, org, version, slot, event, formatName, isApprover } = ctx;
   if (!isApprover) throw new UserError("Only approvers of this organization can request changes");
   // Cleaned like every other comment: comments are shown as HTML, so nothing unfiltered may be stored.
   const html = sanitizeComment(body);
   if (!plainText(html)) throw new UserError("Say what needs to change");
   if (!version.sent_at) throw new UserError("The designer has not sent this version for review yet");
+  await assertDecidable(ctx, "sent back");
   const now = new Date().toISOString();
   // Anything queued in review mode goes out with the request, not as a second post.
   await supabase.from("comments").update({ is_draft: false }).eq("version_id", versionId).eq("author_id", user.id).eq("is_draft", true);
@@ -215,15 +225,20 @@ export async function discardCommentBatch(versionId: string) {
 
 /** addressed ("done") and reopen: anyone on the event. confirmed: approvers. */
 export async function setCommentFlag(commentId: string, flag: "addressed" | "unaddress" | "confirmed" | "reopen") {
-  const { supabase, user, isApprover } = await requireActiveUser();
+  if (!["addressed", "unaddress", "confirmed", "reopen"].includes(flag)) throw new UserError("Unknown action");
+  const { supabase, user, org, isApprover } = await requireActiveUser();
+  const { data: c } = await supabase.from("comments").select("confirmed_at,versions(slots(events(org_id)))").eq("id", commentId).maybeSingle();
+  if (!c) throw new UserError("Comment not found");
+  // Being an approver is per organisation: judge it against the organisation this comment belongs to.
+  const commentOrg = (c.versions as unknown as { slots: { events: { org_id: string } } } | null)?.slots?.events?.org_id;
+  if (commentOrg !== org.id) throw new UserError("Comment not found");
   const now = new Date().toISOString();
   const patch = flag === "addressed" ? { addressed_at: now, addressed_by: user.id }
     : flag === "confirmed" ? { confirmed_at: now, confirmed_by: user.id }
     : { addressed_at: null, addressed_by: null, confirmed_at: null, confirmed_by: null };
-  if (flag === "unaddress") {
-    const { data: c } = await supabase.from("comments").select("confirmed_at").eq("id", commentId).maybeSingle();
-    if (c?.confirmed_at && !isApprover) throw new UserError("This comment was confirmed by an approver; ask them to reopen it");
-  } else if (flag === "confirmed" && !isApprover) throw new UserError("Only approvers can confirm a comment");
+  if (flag === "confirmed" && !isApprover) throw new UserError("Only approvers can confirm a comment");
+  // An approver's confirmation stays unless an approver undoes it.
+  if ((flag === "unaddress" || flag === "reopen") && c.confirmed_at && !isApprover) throw new UserError("This comment was confirmed by an approver; ask them to reopen it");
   const { data } = await supabase.from("comments").update(patch).eq("id", commentId).select("versions(slots(id,event_id))").single();
   const s = (data?.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;
   if (s) revalidatePath(`/events/${s.event_id}/slots/${s.id}`);

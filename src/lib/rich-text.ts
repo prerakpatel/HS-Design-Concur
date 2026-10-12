@@ -52,8 +52,9 @@ export function isHtml(body: string) { return /^\s*<(p|ul|strong|em|u|a|span)\b/
  * Underline and colour have no chat equivalent and are dropped. Plain-text bodies pass through.
  */
 export function htmlToChat(body: string, platform: "gchat" | "slack", mention: (id: string, label: string) => string): string {
-  if (!isHtml(body)) return body.trim();
-  const esc = (t: string) => (platform === "slack" ? t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : t);
+  // Typed text can never turn into chat markup (a literal <!channel> or <users/all> would post a real ping).
+  const esc = (t: string) => (platform === "slack" ? t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : t.replace(/</g, "‹").replace(/>/g, "›"));
+  if (!isHtml(body)) return esc(body.trim());
   const inline = (nodes: ChildNode[]): string => nodes.map((n) => {
     if (n.type === "text") return esc((n as { data: string }).data);
     if (n.type !== "tag") return "";
@@ -61,8 +62,8 @@ export function htmlToChat(body: string, platform: "gchat" | "slack", mention: (
     switch (el.name) {
       case "strong": { const t = inner().trim(); return t ? `*${t}*` : ""; }
       case "em": { const t = inner().trim(); return t ? `_${t}_` : ""; }
-      case "a": { const t = inner().trim(); const href = el.attribs.href ?? ""; return href ? `<${href}|${t.replace(/[<>|]/g, "") || href}>` : t; }
-      case "span": return el.attribs["data-type"] === "mention" && el.attribs["data-id"] ? mention(el.attribs["data-id"], el.attribs["data-label"] ?? "") : inner();
+      case "a": { const t = inner().trim(); const href = (el.attribs.href ?? "").replace(/[<>|\s]/g, (c) => encodeURIComponent(c)); return href ? `<${href}|${t.replace(/[<>|]/g, "") || href}>` : t; }
+      case "span": return el.attribs["data-type"] === "mention" && el.attribs["data-id"] ? mention(el.attribs["data-id"], esc(el.attribs["data-label"] ?? "")) : inner();
       case "br": return "\n";
       default: return inner();
     }

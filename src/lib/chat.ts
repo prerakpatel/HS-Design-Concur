@@ -33,6 +33,23 @@ export function platformOf(webhookUrl: string): ChatPlatform { return /hooks\.sl
 /** Chat text formatting shared by Google Chat and Slack: *bold*, _italic_, <url|label>. */
 export const chat = { bold: (s: string) => `*${s.replace(/\*/g, "")}*`, link: (url: string, label: string) => `<${url}|${label.replace(/[<>|]/g, "")}>` };
 
+/**
+ * Text a person typed (a title, a name, a comment) must not become chat markup: `<!channel>`, `<users/all>` and
+ * `<https://elsewhere|Click here>` would post a real ping or link. The angle brackets become look-alikes (‹ ›).
+ */
+export const plainChat = (s: string) => s.replace(/</g, "‹").replace(/>/g, "›");
+
+/** A notification payload with every typed string made safe for chat. Comment HTML (`excerptHtml`, a batch's `items`) is cleaned when it is rendered instead. */
+export function chatSafePayload(p: Record<string, unknown>): Record<string, unknown> {
+  const walk = (v: unknown, key: string): unknown => {
+    if (typeof v === "string") return plainChat(v);
+    if (Array.isArray(v)) return v.map((x) => (key === "items" && typeof x === "string" ? x : walk(x, key)));
+    if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x, k)]));
+    return v;
+  };
+  return Object.fromEntries(Object.entries(p).map(([k, v]) => [k, k === "excerptHtml" ? v : walk(v, k)]));
+}
+
 /** Ping everyone in the channel or space: Slack @channel, Google Chat @all. */
 export const everyone = (platform: ChatPlatform) => (platform === "slack" ? "<!channel>" : "<users/all>");
 
