@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MAX_UPLOAD_BYTES } from "@/config/limits";
 import { createUploadUrl } from "@/app/actions/uploads";
 import { errorMessage } from "@/lib/user-error";
 
@@ -97,7 +98,7 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
           <p className="mt-1 text-sm text-muted-foreground max-md:hidden">or</p>
           <Button onClick={() => openWith({})} size="lg" className="mt-3"><Icon name="upload" />{label ?? "Upload design"}</Button>
         </>}
-        <p className="mx-auto mt-6 max-w-md text-xs text-muted-foreground">{typesLabel(accept)} up to 8 MB. Shown with a DRAFT mark until approved. Nobody is notified until you send it for review.{isPrint && accept.includes("application/pdf") ? " A two-page PDF fills Front and Back at once." : ""}</p>
+        <p className="mx-auto mt-6 max-w-md text-xs text-muted-foreground">{typesLabel(accept)} up to {MAX_UPLOAD_BYTES / 1024 / 1024} MB. Shown with a DRAFT mark until approved. Nobody is notified until you send it for review.{isPrint && accept.includes("application/pdf") ? " A two-page PDF fills Front and Back at once." : ""}</p>
         {bridge}
       </>}
     </DropSurface>

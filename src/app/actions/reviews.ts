@@ -1,4 +1,5 @@
 "use server";
+import { QUIET_RESEND_MINUTES } from "@/config/limits";
 import { slotName } from "@/lib/project";
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
@@ -34,7 +35,7 @@ export async function sendForReview(versionId: string) {
   // Replacing a sent version's file makes it private again, so the designer sends it a second time. If the
   // approvers were told about this version in the last 10 minutes and have not acted since (no decision, no
   // comment), the resend is silent: the page already shows the newest file and nobody needs a second ping.
-  const windowStart = new Date(Date.now() - 10 * 60_000).toISOString();
+  const windowStart = new Date(Date.now() - QUIET_RESEND_MINUTES * 60_000).toISOString();
   const { data: prior } = await supabase.from("activity").select("created_at").eq("version_id", versionId).eq("kind", "version.sent").gte("created_at", windowStart).order("created_at", { ascending: false }).limit(1);
   let quietResend = false;
   if (prior?.length) {

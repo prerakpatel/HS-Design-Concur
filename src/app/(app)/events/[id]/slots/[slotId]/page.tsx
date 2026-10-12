@@ -5,6 +5,7 @@ import { formatSize } from "@/lib/labels";
 import { loadGroups, groupHandle } from "@/lib/groups";
 import { orderSlots } from "@/lib/slot-order";
 import { UploadPanel } from "@/components/asset/upload-panel";
+import { wholeScale } from "@/lib/aspect";
 import { Icon } from "@/components/material-icon";
 import { isAssets, slotName, byFormatThenLabel } from "@/lib/project";
 import { AssetHeader } from "@/components/asset/asset-header";
@@ -70,8 +71,8 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const front = rawSides.find((s) => s.side === "front");
   const nativeW = fmt.allow_custom_size ? (slot.custom_w ?? front?.width ?? 0) : fmt.unit === "px" ? Number(fmt.width) : (front?.width ?? 0);
   const nativeH = fmt.allow_custom_size ? (slot.custom_h ?? front?.height ?? 0) : fmt.unit === "px" ? Number(fmt.height) : (front?.height ?? 0);
-  // A pixel format with a fixed size: say so when the file is a different size (it is shown as uploaded, not stretched).
-  const sizeOff = !purged && fmt.unit === "px" && nativeW && nativeH && front?.width && front?.height && (front.width !== nativeW || front.height !== nativeH) ? `${front.width} × ${front.height}` : null;
+  // A pixel format with a fixed size: say so when the file is a different size. A clean 2x / 3x / 4x of the size is fine (retina export) and is not flagged.
+  const sizeOff = !purged && fmt.unit === "px" && nativeW && nativeH && front?.width && front?.height && wholeScale(front.width, front.height, nativeW, nativeH) === null ? `${front.width} × ${front.height}` : null;
   const scaledSides = sides.map((s) => ({ ...s, specW: nativeW || s.width, specH: nativeH || s.height }));
   const sent = !!current?.sent_at;
   const state = !slot.requested ? "na" : current && !sent ? "unsent" : slot.state;

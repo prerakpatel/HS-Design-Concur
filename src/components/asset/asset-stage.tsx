@@ -165,9 +165,18 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           )}
           {upload && !readOnly && <UploadPanel slotId={slotId} accept={upload.accept} isPrint={upload.isPrint} nextNumber={upload.nextNumber} latest={latest} variant="pill" label="Upload" compactOnPhone className={iconPill} title="Upload a file, or drop one anywhere on this page" />}
           <div className="ml-auto flex items-center gap-2">
-            {canMock && !review && <Tip label={inPlace ? "Back to the design" : "See it in place"}><Button variant="outline" size="icon" onClick={() => setInPlace((v) => !v)} aria-pressed={inPlace} aria-label={inPlace ? "Back to the design" : "See it in place"} className={cn("rounded-full", inPlace && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")}><Icon name="devices" /></Button></Tip>}
+            {canMock && !review && (
+              <div role="tablist" aria-label="View" className="flex h-10 items-center rounded-full border border-border p-1">
+                {([[false, "image", "Design"], [true, "devices", "Preview"]] as const).map(([v, icon, label]) => (
+                  <button key={label} type="button" role="tab" aria-selected={inPlace === v} aria-label={label} title={v ? "See it in place: on a phone, a feed, a screen" : "The design as uploaded"} onClick={() => setInPlace(v)}
+                    className={cn("flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-medium transition-colors max-sm:px-2.5", inPlace === v ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
+                    <Icon name={icon} className="!text-[18px]" /><span className="max-sm:hidden">{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {canComment && versionId && !review && <Tip label="Comment on the design"><Button variant="outline" size="icon" onClick={() => { setInPlace(false); setReview(true); }} className="rounded-full" aria-label="Start a review: comment on the design"><Icon name="add_comment" /></Button></Tip>}
-            {hasGuides && !showMock && <Tip label={showGuides ? "Hide guides" : "Show guides"}><Button variant="outline" size="icon" onClick={() => setShowGuides((v) => !v)} aria-pressed={showGuides} className={cn("rounded-full", showGuides && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")} aria-label="Toggle guides"><Icon name="grid_on" /></Button></Tip>}
+            {hasGuides && <Tip label={showMock ? "Guides are for the design view" : showGuides ? "Hide guides" : "Show guides"}><span className="inline-flex"><Button variant="outline" size="icon" disabled={showMock} onClick={() => setShowGuides((v) => !v)} aria-pressed={showGuides && !showMock} className={cn("rounded-full", showGuides && !showMock && "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background")} aria-label="Toggle guides"><Icon name="grid_on" /></Button></span></Tip>}
           </div>
         </div>
 
@@ -194,6 +203,9 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                           <Button type="button" size="icon-sm" disabled={draftEmpty || pending} onClick={() => post(draftText, draft)} aria-label={review ? "Add to review" : "Post comment"}><Icon name="check" className="!text-[18px]" /></Button>
                         </div>
                       </div>
+                    )}
+                    {mode === "view" && s.side === "front" && manage && current && (
+                      <button type="button" onClick={() => setConfirmDelete(true)} aria-label={`Delete v${current.number}`} title={`Delete v${current.number}`} className="absolute right-2.5 top-2.5 flex size-9 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-destructive"><Icon name="delete" className="!text-[18px]" /></button>
                     )}
                     {mode === "view" && (
                       <div className="absolute bottom-2.5 right-2.5 flex gap-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 max-md:opacity-70">
@@ -234,7 +246,6 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           )}
           {status.uploader && <p className="mt-3 flex justify-between gap-3 text-sm"><span className="text-muted-foreground">Uploaded by</span><span className="truncate text-right">{status.uploader}{status.uploadedAt ? <span className="text-muted-foreground"> · {relativeTime(status.uploadedAt)}</span> : null}</span></p>}
           {decision && <div className="mt-4 hidden md:block">{decision}</div>}
-          {manage && current && <button type="button" onClick={() => setConfirmDelete(true)} className="mt-3 text-[13px] text-muted-foreground underline-offset-4 hover:text-destructive-text hover:underline">Delete v{current.number}</button>}
         </div>
         {manage && current && (
           <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>

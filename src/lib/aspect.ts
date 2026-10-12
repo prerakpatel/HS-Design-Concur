@@ -16,3 +16,14 @@ export function ratioLabel(ratio: number | null): string {
   }
   return ratio >= 1 ? `${ratio.toFixed(2)}:1` : `1:${(1 / ratio).toFixed(2)}`;
 }
+
+/**
+ * Whole-number scale of a file against the size asked for: 1 for the exact size, 2 for @2x, 3, 4… or null when it
+ * is not a clean multiple (give or take a pixel per step). A 2160 × 2700 file for a 1080 × 1350 format is 2.
+ */
+export function wholeScale(fileW: number, fileH: number, specW: number, specH: number, max = 4): number | null {
+  if (!(fileW > 0 && fileH > 0 && specW > 0 && specH > 0)) return null;
+  const k = Math.round(fileW / specW);
+  if (k < 1 || k > max) return null;
+  return Math.abs(fileW - k * specW) <= k && Math.abs(fileH - k * specH) <= k ? k : null;
+}
