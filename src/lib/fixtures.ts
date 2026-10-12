@@ -18,9 +18,9 @@ export const SLOTS = { used: 4, max: 10 };
 const ago = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
 
 export const EVENTS: EventListItem[] = [
-  { id: "e-1", title: "Diwali Annakut Darshan", venue: "Harisumiran Mandir, Edison", event_date: "2026-11-08", status: "active", approved: 2, total: 6, people: [{ initials: "MS" }, { initials: "KP" }], needsYou: true },
+  { id: "e-1", title: "Diwali Annakut Darshan", venue: "Harisumiran Mandir, Edison", event_date: "2026-11-08", status: "active", approved: 2, uploaded: 5, total: 6, people: [{ initials: "MS" }, { initials: "KP" }], needsYou: true },
   { id: "e-2", title: "Sharad Purnima Utsav", venue: "Main Hall", event_date: "2026-10-06", status: "active", approved: 5, total: 5, people: [{ initials: "MS" }] },
-  { id: "e-3", title: "Youth Shibir 2026", venue: "Community Center, Piscataway", event_date: "2026-12-19", status: "active", approved: 0, total: 4, people: [{ initials: "KP" }, { initials: "RD" }] },
+  { id: "e-3", title: "Youth Shibir 2026", venue: "Community Center, Piscataway", event_date: "2026-12-19", status: "active", approved: 0, uploaded: 1, total: 4, people: [{ initials: "KP" }, { initials: "RD" }] },
   { id: "e-4", title: "New Year Mahotsav", venue: null, event_date: "2027-01-01", status: "draft", approved: 0, total: 0, people: [] },
 ];
 

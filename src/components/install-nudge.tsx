@@ -66,7 +66,7 @@ export function InstallNudge() {
     </>
   );
   return (
-    <div className="animate-nudge fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),12px)+80px)] z-40 md:inset-x-auto md:bottom-auto md:right-6 md:top-4 md:w-[24rem]">
+    <div className="animate-nudge fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),12px)+86px)] z-40 md:inset-x-auto md:bottom-auto md:right-6 md:top-4 md:w-[24rem]">
       <div role="region" aria-label="Add Design & Concur as an app" className="relative overflow-hidden rounded-3xl bg-inverse-surface p-4 text-inverse-on-surface shadow-[0_18px_50px_-12px_rgba(0,0,0,0.5)]">
         <button type="button" onClick={later} aria-label="Dismiss" className="absolute right-3 top-3 z-10 flex size-7 items-center justify-center rounded-full bg-white/10 text-inverse-on-surface/75 hover:bg-white/20"><Icon name="close" className="!text-[16px]" /></button>
         {/* Tapping the card installs on Chrome/Edge. On iPhone it is instructions only: navigator.share() opens the content

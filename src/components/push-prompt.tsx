@@ -50,7 +50,7 @@ export function PushPrompt() {
     } catch (e) { toast.error(errorMessage(e)); }
   });
   return (
-    <div role="dialog" aria-label="Turn on notifications" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-50 rounded-2xl bg-inverse-surface p-4 text-inverse-on-surface shadow-xl md:inset-x-auto md:bottom-6 md:right-6 md:w-96">
+    <div role="dialog" aria-label="Turn on notifications" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+90px)] z-50 rounded-2xl bg-inverse-surface p-4 text-inverse-on-surface shadow-xl md:inset-x-auto md:bottom-6 md:right-6 md:w-96">
       <div className="flex items-start gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground"><Icon name="notifications_active" size={20} /></span>
         <div className="min-w-0 flex-1">

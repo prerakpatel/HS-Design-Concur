@@ -4,7 +4,7 @@ import { StateBadge, type BadgeState } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
 import { Icon } from "@/components/material-icon";
 
-export interface EventListItem { id: string; title: string; venue: string | null; event_date: string | null; status: "draft" | "active" | "archived"; approved: number; total: number; people: { initials: string; avatar?: string | null }[]; needsYou?: boolean }
+export interface EventListItem { id: string; title: string; venue: string | null; event_date: string | null; status: "draft" | "active" | "archived"; approved: number; uploaded?: number; total: number; people: { initials: string; avatar?: string | null }[]; needsYou?: boolean }
 
 function badgeFor(e: EventListItem): { state: BadgeState; label?: string } {
   if (e.status === "draft") return { state: "draft" };
@@ -13,6 +13,23 @@ function badgeFor(e: EventListItem): { state: BadgeState; label?: string } {
   if (e.total && e.approved === e.total) return { state: "approved", label: "All approved" };
   if (e.approved === 0) return { state: "requested", label: "Not started" };
   return { state: "in_review", label: "In progress" };
+}
+
+/** Approved in solid green; uploaded but not yet approved in a pale green behind it. */
+function Progress({ e, className }: { e: EventListItem; className?: string }) {
+  const pct = (n: number) => (e.total ? `${(n / e.total) * 100}%` : "0%");
+  return (
+    <div className={"relative h-1.5 overflow-hidden rounded-full bg-muted-strong " + (className ?? "")} aria-hidden>
+      <div className="absolute inset-y-0 left-0 rounded-full bg-success/30" style={{ width: pct(Math.max(e.uploaded ?? 0, e.approved)) }} />
+      <div className="absolute inset-y-0 left-0 rounded-full bg-success" style={{ width: pct(e.approved) }} />
+    </div>
+  );
+}
+
+/** "1 of 5 approved · 3 uploaded"; the uploaded part only when something is waiting beyond the approved ones. */
+function Counts({ e }: { e: EventListItem }) {
+  const up = Math.max(e.uploaded ?? 0, e.approved);
+  return <>{e.approved} of {e.total} approved{up > e.approved && <span className="text-muted-foreground/80"> · {up} uploaded</span>}</>;
 }
 
 /** Events list: hairline rows, date tile, title + venue, progress, people, state. Mobile stacks the meta. */
@@ -37,11 +54,11 @@ export function EventList({ items, emptyTitle = "No events yet", emptyBody }: { 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-base font-medium leading-6">{e.title}</p>
                 <p className="mt-0.5 truncate text-sm text-muted-foreground">{e.venue ?? "Venue not set"}</p>
-                <div className="mt-2 flex items-center gap-3 md:hidden"><div className="h-1.5 w-24 rounded-full bg-muted-strong"><div className="h-full rounded-full bg-success" style={{ width: e.total ? `${(e.approved / e.total) * 100}%` : 0 }} /></div><span className="text-xs text-muted-foreground">{e.approved} of {e.total} approved</span></div>
+                <div className="mt-1.5 space-y-1.5 md:hidden"><p className="truncate text-xs text-muted-foreground"><Counts e={e} /></p><Progress e={e} className="max-w-40" /></div>
               </div>
-              <div className="hidden w-[160px] md:block">
-                <p className="text-sm text-muted-foreground">{e.approved} of {e.total} approved</p>
-                <div className="mt-2 h-1.5 rounded-full bg-muted-strong"><div className="h-full rounded-full bg-success" style={{ width: e.total ? `${(e.approved / e.total) * 100}%` : 0 }} /></div>
+              <div className="hidden w-[210px] md:block">
+                <p className="text-sm text-muted-foreground"><Counts e={e} /></p>
+                <Progress e={e} className="mt-2" />
               </div>
               <div className="hidden w-[92px] items-center gap-1 md:flex">{e.people.slice(0, 3).map((p, i) => <UserAvatar key={i} initials={p.initials} src={p.avatar} size={28} />)}</div>
               <div className="hidden w-[120px] md:block"><StateBadge state={b.state} label={b.label} /></div>

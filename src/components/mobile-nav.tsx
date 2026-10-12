@@ -18,11 +18,11 @@ export function MobileNav({ user }: { user: { initials: string; avatar?: string 
   const pathname = usePathname();
   if (isTaskScreen(pathname)) return null;
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-[max(env(safe-area-inset-bottom),12px)] pt-2 backdrop-blur md:hidden">
-      <ul className="mx-auto flex max-w-md items-stretch justify-around">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-[max(env(safe-area-inset-bottom),12px)] pt-2.5 backdrop-blur md:hidden">
+      <ul className="mx-auto flex max-w-md items-stretch justify-around px-4">
         {TABS.map((t) => { const active = pathname === t.href || pathname.startsWith(t.href + "/"); return (
           <li key={t.href} className="flex-1">
-            <Link href={t.href} className={"flex flex-col items-center gap-0.5 py-1 text-[11px] font-medium " + (active ? "text-foreground" : "text-muted-foreground")}>
+            <Link href={t.href} className={"flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium " + (active ? "text-foreground" : "text-muted-foreground")}>
               <span className={"flex h-8 w-14 items-center justify-center rounded-full " + (active ? "bg-sidebar-accent" : "")}>
                 {t.href === "/profile" ? <UserAvatar initials={user.initials} src={user.avatar} size={24} className={active ? "ring-2 ring-foreground" : ""} /> : <Icon name={t.icon} size={24} fill={active} />}
               </span>{t.label}

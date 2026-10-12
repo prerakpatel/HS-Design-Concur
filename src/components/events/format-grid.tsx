@@ -85,7 +85,7 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta, downloada
       </div>
 
       {selecting && (
-        <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+76px)] z-30 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl border border-border bg-card/95 p-2 pl-4 shadow-lg backdrop-blur md:bottom-6">
+        <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+82px)] z-30 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl border border-border bg-card/95 p-2 pl-4 shadow-lg backdrop-blur md:bottom-6">
           <span className="text-sm font-medium">{chosen.length} selected</span>
           <div className="flex gap-2"><Button variant="ghost" onClick={stop}>Cancel</Button><Button disabled={chosen.length === 0 || pending} onClick={() => setConfirm(true)}>Approve {chosen.length || ""}</Button></div>
         </div>
