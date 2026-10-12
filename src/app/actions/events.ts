@@ -245,12 +245,6 @@ export async function deleteEvent(eventId: string) {
   redirect("/events");
 }
 
-export async function toggleSlotRequested(slotId: string, requested: boolean) {
-  const { supabase } = await requireActiveUser();
-  const { data: slot } = await supabase.from("slots").update({ requested, updated_at: new Date().toISOString() }).eq("id", slotId).select("event_id").single();
-  if (slot) revalidatePath(`/events/${slot.event_id}`);
-}
-
 /** Change who designs a format from the asset page. Core Admins, the event creator and approvers may. */
 export async function assignSlot(slotId: string, userId: string | null) {
   const { supabase, user, org, isApprover } = await requireActiveUser();

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { BUCKET } from "@/lib/storage";
-import { VERSIONS_KEPT } from "@/config/limits";
+import { VERSIONS_KEPT, TMP_UPLOAD_HOURS } from "@/config/limits";
+import { HOUR_MS } from "@/lib/time";
 
 interface Row { id: string; number: number; decision: string; purged_at: string | null; version_sides: { id: string; optimised_path: string | null; preview_path: string | null; thumb_path: string | null }[] }
 
@@ -30,4 +31,21 @@ export async function pruneAllSlots(db: SupabaseClient): Promise<number> {
   let n = 0;
   for (const s of slots ?? []) n += await pruneOldVersions(db, s.id);
   return n;
+}
+
+/**
+ * An upload lands in tmp/<slot>/ first and is removed once processed. One that failed or was abandoned stays; this
+ * clears anything older than TMP_UPLOAD_HOURS so it does not sit in storage for good. Returns how many were removed.
+ */
+export async function sweepTmpUploads(db: SupabaseClient): Promise<number> {
+  const cutoff = Date.now() - TMP_UPLOAD_HOURS * HOUR_MS;
+  const bucket = db.storage.from(BUCKET);
+  const { data: folders } = await bucket.list("tmp", { limit: 1000 });
+  const old: string[] = [];
+  for (const f of folders ?? []) {
+    const { data: files } = await bucket.list(`tmp/${f.name}`, { limit: 1000 });
+    for (const file of files ?? []) if (file.created_at && new Date(file.created_at).getTime() < cutoff) old.push(`tmp/${f.name}/${file.name}`);
+  }
+  for (let i = 0; i < old.length; i += 100) await bucket.remove(old.slice(i, i + 100));
+  return old.length;
 }

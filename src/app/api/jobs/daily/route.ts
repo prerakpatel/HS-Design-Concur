@@ -9,7 +9,7 @@ import { notificationText, notificationHref } from "@/lib/labels";
 import { notify, subjectFor, approverIds, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
 import { refreshStalePreviews } from "@/lib/uploads/refresh-preview";
-import { pruneAllSlots } from "@/lib/uploads/prune";
+import { pruneAllSlots, sweepTmpUploads } from "@/lib/uploads/prune";
 import { matchSlackIds } from "@/lib/slack";
 import { mentionIds, groupMentionIds } from "@/lib/rich-text";
 import { postRelease } from "@/lib/changelog";
@@ -188,6 +188,7 @@ export async function GET(req: Request) {
 
   // 3c. Version files: only the newest two per format keep theirs (safety net for the upload-time prune).
   report.versionsPruned = await pruneAllSlots(db);
+  report.tmpCleared = await sweepTmpUploads(db);
 
   // 3d. Slack member IDs for anyone still missing one (email lookup; needs SLACK_BOT_TOKEN).
   report.slackMatched = (await matchSlackIds(db)).matched;
