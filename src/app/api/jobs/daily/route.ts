@@ -1,3 +1,6 @@
+import { APP_TIMEZONE } from "@/config/orgs";
+import { REMINDER_LEAD_DAYS } from "@/config/limits";
+import { todayIso, daysFromNowIso } from "@/lib/time";
 import { NextResponse } from "next/server";
 import { slotName } from "@/lib/project";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -31,9 +34,9 @@ export async function GET(req: Request) {
   const byAdmin = !byCron && (await getActiveUser().catch(() => null))?.user.role === "core_admin";
   if (!byCron && !byAdmin) return NextResponse.json({ error: "unauthorised" }, { status: 401 });
   const db = createServiceClient();
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: process.env.APP_TIMEZONE ?? "America/New_York" });
-  const in3 = new Date(Date.now() + 3 * 86400_000).toLocaleDateString("en-CA", { timeZone: process.env.APP_TIMEZONE ?? "America/New_York" });
-  const tz = process.env.APP_TIMEZONE ?? "America/New_York";
+  const tz = APP_TIMEZONE;
+  const today = todayIso(tz);
+  const in3 = daysFromNowIso(REMINDER_LEAD_DAYS, tz);
   const report: Record<string, unknown> = { reminders: 0, waiting: 0, digests: 0 };
 
   // 0. Assets-only requests ending in 3 days: tell the requester and the designers to download their finals.

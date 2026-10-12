@@ -52,16 +52,21 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
   }
   const hadBack = !!latest && (latest.version_sides as { side: string }[]).some((x) => x.side === "back");
   const changing: ("front" | "back")[] = isPdf ? ["front", "back"] : inputs.map((i) => i.side);
+  // Replaced files are removed only after the new ones are safely stored, so a failed upload leaves the version as it was.
+  let oldPaths: string[] = [];
   if (inPlace && latest) {
     versionId = latest.id; number = latest.number;
     const { data: old } = await supabase.from("version_sides").select("optimised_path,preview_path,thumb_path").eq("version_id", latest.id).in("side", changing);
-    const gone = (old ?? []).flatMap((x) => [x.optimised_path, x.preview_path, x.thumb_path]).filter((p): p is string => !!p);
-    if (gone.length) await supabase.storage.from(BUCKET).remove(gone);
-    await supabase.from("version_sides").delete().eq("version_id", latest.id).in("side", changing);
+    oldPaths = (old ?? []).flatMap((x) => [x.optimised_path, x.preview_path, x.thumb_path]).filter((p): p is string => !!p);
     keptInReview = !!latest.sent_at;
-    await supabase.from("versions").update({ uploaded_by: user.id, created_at: new Date().toISOString() }).eq("id", latest.id);
   } else if (latest) number = latest.number + 1;
   let inserted = false;
+  const written: string[] = [];
+  /** A failed upload leaves nothing behind: files already written go, and a version made for it goes too. */
+  const undo = async () => {
+    if (written.length) await supabase.storage.from(BUCKET).remove(written);
+    if (inserted && versionId) await supabase.from("versions").delete().eq("id", versionId);
+  };
   if (!versionId) {
     inserted = true;
     const { data: v, error } = await supabase.from("versions").insert({ slot_id: slotId, number, uploaded_by: user.id }).select("id").single();
@@ -76,12 +81,13 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
           const to = `${org.id}/${event.id}/${slotId}/v${number}/front/${name}.${from.split(".").pop()}`;
           const { error } = await supabase.storage.from(BUCKET).copy(from, to);
           if (error) throw new Error(error.message);
+          written.push(to);
           return to;
         };
         try {
-          const optimised_path = await copy(fs.optimised_path, "optimised"); const preview_path = await copy(fs.preview_path, "preview"); const thumb_path = await copy(fs.thumb_path, "thumb");
+          const [optimised_path, preview_path, thumb_path] = await Promise.all([copy(fs.optimised_path, "optimised"), copy(fs.preview_path, "preview"), copy(fs.thumb_path, "thumb")]);
           await supabase.from("version_sides").insert({ version_id: versionId, side: "front", ...fs, optimised_path, preview_path, thumb_path });
-        } catch (e) { await supabase.from("versions").delete().eq("id", versionId); return { error: (e as Error).message }; }
+        } catch (e) { await undo(); return { error: (e as Error).message }; }
       }
     }
   }
@@ -92,14 +98,21 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
         const p = `${base}/${name}.${r.ext}`;
         const { error } = await supabase.storage.from(BUCKET).upload(p, r.buf, { contentType: r.mime, upsert: true });
         if (error) throw new Error(error.message);
+        written.push(p);
         return p;
       };
-      const optimised_path = await put("optimised", processed.optimised);
-      const preview_path = processed.preview ? await put("preview", processed.preview) : null;
-      const thumb_path = await put("thumb", processed.thumb);
-      await supabase.from("version_sides").upsert({ version_id: versionId, side: s, mime: processed.optimised.mime, width: processed.width, height: processed.height, bytes: processed.optimised.buf.length, optimised_path, preview_path, thumb_path, mark_version: MARK_VERSION }, { onConflict: "version_id,side" });
+      const [optimised_path, preview_path, thumb_path] = await Promise.all([put("optimised", processed.optimised), processed.preview ? put("preview", processed.preview) : null, put("thumb", processed.thumb)]);
+      const { error } = await supabase.from("version_sides").upsert({ version_id: versionId, side: s, mime: processed.optimised.mime, width: processed.width, height: processed.height, bytes: processed.optimised.buf.length, optimised_path, preview_path, thumb_path, mark_version: MARK_VERSION }, { onConflict: "version_id,side" });
+      if (error) throw new Error(error.message);
     }
-  } catch (e) { return { error: (e as Error).message }; }
+  } catch (e) { await undo(); return { error: (e as Error).message }; }
+  if (inPlace && latest) {
+    // Everything new is stored: now the replaced files and any side the new file no longer has can go.
+    const stale = changing.filter((c) => !processedSides.some((p) => p.side === c));
+    if (stale.length) await supabase.from("version_sides").delete().eq("version_id", latest.id).in("side", stale);
+    if (oldPaths.length) await supabase.storage.from(BUCKET).remove(oldPaths);
+    await supabase.from("versions").update({ uploaded_by: user.id, created_at: new Date().toISOString() }).eq("id", latest.id);
+  }
   await supabase.storage.from(BUCKET).remove([tmpPath]);
 
   // Uploading is private: the slot only moves to In review when the designer sends the version (sendForReview).

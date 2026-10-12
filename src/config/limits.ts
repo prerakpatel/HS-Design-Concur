@@ -8,4 +8,5 @@ export const DRAFT_SWEEP_DAYS = 30;     // untouched drafts are deleted after th
 export const DRAFT_WARN_DAYS = 23;      // the creator is warned on this day
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 export const VERSIONS_KEPT = 2;         // newest versions of a format that keep their files; older ones keep only comments
+export const REMINDER_LEAD_DAYS = 3;     // due-date and "ends soon" reminders go out this many days ahead (and on the day)
 export const QUIET_RESEND_MINUTES = 10; // sending the same version again within this long, with nothing in between, does not notify approvers twice

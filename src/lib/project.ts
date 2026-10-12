@@ -1,3 +1,4 @@
+import { daysFromNowIso } from "@/lib/time";
 import { ASSET_MAX_DAYS, EVENT_CAP } from "@/config/limits";
 import type { Organization } from "@/lib/types";
 
@@ -18,7 +19,8 @@ export function slotName(formatName: string | null | undefined, label?: string |
 export const capFor = (org: Pick<Organization, "event_cap">) => org.event_cap ?? EVENT_CAP;
 
 /** Latest end date an assets-only request may have, as yyyy-mm-dd. */
-export function assetEndMax(from = new Date()) { const d = new Date(from); d.setDate(d.getDate() + ASSET_MAX_DAYS); return d.toLocaleDateString("en-CA"); }
+/** The latest end date an assets-only request may have: ASSET_MAX_DAYS from today. */
+export const assetEndMax = () => daysFromNowIso(ASSET_MAX_DAYS);
 
 /** Items of a request in a steady order: by format, then by name (numbers in order: 2 before 10). */
 export const byFormatThenLabel = (a: { sort: number; label?: string | null }, b: { sort: number; label?: string | null }) =>

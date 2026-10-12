@@ -1,4 +1,5 @@
 "use client";
+import { VERSIONS_KEPT } from "@/config/limits";
 import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -386,7 +387,7 @@ function VersionStack({ earlier, eventId, slotId, commentCount, children }: { ea
             return <li key={v.id}>{v.purged ? <p className="px-2 py-1.5 text-sm">{label}</p> : <Link href={`/events/${eventId}/slots/${slotId}?v=${v.number}`} className="block rounded-lg px-2 py-1.5 text-sm hover:bg-subtle" onClick={() => setOpen(false)}>{label}</Link>}</li>;
           })}
         </ul>
-        <p className="px-2 pt-1.5 text-[13px] text-muted-foreground">Only the two newest versions keep their files. Their comments stay in the thread.</p>
+        <p className="px-2 pt-1.5 text-[13px] text-muted-foreground">Only the {VERSIONS_KEPT} newest versions keep their files. Their comments stay in the thread.</p>
       </PopoverContent>
     </Popover>
   );

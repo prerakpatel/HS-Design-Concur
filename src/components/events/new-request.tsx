@@ -1,4 +1,5 @@
 "use client";
+import { ASSET_MAX_DAYS } from "@/config/limits";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
@@ -16,7 +17,7 @@ export function NewRequest({ assets }: { assets: boolean }) {
       <DropdownMenuTrigger asChild><Button>New request<Icon name="expand_more" className="!text-[18px]" /></Button></DropdownMenuTrigger>
       <DropdownMenuContent align="start" collisionPadding={16} className="w-72 rounded-xl p-1.5">
         <DropdownMenuItem asChild className={item}><Link href="/events/new"><Icon name="event" className="mt-0.5" /><span><span className="block text-sm font-medium">For event</span><span className="block text-xs text-muted-foreground">Date, venue and invite text; formats for the event.</span></span></Link></DropdownMenuItem>
-        <DropdownMenuItem asChild className={item}><Link href="/events/new?kind=assets"><Icon name="photo_library" className="mt-0.5" /><span><span className="block text-sm font-medium">Assets only</span><span className="block text-xs text-muted-foreground">Thumbnails, covers and other designs not tied to an event. Ends within 30 days.</span></span></Link></DropdownMenuItem>
+        <DropdownMenuItem asChild className={item}><Link href="/events/new?kind=assets"><Icon name="photo_library" className="mt-0.5" /><span><span className="block text-sm font-medium">Assets only</span><span className="block text-xs text-muted-foreground">Thumbnails, covers and other designs not tied to an event. Ends within {ASSET_MAX_DAYS} days.</span></span></Link></DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -1,4 +1,5 @@
 "use server";
+import { todayIso } from "@/lib/time";
 import { capFor, isAssets, slotName, assetEndMax } from "@/lib/project";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -78,7 +79,7 @@ function readAssetsForm(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const endDate = str("event_date");
   if (!title) throw new UserError("Give the request a title");
-  if (endDate && endDate < new Date().toLocaleDateString("en-CA")) throw new UserError("The end date has already passed");
+  if (endDate && endDate < todayIso()) throw new UserError("The end date has already passed");
   if (endDate && endDate > assetEndMax()) throw new UserError(`An assets-only request ends at most ${ASSET_MAX_DAYS} days from today`);
   return { title, endDate, description: str("description"), notes: str("notes") };
 }
@@ -187,10 +188,11 @@ export async function saveAssign(eventId: string, formData: FormData) {
   const { data: slots } = await supabase.from("slots").select("id,assignee_id,format_id,label,formats(name)").eq("event_id", event.id).eq("requested", true);
   // One notification per person, listing every format they were just given.
   const newlyAssigned = new Map<string, { formats: string[]; due: string | null }>();
+  const writes: PromiseLike<unknown>[] = [];
   for (const s of slots ?? []) {
     const assignee = String(formData.get(`assignee_${s.id}`) ?? "") || null;
     const due = String(formData.get(`due_${s.id}`) ?? "") || null;
-    await supabase.from("slots").update({ assignee_id: assignee, due_on: due, updated_at: new Date().toISOString() }).eq("id", s.id);
+    writes.push(supabase.from("slots").update({ assignee_id: assignee, due_on: due, updated_at: new Date().toISOString() }).eq("id", s.id));
     const fmt = s.formats as unknown as { name: string } | null;
     if (assignee && assignee !== s.assignee_id) {
       const cur = newlyAssigned.get(assignee) ?? { formats: [], due: null };
@@ -198,6 +200,7 @@ export async function saveAssign(eventId: string, formData: FormData) {
       newlyAssigned.set(assignee, cur);
     }
   }
+  await Promise.all(writes);
   if (event.status === "active") for (const [userId, a] of newlyAssigned) await notify(supabase, [userId], "slot.assigned", { eventId: event.id, title: event.title, format: a.formats.join(", "), assignee: userId, due: a.due, by: user.name ?? user.email }, user.id, { orgId: org.id });
   await supabase.from("events").update({ last_edited_at: new Date().toISOString() }).eq("id", event.id);
   revalidatePath(`/events/${event.id}`);
@@ -210,7 +213,7 @@ export async function publishEvent(eventId: string) {
   if (event.status !== "draft") redirect(`/events/${event.id}`);
   const assets = isAssets(event);
   if (!event.event_date) throw new UserError(assets ? "Set the end date before publishing" : "Set the event date before publishing");
-  if (assets && (event.event_date < new Date().toLocaleDateString("en-CA") || event.event_date > assetEndMax())) throw new UserError(`Pick an end date within the next ${ASSET_MAX_DAYS} days`);
+  if (assets && (event.event_date < todayIso() || event.event_date > assetEndMax())) throw new UserError(`Pick an end date within the next ${ASSET_MAX_DAYS} days`);
   if (!assets && !horizonOk(event.event_date)) throw new UserError(`Events can be at most ${MONTHS_AHEAD} months out`);
   const { data: brief } = await supabase.from("briefs").select("description").eq("event_id", event.id).maybeSingle();
   if (!brief?.description) throw new UserError(assets ? "Describe what you need before publishing" : "Add the brief before publishing");

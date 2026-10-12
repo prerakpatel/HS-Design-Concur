@@ -1,3 +1,4 @@
+import { ASSET_MAX_DAYS } from "@/config/limits";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireActiveUser, initials } from "@/lib/auth";
@@ -86,7 +87,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 </div>
                 <ToggleRow name="accepting_signups" label="Accepting new members" hint="Off hides the request button on the sign-in page." on={o.accepting_signups} />
                 <div className="flex items-center justify-between gap-4"><div><Label htmlFor={`cap-${o.id}`}>Project slots</Label><p className="text-sm text-muted-foreground">Events and asset requests live at once. Drafts don&apos;t count.</p></div><Input id={`cap-${o.id}`} name="event_cap" type="number" min={0} max={100} defaultValue={o.event_cap ?? 10} className="w-20" /></div>
-                <ToggleRow name="asset_requests" label="Assets-only requests" hint="Lets people request designs that aren't tied to an event (thumbnails, covers). They end within 30 days and keep nothing." on={!!o.asset_requests} />
+                <ToggleRow name="asset_requests" label="Assets-only requests" hint={`Lets people request designs that aren't tied to an event (thumbnails, covers). They end within ${ASSET_MAX_DAYS} days and keep nothing.`} on={!!o.asset_requests} />
                 {emailConfigured() && <ToggleRow name="email_enabled" label="Email notifications" hint="Each person still picks instant, daily or off." on={o.email_enabled} />}
                 <ToggleRow name="chat_enabled" label="Google Chat notifications" hint="New events, assignments, uploads, decisions, comments and due reminders, with the people concerned @mentioned." on={o.chat_enabled} />
                 <div className="space-y-2"><Label htmlFor={`hook-${o.id}`}>Google Chat webhook URL</Label><Input id={`hook-${o.id}`} name="chat_webhook_url" defaultValue={o.chat_webhook_url ?? ""} placeholder="https://chat.googleapis.com/v1/spaces/…" /></div>

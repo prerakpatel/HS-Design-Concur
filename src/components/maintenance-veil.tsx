@@ -37,7 +37,7 @@ export function MaintenanceVeil({ initial }: { initial: MaintenanceState }) {
         wasOn.current = nowBlocked;
       } catch { /* offline or mid-deploy: keep whatever is showing */ }
     };
-    const id = setInterval(check, POLL_MS);
+    const id = setInterval(() => { if (document.visibilityState === "visible") void check(); }, POLL_MS); // a hidden tab does not need to keep asking
     const onVisible = () => { if (document.visibilityState === "visible") void check(); };
     document.addEventListener("visibilitychange", onVisible); window.addEventListener("focus", check);
     return () => { alive = false; clearInterval(id); document.removeEventListener("visibilitychange", onVisible); window.removeEventListener("focus", check); };

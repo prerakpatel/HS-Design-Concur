@@ -1,3 +1,4 @@
+import { todayIso } from "@/lib/time";
 import { notFound, redirect } from "next/navigation";
 import { capFor, isAssets, slotName, assetEndMax, byFormatThenLabel } from "@/lib/project";
 import { format } from "date-fns";
@@ -29,7 +30,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
     const { data: brief } = await supabase.from("briefs").select("*").eq("event_id", id).maybeSingle<Brief>();
     return (
       <WizardShell assets eventId={id} step={s} statuses={statuses} title="What do you need?" subtitle="Describe the assets; list each one on the next step.">
-        <AssetsBriefForm eventId={id} orgName={org.name} locked={!!event.brief_locked_at} action={saveAssetsBrief.bind(null, id)} minDate={new Date().toLocaleDateString("en-CA")} maxDate={assetEndMax()}
+        <AssetsBriefForm eventId={id} orgName={org.name} locked={!!event.brief_locked_at} action={saveAssetsBrief.bind(null, id)} minDate={todayIso()} maxDate={assetEndMax()}
           values={{ title: event.title, event_date: event.event_date ?? "", description: brief?.description ?? "", notes: brief?.notes ?? "" }} />
       </WizardShell>
     );

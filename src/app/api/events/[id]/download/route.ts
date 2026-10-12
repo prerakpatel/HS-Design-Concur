@@ -24,6 +24,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const files: Record<string, Uint8Array> = {};
   const missing: string[] = [];
   const rows = [...(slots ?? [])].sort((a, b) => ((a.formats as unknown as { sort: number })?.sort ?? 0) - ((b.formats as unknown as { sort: number })?.sort ?? 0));
+  const jobs: { path: string; formatName: string; name: string }[] = [];
   for (const slot of rows) {
     const fmt = slot.formats as unknown as { name: string } | null;
     const approved = (slot.versions as { number: number; decision: string; version_sides: { side: string; optimised_path: string | null; reference_path: string | null }[] }[]).find((v) => v.decision === "approved");
@@ -31,10 +32,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     for (const side of approved.version_sides.sort((a, b) => (a.side === "front" ? -1 : 1) - (b.side === "front" ? -1 : 1))) {
       const path = side.optimised_path ?? side.reference_path;
       if (!path) { missing.push(fmt?.name ?? "format"); continue; }
-      const { data: file } = await supabase.storage.from(BUCKET).download(path);
-      if (!file) { missing.push(fmt?.name ?? "format"); continue; }
-      files[assetFilename({ eventDate: event.event_date, eventTitle: event.title, formatName: slotName(fmt?.name, slot.label as string | null), side: side.side, number: approved.number, path })] = new Uint8Array(await file.arrayBuffer());
+      jobs.push({ path, formatName: fmt?.name ?? "format", name: assetFilename({ eventDate: event.event_date, eventTitle: event.title, formatName: slotName(fmt?.name, slot.label as string | null), side: side.side, number: approved.number, path }) });
     }
+  }
+  // Fetch every file at once; they are added in the order of the formats.
+  const fetched = await Promise.all(jobs.map(async (j) => ({ j, file: (await supabase.storage.from(BUCKET).download(j.path)).data })));
+  for (const { j, file } of fetched) {
+    if (!file) { missing.push(j.formatName); continue; }
+    files[j.name] = new Uint8Array(await file.arrayBuffer());
   }
   if (Object.keys(files).length === 0) return NextResponse.json({ error: "Nothing approved to download yet" }, { status: 404 });
   if (missing.length) files["README.txt"] = strToU8(`Not included (files no longer stored): ${[...new Set(missing)].join(", ")}\n`);

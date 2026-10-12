@@ -1,3 +1,4 @@
+import { REMINDER_LEAD_DAYS, DRAFT_SWEEP_DAYS } from "@/config/limits";
 import type { Format } from "@/lib/types";
 
 export function formatSize(f: Pick<Format, "width" | "height" | "unit" | "allow_custom_size">, custom?: { w: number | null; h: number | null }) {
@@ -11,9 +12,9 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
   switch (kind) {
     case "access.approved": return `Your access was approved by ${by}`;
     case "slot.assigned": return `You were assigned ${f} for ${t}`;
-    case "slot.due": return `${f} for ${t} is ${p.when === "today" ? "due today" : "due in 3 days"}`;
+    case "slot.due": return `${f} for ${t} is ${p.when === "today" ? "due today" : `due in ${REMINDER_LEAD_DAYS} days`}`;
     case "event.published": return `${t} was published and needs designs`;
-    case "project.ending": return `${t} ends in 3 days. Download the final designs; the files are cleared after the end date.`;
+    case "project.ending": return `${t} ends in ${REMINDER_LEAD_DAYS} days. Download the final designs; the files are cleared after the end date.`;
     case "version.uploaded": return `${by} sent ${f} v${p.number} for review`;
     case "review.waiting": return `${f} v${p.number} for ${t} has been waiting ${p.days} day${p.days === 1 ? "" : "s"} for review`;
     case "reviews.waiting": return `${p.count} designs are waiting for your review`;
@@ -32,7 +33,7 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
     case "event.archived": return p.kind === "assets" ? `${t} has ended; its files were cleared` : `${t} was archived; one reference image was kept`;
     case "event.deleted": return `${t} was deleted`;
     case "draft.expiring": return `Your draft “${t}” is deleted in ${p.days} days unless someone edits it`;
-    case "draft.swept": return `Your draft “${t}” sat untouched for 30 days and was deleted`;
+    case "draft.swept": return `Your draft “${t}” sat untouched for ${DRAFT_SWEEP_DAYS} days and was deleted`;
     case "devices.refresh": return `Yearly check: refresh the phone preview presets to Figma’s current frame sizes (${p.year})`;
     default: return kind;
   }
@@ -60,7 +61,7 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
       return { head: `🆕 ${t}${p.date ? ` · ${chatDate(p.date)}` : ""}`, body: [`New event published by ${by}${p.venue ? ` · ${p.venue}` : ""}.`, ...rows].join("\n") };
     }
     case "slot.assigned": return { head: `🎯 ${t} · ${f}`, body: `${by} assigned this to {@${p.assignee}}${p.due ? ` · due ${chatDate(p.due)}` : ""}.` };
-    case "slot.due": return { head: `⏰ ${t} · ${f}`, body: `{@${p.assignee}} this is due ${p.when === "today" ? "today" : "in 3 days"}${p.due ? ` (${chatDate(p.due)})` : ""}.` };
+    case "slot.due": return { head: `⏰ ${t} · ${f}`, body: `{@${p.assignee}} this is due ${p.when === "today" ? "today" : `in ${REMINDER_LEAD_DAYS} days`}${p.due ? ` (${chatDate(p.due)})` : ""}.` };
     case "version.uploaded": return { head: `📤 ${t} · ${f}${n}`, body: `Sent for review by ${by}.` };
     case "review.waiting": return { head: `⏳ ${t} · ${f}${n}`, body: `Waiting for review since ${chatDate(p.since)} · ${p.days} day${p.days === 1 ? "" : "s"}. Approve it or request changes.` };
     case "comments.pending": {
@@ -84,13 +85,14 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
     case "comments.posted": return { head: `💬 ${t} · ${f}${n}`, body: `${by} left ${p.count} comments:\n${String(p.excerpt ?? "")}` };
     case "access.requested": return { head: `🔑 ${p.name ?? p.email} asked for access`, body: `${p.email} · approve or deny in Settings → Requests.` };
     case "access.approved": return { head: `👋 ${p.name ?? "A new member"} joined`, body: `Approved by ${by}. Welcome!` };
-    case "project.ending": return { head: `⏳ ${t} · ends in 3 days`, body: "Download the final designs now: the files are cleared after the end date." };
+    case "project.ending": return { head: `⏳ ${t} · ends in ${REMINDER_LEAD_DAYS} days`, body: "Download the final designs now: the files are cleared after the end date." };
     case "event.archived": return p.kind === "assets" ? { head: `📦 ${t} ended`, body: "The request reached its end date and its files were cleared." } : { head: `📦 ${t} archived`, body: "A week has passed since the event. One reference image was kept; the other files were removed." };
     default: return { head: t, body: notificationText(kind, p) };
   }
 }
 export function notificationHref(p: Record<string, unknown>): string {
-  if (typeof p.href === "string") return p.href;
+  // Only an on-site path: a notification must never send someone to another website.
+  if (typeof p.href === "string" && /^\/(?!\/)/.test(p.href)) return p.href;
   if (p.eventId && p.slotId) return `/events/${p.eventId}/slots/${p.slotId}`;
   if (p.eventId) return `/events/${p.eventId}`;
   return "/events";

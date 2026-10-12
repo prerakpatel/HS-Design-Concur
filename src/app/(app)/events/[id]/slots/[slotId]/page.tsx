@@ -1,3 +1,4 @@
+import { VERSIONS_KEPT } from "@/config/limits";
 import { notFound } from "next/navigation";
 import { requireActiveUser, initials } from "@/lib/auth";
 import { signedUrl } from "@/lib/storage";
@@ -18,16 +19,19 @@ import type { AppUser, EventRow, Format, Slot } from "@/lib/types";
 export default async function SlotPage({ params, searchParams }: { params: Promise<{ id: string; slotId: string }>; searchParams: Promise<{ v?: string }> }) {
   const { id, slotId } = await params; const { v } = await searchParams;
   const { supabase, org, user, isApprover } = await requireActiveUser();
-  const { data: event } = await supabase.from("events").select("*").eq("id", id).is("deleted_at", null).maybeSingle<EventRow>();
-  if (!event || event.org_id !== org.id) notFound();
-  const { data: slot } = await supabase.from("slots").select("*").eq("id", slotId).eq("event_id", id).maybeSingle<Slot>();
-  if (!slot) notFound();
-  const [{ data: fmt }, { data: versions }, { data: members }, { data: siblings }] = await Promise.all([
-    supabase.from("formats").select("*").eq("id", slot.format_id).single<Format>(),
+  // Everything this page needs that does not depend on another answer, asked at once. The org check comes after.
+  const [{ data: event }, { data: slotRow }, { data: versions }, { data: members }, { data: siblings }, { data: comments }, groups] = await Promise.all([
+    supabase.from("events").select("*").eq("id", id).is("deleted_at", null).maybeSingle<EventRow>(),
+    supabase.from("slots").select("*,fmt:formats(*)").eq("id", slotId).eq("event_id", id).maybeSingle<Slot & { fmt: Format | null }>(),
     supabase.from("versions").select("*,version_sides(*),uploader:uploaded_by(name,email)").eq("slot_id", slotId).order("number", { ascending: false }),
     supabase.from("users").select("id,name,email,avatar_url,role,function_tags,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id),
     supabase.from("slots").select("id,is_primary,label,formats(name,sort),versions(created_at)").eq("event_id", id).eq("requested", true),
+    // The whole conversation for this format, across versions: what was asked on v1 is the reason v2 exists.
+    supabase.from("comments").select("*,author:author_id(name,email,avatar_url,role,function_tags),versions!inner(slot_id)").eq("versions.slot_id", slotId).order("created_at"),
+    loadGroups(supabase, [org.id]),
   ]);
+  if (!event || event.org_id !== org.id || !slotRow) notFound();
+  const { fmt, ...slot } = slotRow;
   if (!fmt) notFound();
 
   // Previous / next format, in the same order as the event page.
@@ -50,12 +54,9 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const hasBack = sides.some((s) => s.side === "back");
   const stalePreviews = !approved && !purged ? rawSides.filter((s) => s.preview_path && s.mime !== "image/gif" && (s.mark_version ?? 0) < MARK_VERSION).map((s) => s.id) : [];
 
-  // The whole conversation for this format, across versions: what was asked on v1 is the reason v2 exists.
   const versionNumber = new Map(vlist.map((x) => [x.id as string, x.number as number]));
-  const { data: comments } = vlist.length ? await supabase.from("comments").select("*,author:author_id(name,email,avatar_url,role,function_tags)").in("version_id", vlist.map((x) => x.id)).order("created_at") : { data: [] as never[] };
   const roleOf = (u: { role: string; function_tags: string[] }) => u.role === "core_admin" ? "Core Admin" : u.function_tags?.[0] ? u.function_tags[0][0].toUpperCase() + u.function_tags[0].slice(1) : "Member";
   const cviews: CommentView[] = (comments ?? []).map((c) => { const a = c.author as unknown as { name: string | null; email: string; avatar_url: string | null; role: string; function_tags: string[] }; return { id: c.id, version: versionNumber.get(c.version_id) ?? 0, body: c.body, created_at: c.created_at, pin_x: c.pin_x, pin_y: c.pin_y, pin_side: (c.pin_side ?? "front") as "front" | "back", edited_at: c.edited_at, mine: c.author_id === user.id, draft: !!c.is_draft, addressed_at: c.addressed_at, confirmed_at: c.confirmed_at, author: { name: a?.name ?? a?.email ?? "Someone", initials: initials(a?.name ?? null, a?.email ?? "?"), avatar: a?.avatar_url ?? null, role: a ? roleOf(a) : "" } }; });
-  const groups = await loadGroups(supabase, [org.id]);
   const mlist: Member[] = [
     ...((members ?? []) as unknown as Pick<AppUser, "id" | "name" | "email" | "avatar_url">[]).map((m) => ({ id: m.id, name: m.name ?? m.email.split("@")[0], handle: m.email.split("@")[0].toLowerCase(), avatar: m.avatar_url })),
     // Groups sit in the same @ list; their chip id is group:<id> so a comment can be sent to a whole team's chat.
@@ -101,7 +102,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
       ) : (
         <>
           {sizeOff && <p className="flex items-start gap-2 rounded-2xl bg-warning-soft px-5 py-3 text-sm text-warning-text"><Icon name="aspect_ratio" className="mt-px !text-[18px]" /><span>This file is {sizeOff} px; the format asks for {nativeW} × {nativeH}. It is shown as uploaded. Upload a corrected version if the size matters.</span></p>}
-          {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{readOnly ? (sides[0]?.src ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept.") : `Only the two most recent versions keep their files. v${current?.number}'s were removed when a newer version arrived; its comments are kept below.`}</p>}
+          {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{readOnly ? (sides[0]?.src ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept.") : `Only the ${VERSIONS_KEPT} most recent versions keep their files. v${current?.number}'s were removed when a newer version arrived; its comments are kept below.`}</p>}
           {stalePreviews.length > 0 && <PreviewRefresher sideIds={stalePreviews} />}
           <AssetStage versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} comments={cviews} members={mlist} canComment={!readOnly} canModerate={user.role === "core_admin"}
             versions={chips} currentVersionId={current?.id ?? null} eventId={id} slotId={slotId} upload={canUpload && !readOnly ? { accept: fmt.allowed_mimes, isPrint, nextNumber: (vlist[0]?.number ?? 0) + 1 } : null}

@@ -1,3 +1,4 @@
+import { todayIso } from "@/lib/time";
 import Link from "next/link";
 import { capFor } from "@/lib/project";
 import { requireActiveUser, initials } from "@/lib/auth";
@@ -26,7 +27,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     const who = s.assignee as unknown as { name: string | null; email: string; avatar_url: string | null } | null; if (who) { const ini = initials(who.name, who.email); if (!a.people.some((p) => p.initials === ini)) a.people.push({ initials: ini, avatar: who.avatar_url }); }
     agg.set(s.event_id, a);
   }
-  const today = new Date().toLocaleDateString("en-CA");
+  const today = todayIso();
   const all: EventListItem[] = (events ?? []).map((e) => ({ id: e.id, title: e.title, venue: e.venue, event_date: e.event_date, status: e.status, kind: e.kind, ...(agg.get(e.id) ?? { total: 0, approved: 0, uploaded: 0, people: [], needsYou: false }) }));
   const groups = { upcoming: all.filter((e) => e.status === "active" && (!e.event_date || e.event_date >= today)), drafts: all.filter((e) => e.status === "draft"), // Past keeps archived events too (one reference image each), newest first.
     past: all.filter((e) => e.status === "archived" || (e.status === "active" && e.event_date && e.event_date < today)).sort((a, b) => (b.event_date ?? "").localeCompare(a.event_date ?? "")) };

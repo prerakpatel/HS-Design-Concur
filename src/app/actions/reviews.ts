@@ -247,8 +247,9 @@ export async function setCommentFlag(commentId: string, flag: "addressed" | "una
 /** Bulk approve (PRD §6.2): approves each version in turn and posts one summary; a failure on one does not stop the others. */
 export async function approveMany(versionIds: string[]) {
   const failed: string[] = []; const done: Loaded[] = [];
-  for (const id of [...new Set(versionIds)]) {
-    try { done.push(await approveOne(id)); } catch (e) { failed.push((e as Error).message); }
+  // Each format is its own slot, so they approve side by side; one failing does not stop the others.
+  for (const r of await Promise.allSettled([...new Set(versionIds)].map((id) => approveOne(id)))) {
+    if (r.status === "fulfilled") done.push(r.value); else failed.push((r.reason as Error).message);
   }
   if (done.length === 1) {
     await announceApproval(done[0]);

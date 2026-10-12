@@ -1,3 +1,4 @@
+import { todayIso } from "@/lib/time";
 import { requireActiveUser } from "@/lib/auth";
 import { capFor } from "@/lib/project";
 import { createDraftEvent, createDraftAssets } from "@/app/actions/events";
@@ -16,7 +17,7 @@ export default async function NewEventPage({ searchParams }: { searchParams: Pro
   const fullNote = full ? <p className="rounded-xl bg-warning-soft p-3 text-sm text-warning-text">All {capFor(org)} project slots are in use. You can save a draft, but it cannot be published until one frees up.</p> : null;
   if (assets) return (
     <WizardShell assets eventId={null} step="event" title="What do you need?" subtitle="Assets that aren't tied to an event: thumbnails, covers, presets. Describe them here; list each one on the next step.">
-      <AssetsBriefForm eventId={null} orgName={org.name} values={{ title: "", event_date: "", description: "", notes: "" }} action={createDraftAssets} notice={fullNote} minDate={new Date().toLocaleDateString("en-CA")} maxDate={assetEndMax()} />
+      <AssetsBriefForm eventId={null} orgName={org.name} values={{ title: "", event_date: "", description: "", notes: "" }} action={createDraftAssets} notice={fullNote} minDate={todayIso()} maxDate={assetEndMax()} />
     </WizardShell>
   );
   return (

@@ -1,3 +1,4 @@
+import { REMINDER_LEAD_DAYS } from "@/config/limits";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { after } from "next/server";
 import { sendEmail, appUrl } from "@/lib/email";
@@ -34,7 +35,7 @@ const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> 
   "access.requested": (p) => `Access request: ${p.name ?? p.email}`,
   "access.approved": () => "You're in: Design & Concur",
   "slot.assigned": (p) => `Assigned: ${p.format} for ${p.title}`,
-  "slot.due": (p) => `${p.when === "today" ? "Due today" : "Due in 3 days"}: ${p.format} for ${p.title}`,
+  "slot.due": (p) => `${p.when === "today" ? "Due today" : `Due in ${REMINDER_LEAD_DAYS} days`}: ${p.format} for ${p.title}`,
   "comment.mention": (p) => `${p.by} mentioned you on ${p.format}`,
   "comment.posted": (p) => `${p.by} commented on ${p.format} · ${p.title}`,
   "comments.posted": (p) => `${p.by} left ${p.count} comments on ${p.format} · ${p.title}`,
@@ -52,7 +53,7 @@ const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> 
   "event.deleted": (p) => `Deleted: ${p.title}`,
   "event.published": (p) => `${p.kind === "assets" ? "New request" : "New event"}: ${p.title}`,
   "event.archived": (p) => `Archived: ${p.title}`,
-  "project.ending": (p) => `Ends in 3 days: ${p.title}. Download the final designs`,
+  "project.ending": (p) => `Ends in ${REMINDER_LEAD_DAYS} days: ${p.title}. Download the final designs`,
   "draft.expiring": (p) => `Draft “${p.title}” is deleted in ${p.days} days`,
   "draft.swept": (p) => `Draft “${p.title}” was deleted`,
   "devices.refresh": (p) => `Yearly check: phone preview presets for ${p.year}`,

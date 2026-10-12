@@ -1,3 +1,4 @@
+import { DELETE_RESTORE_DAYS } from "@/config/limits";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
@@ -145,7 +146,7 @@ export function ReviewPanel({ eventId, summary, slots, issues, isDraft, canDelet
         {slots.map((s, i) => <li key={i} className="flex items-center gap-4 px-5 py-4 text-sm"><span className="min-w-0 flex-1 truncate font-medium">{s.name}</span>{s.assignee ? <span className="flex items-center gap-2 text-muted-foreground"><UserAvatar initials={s.assignee.initials} size={24} /><span className="hidden sm:inline">{s.assignee.name}</span></span> : <span className="text-muted-foreground">Unassigned</span>}<span className="w-20 text-right text-sm text-muted-foreground">{s.due ? format(new Date(s.due + "T00:00:00"), "d MMM") : ""}</span></li>)}
       </ul>
       <div className={wizardBar + " gap-3"}>
-        {canDelete ? <ConfirmButton variant="ghost" action={remove} label={isDraft ? "Delete draft" : assets ? "Delete request" : "Delete event"} title={`Delete “${summary.title}”?`} description="Core Admins can restore it for 7 days. Its files are removed after that." confirmLabel="Delete" /> : <span />}
+        {canDelete ? <ConfirmButton variant="ghost" action={remove} label={isDraft ? "Delete draft" : assets ? "Delete request" : "Delete event"} title={`Delete “${summary.title}”?`} description={`Core Admins can restore it for ${DELETE_RESTORE_DAYS} days. Its files are removed after that.`} confirmLabel="Delete" /> : <span />}
         <div className="flex gap-2">
           <Button asChild variant="secondary" size="lg"><Link href={`/events/${eventId}`}>Save and exit</Link></Button>
           {isDraft ? <form action={publish}><Button type="submit" size="lg" disabled={blocking.length > 0}>{assets ? "Publish request" : "Publish event"}</Button></form> : <StateBadge state="approved" label="Live" className="h-9 px-3 text-sm" />}
