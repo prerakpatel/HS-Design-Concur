@@ -18,7 +18,7 @@ import type { Format } from "@/lib/types";
 
 // icons: image devices
 import { Guides, PinBubble, PinChip, DraftMark, guideGeometry, type SafeArea, type Pin, type PrintGuides } from "@/components/asset/viewer";
-import { addComment, sendCommentBatch, discardCommentBatch, setCommentFlag, editComment, deleteComment, deleteVersion } from "@/app/actions/reviews";
+import { addComment, sendCommentBatch, discardCommentBatch, setCommentFlag, editComment, deleteComment, deleteVersionSide } from "@/app/actions/reviews";
 import { assignSlot } from "@/app/actions/events";
 import dynamic from "next/dynamic";
 // The rich editor (Tiptap) is the heaviest part of this page and only matters once someone writes: load it after the page is interactive.
@@ -76,6 +76,8 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const front = sides.find((x) => x.side === "front")?.src ?? null;
   const canMock = !!mockup && !!front && hasMock(mockup.size, mockup.formatKey, mockup.frame);
   const [inPlace, setInPlace] = useState(false);
+  const [previewSide, setPreviewSide] = useState<Side>("front");
+  const mockSrc = sides.find((x) => x.side === previewSide)?.src ?? front;
   const showMock = canMock && inPlace && !review;
 
   // Resolved comments stay: hidden by default, one tap away. Pins are drawn for the version on screen only.
@@ -128,9 +130,16 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
     try { await setCommentFlag(id, f); router.refresh(); if (f === "addressed") toast.success("Marked as done", { action: { label: "Undo", onClick: () => flag(id, "unaddress") }, duration: 8000 }); }
     catch (e) { toast.error(errorMessage(e)); }
   });
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const removeVersion = (v: VersionChip) => start(async () => {
-    try { await deleteVersion(v.id); setConfirmDelete(false); toast.success(`Version ${v.number} deleted`); router.replace(`/events/${eventId}/slots/${slotId}`); router.refresh(); } catch (e) { toast.error(errorMessage(e)); }
+  const [confirmDelete, setConfirmDelete] = useState<Side | null>(null);
+  // Deleting one side leaves the other; deleting the only side removes the version.
+  const removeSide = (v: VersionChip, side: Side) => start(async () => {
+    try {
+      const r = await deleteVersionSide(v.id, side);
+      setConfirmDelete(null);
+      if (r.versionRemoved) { toast.success(`Version ${v.number} deleted`); router.replace(`/events/${eventId}/slots/${slotId}`); }
+      else toast.success(`The ${side} was deleted`);
+      router.refresh();
+    } catch (e) { toast.error(errorMessage(e)); }
   });
 
   const hasGuides = sides.some((s) => { const g = guideGeometry(safe, print, s.specW || s.width, s.specH || s.height); return g.cut || g.safe.top + g.safe.right + g.safe.bottom + g.safe.left > 0; });
@@ -144,13 +153,15 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const newestTalked = !!newest && comments.some((c) => c.version === newest.number && !c.draft);
   const latest = manage && newest ? { number: newest.number, canEdit: newest.canManage && newest.decision === "pending" && !newestTalked, sent: !!newest.sent } : null;
   const commentsOn = (n: number) => comments.filter((c) => c.version === n && !c.draft).length;
-  const canAddBack = manage && !!upload?.isPrint && !!current && current.id === newest?.id && !current.hasBack && !!front && !readOnly;
+  const isNewest = !!current && current.id === newest?.id;
+  // A print format always shows both sides on its newest version: a side that is missing is an empty slot to fill.
+  const sideList: Side[] = manage && !!upload?.isPrint && isNewest ? ["front", "back"] : sides.map((x) => x.side);
   const pill = "rounded-full";
   const iconPill = "rounded-full max-sm:size-10 max-sm:px-0";
 
   return (
     // The whole page takes a dropped file as a new version (no outline until a file is dragged over it).
-    <UploadDropArea enabled={!!upload && !readOnly} split={!!upload?.isPrint} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+    <UploadDropArea enabled={!!upload && !readOnly} split={!!upload?.isPrint} className="grid content-start gap-6 lg:min-h-[calc(100dvh-9rem)] lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="min-w-0">
         {/* Toolbar: what changes the file on the left, how everyone looks at it on the right */}
         <div className="mb-4 flex items-center gap-2">
@@ -186,13 +197,25 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           </div>
         </div>
 
-        {showMock && front && mockup && <MockStage src={front} size={mockup.size} formatKey={mockup.formatKey} frame={mockup.frame} event={mockup.event} />}
+        {showMock && sides.length > 1 && (
+          <div role="tablist" aria-label="Side" className="mx-auto mb-4 flex h-9 w-fit items-center rounded-full border border-border p-1">
+            {(["front", "back"] as const).map((k) => <button key={k} type="button" role="tab" aria-selected={previewSide === k} onClick={() => setPreviewSide(k)} className={cn("h-7 rounded-full px-4 text-sm font-medium capitalize transition-colors", previewSide === k ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>{k}</button>)}
+          </div>
+        )}
+        {showMock && mockSrc && mockup && <MockStage src={mockSrc} size={mockup.size} formatKey={mockup.formatKey} frame={mockup.frame} event={mockup.event} />}
         <div className={cn("flex flex-col items-center gap-8", showMock && "hidden")}>
-          {sides.map((s) => {
+          {sideList.map((k) => {
+            const s = sides.find((x) => x.side === k);
+            if (!s) return review ? null : (
+              <figure key={k} className="group/side relative w-full max-w-[min(100%,560px)]">
+                <button type="button" onClick={() => requestUpload({ side: k })} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-foreground/25 py-10 text-sm font-medium text-muted-foreground transition-colors hover:border-info hover:bg-info-soft/50 hover:text-info-text"><Icon name={k === "front" ? "image" : "flip"} className="!text-[20px]" />Add the {k} side</button>
+                <DropHint label={`Drop to add the ${k}`} side={k} />
+              </figure>
+            );
             const g = guideGeometry(safe, print, s.specW || s.width, s.specH || s.height);
             const pins = pinsFor(s.side);
             return (
-              <figure key={s.side} className="group max-w-full">
+              <figure key={s.side} className="group group/side relative max-w-full">
                 {s.src ? (
                   <div className="relative inline-block max-w-full">
                     <img src={s.src} alt="" className={cn("block max-h-[75dvh] max-w-full rounded-md shadow-md", mode === "place" ? "cursor-crosshair" : "cursor-zoom-in")} style={{ aspectRatio: s.width && s.height ? `${s.width} / ${s.height}` : undefined }}
@@ -210,20 +233,20 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                         </div>
                       </div>
                     )}
-                    {mode === "view" && s.side === "front" && manage && current && (
-                      <button type="button" onClick={() => setConfirmDelete(true)} aria-label={`Delete v${current.number}`} title={`Delete v${current.number}`} className="absolute right-2.5 top-2.5 flex size-9 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-destructive"><Icon name="delete" className="!text-[18px]" /></button>
+                    {mode === "view" && manage && current && (
+                      <div className="absolute right-2.5 top-2.5 flex gap-2">
+                        {isNewest && <button type="button" onClick={() => requestUpload({ side: s.side })} aria-label={`Replace the ${sides.length > 1 || upload?.isPrint ? s.side : "design"}`} className="flex h-9 items-center gap-1.5 rounded-full bg-black/55 px-3.5 text-sm font-medium text-white transition-colors hover:bg-black/75"><Icon name="upload" className="!text-[18px]" />Replace</button>}
+                        <button type="button" onClick={() => setConfirmDelete(s.side)} aria-label={sides.length > 1 ? `Delete the ${s.side}` : `Delete v${current.number}`} title={sides.length > 1 ? `Delete the ${s.side}` : `Delete v${current.number}`} className="flex size-9 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-destructive"><Icon name="delete" className="!text-[18px]" /></button>
+                      </div>
                     )}
+                    <DropHint label={`Drop to replace the ${s.side}`} side={s.side} />
                     {mode === "view" && (
                       <div className="absolute bottom-2.5 right-2.5 flex gap-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 max-md:opacity-70">
-                        {manage && upload?.isPrint && current?.id === newest?.id && <button type="button" onClick={() => requestUpload({ side: s.side })} aria-label={`Replace the ${s.side}`} title={`Replace the ${s.side}`} className="flex size-9 items-center justify-center rounded-full bg-black/55 text-white"><Icon name="upload" className="!text-[18px]" /></button>}
                         <button type="button" onClick={() => setOpen(s.side)} aria-label="Enlarge" className="flex size-9 items-center justify-center rounded-full bg-black/55 text-white"><Icon name="zoom_out_map" className="!text-[18px]" /></button>
                       </div>
                     )}
                   </div>
                 ) : <div className="flex aspect-[4/5] w-64 items-center justify-center rounded-md bg-muted text-sm text-muted-foreground">No design yet</div>}
-                {s.side === "front" && canAddBack && !sides.some((x) => x.side === "back") && !review && (
-                  <button type="button" onClick={() => requestUpload({ side: "back" })} data-drop-side="back" className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-foreground/25 py-8 text-sm font-medium text-muted-foreground transition-colors hover:border-info hover:bg-info-soft/50 hover:text-info-text"><Icon name="flip" className="!text-[20px]" />Add the back side</button>
-                )}
                 {sides.length > 1 && <figcaption className="mt-2.5 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">{s.side}</figcaption>}
               </figure>
             );
@@ -254,13 +277,21 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           {decision && <div className="mt-4 hidden md:block">{decision}</div>}
         </div>
         {manage && current && (
-          <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+          <Dialog open={!!confirmDelete} onOpenChange={(o) => { if (!o) setConfirmDelete(null); }}>
             <DialogContent className="max-w-sm rounded-2xl">
-              <DialogHeader><DialogTitle>Delete v{current.number}?</DialogTitle><DialogDescription>Its files are removed for good{commentsOn(current.number) > 0 ? `, along with ${commentsOn(current.number)} comment${commentsOn(current.number) === 1 ? "" : "s"} on it` : ""}. Use this for a wrong file. To fix a file, just upload again.</DialogDescription></DialogHeader>
-              <div className="flex flex-col gap-2">
-                <Button size="lg" variant="destructive" disabled={pending} onClick={() => removeVersion(current)}>{pending ? "Deleting…" : `Delete v${current.number}`}</Button>
-                <Button size="lg" variant="outline" onClick={() => setConfirmDelete(false)}>Keep it</Button>
-              </div>
+              {confirmDelete && sides.length > 1 ? <>
+                <DialogHeader><DialogTitle>Delete the {confirmDelete}?</DialogTitle><DialogDescription>The {confirmDelete} file is removed for good. The {confirmDelete === "front" ? "back" : "front"} stays, and so do the comments.</DialogDescription></DialogHeader>
+                <div className="flex flex-col gap-2">
+                  <Button size="lg" variant="destructive" disabled={pending} onClick={() => removeSide(current, confirmDelete)}>{pending ? "Deleting…" : `Delete the ${confirmDelete}`}</Button>
+                  <Button size="lg" variant="outline" onClick={() => setConfirmDelete(null)}>Keep it</Button>
+                </div>
+              </> : <>
+                <DialogHeader><DialogTitle>Delete v{current.number}?</DialogTitle><DialogDescription>Its files are removed for good{commentsOn(current.number) > 0 ? `, along with ${commentsOn(current.number)} comment${commentsOn(current.number) === 1 ? "" : "s"} on it` : ""}. Use this for a wrong file. To fix a file, just upload again.</DialogDescription></DialogHeader>
+                <div className="flex flex-col gap-2">
+                  <Button size="lg" variant="destructive" disabled={pending} onClick={() => removeSide(current, confirmDelete ?? "front")}>{pending ? "Deleting…" : `Delete v${current.number}`}</Button>
+                  <Button size="lg" variant="outline" onClick={() => setConfirmDelete(null)}>Keep it</Button>
+                </div>
+              </>}
             </DialogContent>
           </Dialog>
         )}
@@ -301,7 +332,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                           <DropdownMenuContent align="end" className="w-44 rounded-xl p-1.5">
                             {c.draft ? null : done ? <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "reopen")}><Icon name="replay" />Reopen</DropdownMenuItem> : <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "addressed")}><Icon name="check" />Mark as done</DropdownMenuItem>}
                             {(c.mine || canModerate) && <>
-                              <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => { editHtml.current = c.body; setEditing({ id: c.id, text: c.body }); }}><Icon name="edit" />Edit</DropdownMenuItem>
+                              {c.mine && <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => { editHtml.current = c.body; setEditing({ id: c.id, text: c.body }); }}><Icon name="edit" />Edit</DropdownMenuItem>}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm text-destructive-text" onSelect={() => start(async () => { if (!confirm("Delete this comment?")) return; try { await deleteComment(c.id); toast.success("Comment deleted"); router.refresh(); } catch (err) { toast.error(errorMessage(err)); } })}><Icon name="delete" />Delete</DropdownMenuItem>
                             </>}
@@ -329,7 +360,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           {canComment && versionId && (
             <div className="relative border-t border-border p-3">
               <div className="flex items-end gap-2">
-                <CommentEditor key={composerKey} value="" onChange={(h, empty) => { textHtml.current = h; setTextEmpty(empty); }} onSubmit={() => { if (!textEmpty && !pending) post(textHtml.current, null); }} placeholder={review ? "Add a general note to your review… @ to mention" : "Write a comment… @ to mention"} members={members} className="min-w-0 flex-1" />
+                <CommentEditor key={composerKey} value="" onChange={(h, empty) => { textHtml.current = h; setTextEmpty(empty); }} onSubmit={() => { if (!textEmpty && !pending) post(textHtml.current, null); }} placeholder={review ? "Add a note… @ to mention" : "Write a comment… @ to mention"} members={members} className="min-w-0 flex-1" />
                 <Button size="icon" disabled={pending || textEmpty} onClick={() => post(textHtml.current, null)} aria-label={review ? "Add to review" : "Post"}><Icon name="arrow_upward" /></Button>
               </div>
             </div>
@@ -351,6 +382,11 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
       {decisionBar && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur md:hidden [&>div]:justify-end">{decisionBar}</div>}
     </UploadDropArea>
   );
+}
+
+/** Shown only while a file is dragged over a print page: this side is a drop target of its own. */
+function DropHint({ label, side }: { label: string; side: Side }) {
+  return <div data-drop-side={side} aria-hidden className="absolute inset-0 z-20 hidden items-center justify-center rounded-md border-2 border-dashed border-info bg-info-soft/90 px-4 text-center text-sm font-medium text-info-text group-data-[dragging=true]/drop:flex">{label}</div>;
 }
 
 function Tip({ label, children }: { label: string; children: React.ReactNode }) {

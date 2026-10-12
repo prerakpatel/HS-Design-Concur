@@ -24,8 +24,8 @@ async function loadVersion(versionId: string) {
 type Loaded = Awaited<ReturnType<typeof loadVersion>>;
 
 /** A decision applies to a version that is waiting for one and is the newest of its format, never to an older or already decided one. */
-async function assertDecidable({ supabase, version, slot }: Loaded, verb: string) {
-  if (version.decision !== "pending") throw new UserError(`This version is already ${version.decision === "approved" ? "approved" : "decided"}, so it can't be ${verb} again. Reload the page to see where it stands.`);
+async function assertDecidable({ supabase, version, slot }: Loaded, verb: string, allowed: string[]) {
+  if (!allowed.includes(version.decision)) throw new UserError(`This version is already ${version.decision === "approved" ? "approved" : "decided"}, so it can't be ${verb} again. Reload the page to see where it stands.`);
   const { data: newest } = await supabase.from("versions").select("number").eq("slot_id", slot.id).order("number", { ascending: false }).limit(1).maybeSingle();
   if (newest && newest.number !== version.number) throw new UserError(`A newer version (v${newest.number}) exists, so v${version.number} can't be ${verb}. Open the newest version.`);
 }
@@ -72,7 +72,8 @@ async function approveOne(versionId: string): Promise<Loaded> {
   if (!isApprover) throw new UserError("Only approvers of this organization can approve");
   if (version.uploaded_by === user.id) throw new UserError("You cannot approve a version you uploaded");
   if (!version.sent_at) throw new UserError("The designer has not sent this version for review yet");
-  await assertDecidable(ctx, "approved");
+  // A version with changes requested can still be approved as it is (for example one reopened by accident).
+  await assertDecidable(ctx, "approved", ["pending", "changes_requested"]);
   const now = new Date().toISOString();
   await supabase.from("versions").update({ decision: "superseded" }).eq("slot_id", slot.id).neq("id", versionId).eq("decision", "approved");
   await supabase.from("versions").update({ decision: "approved", decided_by: user.id, decided_at: now }).eq("id", versionId);
@@ -123,7 +124,7 @@ export async function requestChanges(versionId: string, body: string) {
   const html = sanitizeComment(body);
   if (!plainText(html)) throw new UserError("Say what needs to change");
   if (!version.sent_at) throw new UserError("The designer has not sent this version for review yet");
-  await assertDecidable(ctx, "sent back");
+  await assertDecidable(ctx, "sent back", ["pending"]);
   const now = new Date().toISOString();
   // Anything queued in review mode goes out with the request, not as a second post.
   await supabase.from("comments").update({ is_draft: false }).eq("version_id", versionId).eq("author_id", user.id).eq("is_draft", true);
@@ -297,12 +298,33 @@ export async function deleteVersion(versionId: string) {
   return { ok: true };
 }
 
+/**
+ * Delete one side of a version (the front or the back); the other side stays. When it is the version's only
+ * file, the whole version goes, as deleteVersion does. Same permissions as deleting a version.
+ */
+export async function deleteVersionSide(versionId: string, side: "front" | "back") {
+  const { supabase, user, version, slot, event, formatName, org } = await loadVersion(versionId);
+  if (version.uploaded_by !== user.id && user.role !== "core_admin") throw new UserError("Only the uploader or a Core Admin can delete a file");
+  if (version.decision === "approved" && user.role !== "core_admin") throw new UserError("An approved version can only be changed by a Core Admin");
+  const { data: sides } = await supabase.from("version_sides").select("id,side,optimised_path,preview_path,thumb_path,reference_path").eq("version_id", versionId);
+  const target = (sides ?? []).find((x) => x.side === side);
+  if (!target) throw new UserError(`This version has no ${side} to delete`);
+  if ((sides ?? []).length <= 1) { await deleteVersion(versionId); return { ok: true, versionRemoved: true }; }
+  const paths = [target.optimised_path, target.preview_path, target.thumb_path, target.reference_path].filter((p): p is string => !!p);
+  if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
+  const { error } = await supabase.from("version_sides").delete().eq("id", target.id);
+  if (error) throw new UserError(error.message);
+  await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.updated", payload: { format: formatName, number: version.number } });
+  revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`);
+  return { ok: true, versionRemoved: false };
+}
+
 export async function editComment(commentId: string, body: string) {
   const { supabase, user } = await requireActiveUser();
   const html = sanitizeComment(body); if (!plainText(html)) throw new UserError("Empty comment");
   const { data: c } = await supabase.from("comments").select("author_id,is_draft,versions(slots(id,event_id))").eq("id", commentId).maybeSingle();
   if (!c) throw new UserError("Comment not found");
-  if (c.author_id !== user.id && user.role !== "core_admin") throw new UserError("You can only edit your own comments");
+  if (c.author_id !== user.id) throw new UserError("You can only edit your own comments");
   const { error } = await supabase.from("comments").update(c.is_draft ? { body: html } : { body: html, edited_at: new Date().toISOString() }).eq("id", commentId);
   if (error) throw new UserError(error.message);
   const s = (c.versions as unknown as { slots: { id: string; event_id: string } } | null)?.slots;

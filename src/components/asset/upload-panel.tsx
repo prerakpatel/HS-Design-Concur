@@ -178,9 +178,10 @@ function DropSurface({ fill, enabled = true, split, onFiles, className, label, c
   const progress = useUploadProgress();
   const busy = !!progress;
   const isFiles = (e: DragEvent) => enabled && e.dataTransfer.types.includes("Files");
-  const showOverlay = !fill && enabled && (over || busy);
+  // With `split` (print formats) each side lights up on its own while dragging instead of one page-wide overlay.
+  const showOverlay = !fill && enabled && ((over && !split) || busy);
   return (
-    <div className={cn("group/drop relative", fill && "flex flex-col items-center justify-center rounded-3xl px-6 py-10 text-center transition-colors", fill && over && "bg-info-soft/60", className)}
+    <div data-dragging={split && over ? "true" : undefined} className={cn("group/drop relative", fill && "flex flex-col items-center justify-center rounded-3xl px-6 py-10 text-center transition-colors", fill && over && "bg-info-soft/60", className)}
       onDragEnter={(e) => { if (!isFiles(e)) return; e.preventDefault(); depth.current++; setOver(true); }}
       onDragOver={(e) => { if (!isFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
       onDragLeave={(e) => { if (!isFiles(e)) return; depth.current = Math.max(0, depth.current - 1); if (depth.current === 0) setOver(false); }}
@@ -189,24 +190,12 @@ function DropSurface({ fill, enabled = true, split, onFiles, className, label, c
       {fill && <PaperStack moving={over || (busy && progress?.phase !== "done")} />}
       {typeof children === "function" ? children(over) : children}
       {showOverlay && (
-        <div className={cn("absolute -inset-2 z-20 flex flex-col items-center justify-center rounded-3xl bg-info-soft/85 backdrop-blur-[2px]", split && over && !progress ? "lg:right-[396px]" : "pointer-events-none")}>
+        <div className="pointer-events-none absolute -inset-2 z-20 flex flex-col items-center justify-center rounded-3xl bg-info-soft/85 backdrop-blur-[2px]">
           <Ants active />
-          {split && over && !progress ? (
-            <div className="relative z-10 grid size-full grid-cols-2 gap-3 p-3">
-              {(["front", "back"] as const).map((sd) => (
-                <div key={sd} data-drop-side={sd} className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-info/50 bg-card/50 text-info-text transition-colors hover:border-info hover:bg-card/80">
-                  <Icon name={sd === "front" ? "image" : "flip"} className="pointer-events-none !text-[32px]" />
-                  <p className="pointer-events-none mt-2 text-base font-medium">Drop for {sd}</p>
-                  <p className="pointer-events-none mt-0.5 text-xs opacity-70">or drop two files for both</p>
-                </div>
-              ))}
-            </div>
-          ) : <>
-            <PaperStack moving={over || progress?.phase !== "done"} />
-            {over || !progress
-              ? <p className="mt-6 text-base font-medium text-info-text">{label ?? "Drop to upload"}</p>
-              : <div className="mt-6 flex w-full justify-center px-4"><UploadStatus /></div>}
-          </>}
+          <PaperStack moving={over || progress?.phase !== "done"} />
+          {over || !progress
+            ? <p className="mt-6 text-base font-medium text-info-text">{label ?? "Drop to upload"}</p>
+            : <div className="mt-6 flex w-full justify-center px-4"><UploadStatus /></div>}
         </div>
       )}
     </div>

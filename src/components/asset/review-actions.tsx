@@ -64,7 +64,7 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
     </div>
   );
   const title = mode === "approve" ? `Approve ${label}?` : mode === "changes" ? "What needs to change?" : `Reopen ${label}?`;
-  const desc = mode === "approve" ? `Everyone on ${eventTitle} is notified. You can reopen it later.` : mode === "changes" ? "Your note is posted as a comment and the designer is notified." : "It goes back to work-in-progress and everyone on the event is notified.";
+  const desc = mode === "approve" ? (decision === "changes_requested" ? `${label} has changes requested and no newer version has been uploaded since (it may have been reopened by accident). Approve it as it is? Everyone on ${eventTitle} is notified.` : `Everyone on ${eventTitle} is notified. You can reopen it later.`) : mode === "changes" ? "Your note is posted as a comment and the designer is notified." : "It goes back to work-in-progress and everyone on the event is notified.";
   const body = mode === "approve" ? approveBody : (
     <div className="flex flex-col gap-3">
       <Textarea autoFocus rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder={mode === "changes" ? "Move the date above the fold…" : "Why is it being reopened?"} />
