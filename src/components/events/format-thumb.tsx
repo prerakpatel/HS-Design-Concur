@@ -99,6 +99,7 @@ function InPlace({ mock, src, r, event }: { mock: Mockup; src: string; r: number
   if (mock === "browser") return <Browser src={src} r={r} />;
   if (mock === "print") return <Print src={src} r={r} />;
   if (mock === "youtube") return <YouTube src={src} />;
+  if (mock === "calendar") return <CalendarPage src={src} />;
   return (
     <Phone>
       {mock === "phone" && <div className="flex size-full items-center justify-center bg-black"><img src={src} alt="" className="max-h-full max-w-full object-contain" /></div>}
@@ -132,6 +133,20 @@ function Browser({ src, r }: { src: string; r: number }) {
       <div className="flex h-[6cqh] shrink-0 items-center gap-[2cqw] px-[3cqw]"><span className="h-[2.4cqh] w-[10%] rounded-sm bg-neutral-300" /><span className="ml-auto h-[1.4cqh] w-[8%] rounded-full bg-neutral-200" /><span className="h-[1.4cqh] w-[8%] rounded-full bg-neutral-200" /><span className="h-[1.4cqh] w-[8%] rounded-full bg-neutral-200" /></div>
       <img src={src} alt="" className="w-full shrink-0 object-cover" style={{ aspectRatio: String(r) }} />
       <div className="grid flex-1 grid-cols-3 gap-[2cqw] p-[3cqw]">{[0, 1, 2].map((i) => <div key={i}><span className="block aspect-[4/3] rounded-[0.8cqw] bg-neutral-100" /><Lines widths={[90, 60]} className="mt-[1.4cqw]" /></div>)}</div>
+    </div>
+  );
+}
+
+/**
+ * Wall calendar: the cover fills the picture area above the month page (a small compressed template,
+ * /mockups/calendar-page.webp, kept in the repo). The picture area is 14.25 × 8.75 in, like the cover format.
+ */
+const CAL = { w: 1762, top: 1081, bottom: 919 };
+function CalendarPage({ src }: { src: string }) {
+  return (
+    <div className="flex flex-col overflow-hidden rounded-[1.2cqmin] bg-white shadow-[0_10px_28px_-10px_rgba(0,0,0,.4)] ring-1 ring-black/10" style={fit(CAL.w / (CAL.top + CAL.bottom))}>
+      <img src={src} alt="" className="w-full object-cover" style={{ aspectRatio: `${CAL.w} / ${CAL.top}` }} />
+      <img src="/mockups/calendar-page.webp" alt="" className="w-full" style={{ aspectRatio: `${CAL.w} / ${CAL.bottom}` }} />
     </div>
   );
 }
