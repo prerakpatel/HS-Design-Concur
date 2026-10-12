@@ -7,6 +7,18 @@ export interface Release { id: string; title: string; items: string[] }
 
 export const RELEASES: Release[] = [
   {
+    id: "2026-10-12",
+    title: "Projects, asset requests and comments you can find on the design",
+    items: [
+      "Events are now Projects. New request → For event, or Assets only for thumbnails, covers and other designs not tied to an event (Harisumiran for now).",
+      "An assets-only request lists exactly what is needed (twelve calendar covers, four YouTube thumbnails), ends within 30 days and clears its files the day after; you hear 3 days before.",
+      "Comment markers are smaller and numbered to match their comment: tap either one to find the other, even on an older version.",
+      "When the primary design is approved, the chat and every designer on the event hear it's time to start the other formats; the primary also has a badge on its page.",
+      "Every format has an In place view (phone, Instagram, Sambandh, TV, LED wall, browser, print, YouTube) on the event and on its own page, and designs are never stretched.",
+      "The projects list shows uploads as well as approvals, and each organization has its own project slots in Settings.",
+    ],
+  },
+  {
     id: "2026-10-11",
     title: "Glossary, design previews in place and drag-and-drop uploads",
     items: [
