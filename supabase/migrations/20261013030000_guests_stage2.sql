@@ -99,3 +99,18 @@ end $$;
 -- Organisation rows (with the main channels' webhook links) are for members only: not for people still waiting
 -- for access, and not for guests. The sign-in page uses the org_branding view.
 alter policy org_read on organisations using ((select is_staff()));
+
+-- Speed: a member's every read also ran the guest check row by row, which roughly doubled the time of each query.
+-- The guest's project ids are now worked out once per query; a member with none skips the rest.
+create or replace function public.my_guest_event_ids() returns uuid[] language sql stable security definer set search_path = public as $$
+  select coalesce(array_agg(pm.event_id), '{}') from users u join project_members pm on pm.email = lower(u.email) join events e on e.id = pm.event_id
+  where u.id = auth.uid() and u.status = 'active' and e.status = 'active' and e.deleted_at is null
+$$;
+alter policy events_guest_read on events using (id = any ((select my_guest_event_ids())::uuid[]));
+alter policy briefs_guest_read on briefs using (event_id = any ((select my_guest_event_ids())::uuid[]));
+alter policy slots_guest_read on slots using (event_id = any ((select my_guest_event_ids())::uuid[]));
+alter policy versions_guest_read on versions using (cardinality((select my_guest_event_ids())::uuid[]) > 0 and slot_event(slot_id) = any ((select my_guest_event_ids())::uuid[]));
+alter policy sides_guest_read on version_sides using (cardinality((select my_guest_event_ids())::uuid[]) > 0 and version_event(version_id) = any ((select my_guest_event_ids())::uuid[]));
+alter policy comments_guest_read on comments using (cardinality((select my_guest_event_ids())::uuid[]) > 0 and version_event(version_id) = any ((select my_guest_event_ids())::uuid[]) and (not is_draft or author_id = auth.uid()));
+alter policy activity_guest_read on activity using (event_id = any ((select my_guest_event_ids())::uuid[]));
+alter policy assets_read on storage.objects using (bucket_id = 'assets' and (member_of(asset_path_org(name)) or (cardinality((select my_guest_event_ids())::uuid[]) > 0 and guest_path_ok(name))));
