@@ -30,6 +30,20 @@ Repeat for a second channel if ACC has its own (one webhook URL per channel).
 9. Vercel → the project → **Settings → Environment Variables** → add `SLACK_BOT_TOKEN` = that token, all environments, mark it sensitive → **Save** → **Deployments → ⋯ → Redeploy**.
 10. In the app: **Settings → Organizations → Match Slack members now**. It reports anyone whose Slack email differs from their sign-in email; those few paste their ID on their Profile (Slack: profile → ⋮ → **Copy member ID**). Comments keep their formatting in Slack: bold, italics, bullets, links and mentions; underline and colours have no Slack equivalent and are dropped.
 
+## A3 · Project channels (5 minutes, once)
+
+A project with guests (People → add someone outside the organisation) keeps its posts out of the main channels. Its
+creator, an approver, a designer or a Core Admin connects the project's own Slack channel or Google Chat space under
+**People → Project chat**. Google Chat takes the space's webhook (Apps & integrations → Webhooks → Add). Slack takes
+the channel link, posted to by the Design & Concur app, which needs one more permission:
+
+1. https://api.slack.com/apps → Design & Concur → **OAuth & Permissions** → **Bot Token Scopes** → add `chat:write`
+   (and `channels:read` + `groups:read` if you want the channel's name shown instead of "Slack channel").
+2. **Reinstall to Workspace** → **Allow**. The bot token usually stays the same; if Slack shows a new one, update `SLACK_BOT_TOKEN` on Vercel and redeploy.
+3. In each project channel: `/invite @Design & Concur`, then right-click the channel → **Copy link** → paste it in the app.
+
+Without `SLACK_BOT_TOKEN` the panel asks for the channel's incoming-webhook URL instead (A2, steps 2 to 4).
+
 ## B · Email (20 minutes, once)
 
 Email is sent through Resend (free tier: 3,000 emails a month, plenty for a team this size).

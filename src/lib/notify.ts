@@ -9,6 +9,7 @@ import { sendPush } from "@/lib/push";
 import { notificationText, notificationHref, chatLines } from "@/lib/labels";
 import { htmlToChat, mentionIds } from "@/lib/rich-text";
 import { loadGroups } from "@/lib/groups";
+import { projectRouting } from "@/lib/project-people";
 
 export type NotificationKind =
   | "access.requested" | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "comment.posted" | "comments.posted" | "changes.requested" | "comments.unsent" | "reviews.waiting" | "comments.pending"
@@ -97,11 +98,15 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
   }
   const text = notificationText(kind, payload);
   const href = appUrl(notificationHref(payload));
+  // A project with its own chat, or with guests, keeps its posts out of the organization's channels.
+  const routing = typeof payload.eventId === "string" ? await projectRouting(payload.eventId) : null;
 
   if (ids.length) { try { await sendPush(ids, { title: SUBJECT[kind](payload), body: text, href, tag: `${kind}:${payload.slotId ?? payload.eventId ?? ""}` }); } catch (e) { console.error("[push]", (e as Error).message); } }
 
   if (ids.length && orgs.every((o) => o.email_enabled ?? true)) {
-    const { data: users } = await supabase.from("users").select("id,email,name,email_pref").in("id", ids).eq("status", "active").eq("email_pref", "instant");
+    const { data: found } = await supabase.from("users").select("id,email,name,email_pref").in("id", ids).eq("status", "active").eq("email_pref", "instant");
+    // Guests are reached in the project's chat; email only while it has none.
+    const users = routing?.target ? (found ?? []).filter((u) => !routing.guestIds.includes(u.id as string)) : found;
     const results = await Promise.allSettled((users ?? []).map((u) =>
       sendEmail(u.email, SUBJECT[kind](payload), { heading: text, body: payload.excerpt ? `“${payload.excerpt}”` : `${payload.title ?? ""}`.trim() || " ", cta: { label: "Open in Design & Concur", href } })));
     const sent = (users ?? []).filter((_, i) => results[i].status === "fulfilled" && "ok" in (results[i] as PromiseFulfilledResult<{ ok?: true }>).value).map((u) => u.id);
@@ -121,8 +126,9 @@ async function deliver(supabase: SupabaseClient, ids: string[], kind: Notificati
     const explicit = new Set(Array.isArray(payload.groups) ? (payload.groups as string[]) : []);
     const someoneUngrouped = groups.length === 0 || audience.size === 0 || [...audience].some((id) => !grouped.has(id));
     const hookList: string[] = [];
-    if (milestone || someoneUngrouped || kind === "event.archived") hookList.push(...orgs.flatMap((o) => [o.chat_enabled && o.chat_webhook_url, o.slack_enabled && o.slack_webhook_url]).filter((h): h is string => !!h));
-    for (const g of groups) {
+    if (routing?.private) { if (routing.target) hookList.push(routing.target); }
+    else if (milestone || someoneUngrouped || kind === "event.archived") hookList.push(...orgs.flatMap((o) => [o.chat_enabled && o.chat_webhook_url, o.slack_enabled && o.slack_webhook_url]).filter((h): h is string => !!h));
+    for (const g of routing?.private ? [] : groups) {
       const touches = g.members.some((m) => audience.has(m));
       if (explicit.has(g.id) || g.hears === "all" || milestone || (g.hears === "own" && touches)) hookList.push(...[g.chat_webhook_url, g.slack_webhook_url].filter((h): h is string => !!h));
     }

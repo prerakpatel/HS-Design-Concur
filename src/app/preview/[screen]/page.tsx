@@ -29,9 +29,15 @@ import { MaintenanceCard } from "@/components/settings/maintenance-card";
 import { ProfileView } from "@/components/profile-view";
 import { noop, noopForm, noopUser } from "@/app/preview/actions";
 import * as F from "@/lib/fixtures";
+import { GuestShell } from "@/components/guest-shell";
+import { ProjectPeople } from "@/components/events/project-people";
+import type { ProjectPerson } from "@/lib/project-people";
+
+const P = (name: string, email: string, o: Partial<ProjectPerson> = {}): ProjectPerson => ({ email, userId: o.signedIn === false ? null : email, name, initials: name.split(" ").map((w) => w[0]).join("").slice(0, 2), avatar: null, guest: false, approver: false, creator: false, assigned: false, listed: true, signedIn: true, ...o });
+const PEOPLE: ProjectPerson[] = [P("Rina Desai", "rina@harisumiran.org", { creator: true, listed: false }), P("Anand Patel", "anand@harisumiran.org", { approver: true }), P("Pushkar Shah", "pushkar@harisumiran.org", { approver: true }), P("Nikhil Joshi", "nikhil@harisumiran.org", { assigned: true, listed: false }), P("Meera Vyas", "meera.vyas@gmail.com", { guest: true }), P("kiran.studio", "kiran.studio@gmail.com", { guest: true, signedIn: false })];
 
 export const dynamic = "force-dynamic";
-const SCREENS = ["events", "replace-flow", "wizard-assets-brief", "wizard-assets-items", "project-assets", "event", "event-archived", "upload-progress", "slot-empty", "slot", "slot-review", "slot-print", "slot-versions", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review"] as const;
+const SCREENS = ["events", "replace-flow", "wizard-assets-brief", "wizard-assets-items", "project-assets", "event", "event-archived", "upload-progress", "slot-empty", "slot", "slot-review", "slot-print", "slot-versions", "glossary", "hold", "maintenance", "profile", "settings", "groups", "requests", "formats", "inbox", "wizard-new", "wizard-event", "wizard-formats", "wizard-assign", "wizard-review", "guest-shared", "guest-event", "people", "people-empty"] as const;
 
 /** Design preview harness. Renders real components with fixture data so screens can be reviewed without a database. */
 export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
@@ -46,6 +52,20 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     </nav>
   );
 
+  const guestShell = (children: React.ReactNode) => <GuestShell user={{ name: "Meera Vyas", email: "meera.vyas@gmail.com", initials: "MV" }}>{children}</GuestShell>;
+  if (screen === "guest-shared") return guestShell(<>
+    <PageHeader title="Your projects" subtitle="Projects you were added to. Each one stays open to you until it is archived." />
+    <EventList items={F.EVENTS.filter((e) => e.status === "active").slice(0, 2)} />
+  </>);
+  if (screen === "guest-event") { const req = F.CARDS.filter((c) => c.requested); const ok = req.filter((c) => c.state === "approved").length; return guestShell(<>
+    <PageHeader back={<Link href="#" className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card pl-2 pr-3.5 text-sm font-medium"><Icon name="arrow_back" className="!text-[18px]" />Your projects</Link>} title="Diwali Annakut Darshan" subtitle="Sun 8 Nov 2026 · Harisumiran Mandir, Edison · Created by Rina Desai"
+      actions={<><ProjectPeople eventId="e-1" orgName="Harisumiran" people={PEOPLE} chat={{ platform: "slack", label: "#annakut-2026" }} canManage={false} suggestions={[]} slackChannels /><Button variant="outline"><Icon name="history" className="!text-[18px]" />Activity</Button></>} />
+    <div className="space-y-10"><BriefCard brief={{ ...F.BRIEF_VIEW, inviteText: F.BRIEF }} locked={false} canEdit={false} editHref="#" /><FormatGrid eventId="e-1" event={{ title: "Diwali Annakut Darshan", date: F.BRIEF_VIEW.date }} cards={F.CARDS} meta={`${ok} approved · ${req.length - ok} in progress`} /></div>
+  </>); }
+  if (screen === "people" || screen === "people-empty") return shell(<>
+    <PageHeader title="Diwali Annakut Darshan" subtitle="Sun 8 Nov 2026 · Harisumiran Mandir, Edison · Created by Rina Desai"
+      actions={<><ProjectPeople eventId="e-1" orgName="Harisumiran" people={screen === "people" ? PEOPLE : []} chat={null} canManage suggestions={[{ email: "dev@harisumiran.org", name: "Dev Mehta" }]} slackChannels /><Button variant="secondary">Edit event</Button></>} />
+  </>);
   if (screen === "events") return shell(<>
     <PageHeader title="Projects" subtitle={`${org.name} · 5 of 15 project slots in use`} actions={<NewRequest assets />} />
     {tabs([["upcoming", "Upcoming", 3], ["drafts", "Drafts", 1], ["past", "Past", 0]], "upcoming")}

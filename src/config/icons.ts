@@ -34,6 +34,7 @@ export const ICON_NAMES = [
   "expand_more",
   "flip",
   "folder",
+  "folder_shared",
   "format_bold",
   "format_color_text",
   "format_italic",
@@ -41,6 +42,7 @@ export const ICON_NAMES = [
   "format_underlined",
   "forum",
   "grid_on",
+  "group",
   "group_add",
   "groups",
   "history",
@@ -80,6 +82,7 @@ export const ICON_NAMES = [
   "unfold_more",
   "upload",
   "upload_file",
+  "warning",
   "workspace_premium",
   "zoom_out_map"
 ] as const;

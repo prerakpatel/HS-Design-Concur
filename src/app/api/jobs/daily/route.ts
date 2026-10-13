@@ -13,6 +13,7 @@ import { matchSlackIds } from "@/lib/slack";
 import { mentionIds, groupMentionIds } from "@/lib/rich-text";
 import { postRelease } from "@/lib/changelog";
 import { RELEASES } from "@/config/changelog";
+import { privateProjects } from "@/lib/project-people";
 import { getActiveUser } from "@/lib/auth";
 
 export const maxDuration = 60;
@@ -61,15 +62,20 @@ export async function GET(req: Request) {
   // chat post, one push, one in-app item), listing every design, until each is decided.
   const { data: waiting } = await db.from("versions").select("id,number,sent_at,uploaded_by,slots!inner(id,event_id,state,label,formats(name),events(title,status,org_id)),uploader:uploaded_by(name,email)").eq("decision", "pending").not("sent_at", "is", null).lte("sent_at", new Date(Date.now() - REVIEW_WAIT_HOURS * HOUR_MS).toISOString()).eq("slots.state", "in_review");
   type Waiting = { eventId: string; slotId: string; versionId: string; title: string; format: string; number: number; days: number; by: string | undefined; since: string; uploadedBy: string };
+  // Grouped per organization, except projects with their own chat or guests: each of those gets its own reminder in
+  // its own chat, so its titles never reach the organization's channels. Key: "<org>" or "<org>|<event>".
+  const privateWaiting = await privateProjects((waiting ?? []).map((v) => (v.slots as unknown as { event_id: string }).event_id));
   const waitingByOrg = new Map<string, Waiting[]>();
   for (const v of waiting ?? []) {
     const slot = v.slots as unknown as { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string } };
     if (slot.events.status !== "active") continue;
     const up = v.uploader as unknown as { name: string | null; email: string } | null;
     const row: Waiting = { eventId: slot.event_id, slotId: slot.id, versionId: v.id, title: slot.events.title, format: slotName(slot.formats.name, slot.label), number: v.number, days: Math.floor((Date.now() - new Date(v.sent_at).getTime()) / DAY_MS), by: up?.name ?? up?.email, since: v.sent_at, uploadedBy: v.uploaded_by };
-    waitingByOrg.set(slot.events.org_id, [...(waitingByOrg.get(slot.events.org_id) ?? []), row]);
+    const key = privateWaiting.has(slot.event_id) ? `${slot.events.org_id}|${slot.event_id}` : slot.events.org_id;
+    waitingByOrg.set(key, [...(waitingByOrg.get(key) ?? []), row]);
   }
-  for (const [orgId, rows] of waitingByOrg) {
+  for (const [key, rows] of waitingByOrg) {
+    const [orgId, privateEvent] = key.split("|");
     const approvers = await approverIds(db, orgId);
     if (approvers.length === 0) continue;
     rows.sort((a, b) => b.days - a.days);
@@ -79,10 +85,11 @@ export async function GET(req: Request) {
       if (dup?.length) continue;
       await notify(db, approvers, "review.waiting", { eventId: r.eventId, slotId: r.slotId, versionId: r.versionId, title: r.title, format: r.format, number: r.number, by: r.by, since: r.since, days: r.days, day: today }, r.uploadedBy, { orgId });
     } else {
-      const { data: dup } = await db.from("notifications").select("id").eq("kind", "reviews.waiting").contains("payload", { orgId, day: today }).limit(1);
+      const scope = privateEvent ? { orgId, eventId: privateEvent } : { orgId };
+      const { data: dup } = await db.from("notifications").select("id").eq("kind", "reviews.waiting").contains("payload", { ...scope, day: today }).limit(1);
       if (dup?.length) continue;
       const items = rows.slice(0, 15).map((r) => ({ title: r.title, format: r.format, number: r.number, days: r.days }));
-      await notify(db, approvers, "reviews.waiting", { orgId, day: today, count: rows.length, items, title: items.slice(0, 3).map((i) => `${i.title} · ${i.format}`).join(" · ") + (rows.length > 3 ? ` · +${rows.length - 3} more` : "") }, undefined, { orgId });
+      await notify(db, approvers, "reviews.waiting", { ...scope, day: today, count: rows.length, items, title: items.slice(0, 3).map((i) => `${i.title} · ${i.format}`).join(" · ") + (rows.length > 3 ? ` · +${rows.length - 3} more` : "") }, undefined, { orgId });
     }
     report.waiting = ((report.waiting as number) ?? 0) + rows.length;
   }
@@ -146,9 +153,17 @@ export async function GET(req: Request) {
   }
   // The whole-channel ping goes out on alternate days; the post itself is daily.
   const pingToday = Math.floor(new Date(`${today}T00:00:00Z`).getTime() / DAY_MS) % 2 === 0;
+  // As above: a project with its own chat or guests gets its own post there; the rest one post per organization.
+  const privateOpen = await privateProjects([...assetsByOrg.values()].flatMap((m) => [...m.values()].map((a) => a.eventId)));
   for (const [orgId, byAsset] of assetsByOrg) {
-    const assets = [...byAsset.values()].sort((x, y) => y.open - x.open).slice(0, 15);
-    await notify(db, [], "comments.pending", { assets, total: byAsset.size, day: today, orgId, pingAll: pingToday, ...(assets.length === 1 ? { eventId: assets[0].eventId, slotId: assets[0].slotId } : {}) }, undefined, { orgId, mention: [] });
+    const all = [...byAsset.values()];
+    const posts = [all.filter((a) => !privateOpen.has(a.eventId)), ...[...new Set(all.map((a) => a.eventId))].filter((id) => privateOpen.has(id)).map((id) => all.filter((a) => a.eventId === id))];
+    for (const group of posts) {
+      if (!group.length) continue;
+      const assets = group.sort((x, y) => y.open - x.open).slice(0, 15);
+      const own = privateOpen.has(group[0].eventId);
+      await notify(db, [], "comments.pending", { assets, total: group.length, day: today, orgId, pingAll: pingToday, ...(assets.length === 1 || own ? { eventId: assets[0].eventId } : {}), ...(assets.length === 1 ? { slotId: assets[0].slotId } : {}) }, undefined, { orgId, mention: [] });
+    }
   }
 
   // 2. Retention (+ tell the creator and the chat that an event was archived)

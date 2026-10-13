@@ -4,6 +4,7 @@ import { QUIET_RESEND_MINUTES } from "@/config/limits";
 import { slotName } from "@/lib/project";
 import { revalidatePath } from "next/cache";
 import { requireActiveUser } from "@/lib/auth";
+import { loadProjectPeople } from "@/lib/project-people";
 import { notify, eventParticipants, taggedMemberIds, approverIds } from "@/lib/notify";
 import { signedUrl, BUCKET } from "@/lib/storage";
 import { assetFilename } from "@/lib/labels";
@@ -137,7 +138,12 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
   const ctx = await loadVersion(versionId);
   const { supabase, user, org, slot } = ctx;
   const html = sanitizeComment(body); const text = plainText(html); if (!text) throw new UserError("Empty comment");
-  const { data: members } = await supabase.from("users").select("id,name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id);
+  const [{ data: orgMembers }, people0] = await Promise.all([
+    supabase.from("users").select("id,name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id),
+    loadProjectPeople(supabase, ctx.event),
+  ]);
+  // The project's guests can be @mentioned too; they are on its People list, not in the organization.
+  const members = [...(orgMembers ?? []), ...people0.filter((p) => p.guest && p.userId).map((p) => ({ id: p.userId!, name: p.name, email: p.email }))];
   // Mentions come from the editor's @ chips; typed "@first" still counts for people who skip the popup.
   const people = mentionIds(html).filter((id) => (members ?? []).some((m) => m.id === id));
   const mentions = new Set<string>(people);

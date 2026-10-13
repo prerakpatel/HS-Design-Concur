@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
-import { requireActiveUser, initials } from "@/lib/auth";
+import { requireViewer, projectAccess, initials } from "@/lib/auth";
+import { loadProjectPeople, loadChatLink } from "@/lib/project-people";
+import { ProjectPeople } from "@/components/events/project-people";
 import { signedUrl } from "@/lib/storage";
 import { formatSize } from "@/lib/labels";
 import { PageHeader, BackLink } from "@/components/page-header";
@@ -21,15 +23,25 @@ const VERB: Record<string, (p: Record<string, string>) => string> = { "event.cre
 
 export default async function EventPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ activity?: string }> }) {
   const { id } = await params; const showActivity = (await searchParams).activity === "1";
-  const { supabase, org, user, isApprover } = await requireActiveUser();
+  const viewer = await requireViewer();
+  const { supabase, user } = viewer;
+  // Row-level security answers for members of the project's organization and for guests on its People list.
   const { data: event } = await supabase.from("events").select("*").eq("id", id).is("deleted_at", null).maybeSingle<EventRow>();
-  if (!event || event.org_id !== org.id) notFound();
-  const [{ data: brief }, { data: slots }, { data: formats }, { data: activity }, { data: creator }] = await Promise.all([
+  if (!event) notFound();
+  const { guest, org, isApprover } = projectAccess(viewer, event.org_id);
+  // A member works in one organization at a time (the switcher); another organization's project is not found here.
+  if (!guest && event.org_id !== viewer.member?.org.id) notFound();
+  const [{ data: brief }, { data: slots }, { data: formats }, { data: activity }, { data: creator }, people, chatLink, { data: canManage }, { data: orgPeople }] = await Promise.all([
     supabase.from("briefs").select("*").eq("event_id", id).maybeSingle<Brief>(),
     supabase.from("slots").select("*,assignee:assignee_id(name,email,avatar_url),versions(id,number,uploaded_by,created_at,sent_at,version_sides(side,thumb_path,reference_path))").eq("event_id", id),
     supabase.from("formats").select("*").order("sort").returns<Format[]>(),
     supabase.from("activity").select("*,actor:actor_id(name,email,avatar_url)").eq("event_id", id).order("created_at", { ascending: false }).limit(12),
     supabase.from("users").select("name,email").eq("id", event.created_by).maybeSingle(),
+    loadProjectPeople(supabase, event),
+    loadChatLink(event.id),
+    guest ? Promise.resolve({ data: false }) : supabase.rpc("can_manage_project", { p_event: event.id }),
+    // Suggestions while adding someone: the organization's members (never shown to a guest).
+    guest ? Promise.resolve({ data: [] }) : supabase.from("users").select("name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", event.org_id),
   ]);
   const assets = isAssets(event);
   const bySlotFormat = new Map((slots ?? []).map((s) => [s.format_id, s]));
@@ -49,19 +61,22 @@ export default async function EventPage({ params, searchParams }: { params: Prom
   // Requests keep the order they were listed in; events put the primary and the earliest work first.
   const cards: FormatCardData[] = (assets ? built : orderSlots(built.map((c) => ({ ...c, is_primary: c.isPrimary })))).map((c) => { const { sort, firstUploadAt, ...rest } = c as typeof c & { is_primary?: boolean }; void sort; void firstUploadAt; delete rest.is_primary; return rest as FormatCardData; });
   const requested = cards.filter((c) => c.requested); const approved = requested.filter((c) => c.state === "approved").length;
-  const canDelete = user.role === "core_admin" || event.created_by === user.id;
+  const canDelete = !guest && (user.role === "core_admin" || event.created_by === user.id);
+  const listed = new Set(people.map((p) => p.email));
+  const peopleButton = event.status !== "draft" && (!guest || people.length > 0) ? <ProjectPeople eventId={id} orgName={org?.name ?? "the organization"} people={people} chat={chatLink} canManage={!!canManage && event.status === "active"} slackChannels={!!process.env.SLACK_BOT_TOKEN}
+    suggestions={((orgPeople ?? []) as { name: string | null; email: string }[]).filter((u) => !listed.has(u.email.toLowerCase())).map((u) => ({ email: u.email.toLowerCase(), name: u.name ?? u.email }))} /> : null;
   const d = event.event_date ? format(new Date(event.event_date + "T00:00:00"), "EEE d MMM yyyy") : "Date not set";
   return (
     <>
-      <PageHeader back={<BackLink href="/events" label="Projects" />}
+      <PageHeader back={guest ? <BackLink href="/shared" label="Your projects" /> : <BackLink href="/events" label="Projects" />}
         title={event.title} subtitle={`${assets ? `Assets only · ends ${event.event_date ? format(new Date(event.event_date + "T00:00:00"), "EEE d MMM") : "date not set"}` : `${d} · ${event.venue ?? "Venue not set"}`}${creator ? ` · Created by ${creator.name ?? creator.email}` : ""}`}
-        actions={<>{event.status === "archived" ? <StateBadge state="requested" label="Archived · read-only" className="h-8 px-3 text-sm" /> : <>{event.status === "draft" && <StateBadge state="draft" className="h-8 px-3 text-sm" />}<Button asChild variant="secondary"><Link href={`/events/${id}/edit/${event.status === "draft" ? "review" : "event"}`}>{event.status === "draft" ? "Continue setup" : assets ? "Edit request" : "Edit event"}</Link></Button></>}<Button asChild variant={showActivity ? "secondary" : "outline"}><Link href={showActivity ? `/events/${id}` : `/events/${id}?activity=1`}><Icon name="history" className="!text-[18px]" />Activity{activity?.length ? ` · ${activity.length}` : ""}</Link></Button>{event.status !== "archived" && canDelete && <EventMenu title={event.title} isDraft={event.status === "draft"} remove={async () => { "use server"; await deleteEvent(id); }} />}</>} />
+        actions={<>{peopleButton}{event.status === "archived" ? <StateBadge state="requested" label="Archived · read-only" className="h-8 px-3 text-sm" /> : guest ? null : <>{event.status === "draft" && <StateBadge state="draft" className="h-8 px-3 text-sm" />}<Button asChild variant="secondary"><Link href={`/events/${id}/edit/${event.status === "draft" ? "review" : "event"}`}>{event.status === "draft" ? "Continue setup" : assets ? "Edit request" : "Edit event"}</Link></Button></>}<Button asChild variant={showActivity ? "secondary" : "outline"}><Link href={showActivity ? `/events/${id}` : `/events/${id}?activity=1`}><Icon name="history" className="!text-[18px]" />Activity{activity?.length ? ` · ${activity.length}` : ""}</Link></Button>{event.status !== "archived" && canDelete && <EventMenu title={event.title} isDraft={event.status === "draft"} remove={async () => { "use server"; await deleteEvent(id); }} />}</>} />
       <div className={showActivity ? "grid gap-10 lg:grid-cols-[1fr_280px]" : "grid gap-10"}>
         <div className="space-y-10">
-          <BriefCard assets={assets} brief={{ date: event.event_date, timeText: brief?.time_text ?? null, inviteText: brief?.description ?? null, venueName: brief?.venue_name ?? event.venue ?? null, venueAddress: brief?.venue_address ?? null, notes: brief?.notes ?? null }} locked={!!event.brief_locked_at || event.status === "archived"} editHref={event.status === "archived" ? "#" : `/events/${id}/edit/event`} />
+          <BriefCard assets={assets} brief={{ date: event.event_date, timeText: brief?.time_text ?? null, inviteText: brief?.description ?? null, venueName: brief?.venue_name ?? event.venue ?? null, venueAddress: brief?.venue_address ?? null, notes: brief?.notes ?? null }} locked={!!event.brief_locked_at || event.status === "archived"} canEdit={!guest} editHref={event.status === "archived" ? "#" : `/events/${id}/edit/event`} />
           {event.status === "archived" && event.purged_at
             ? (() => { const ref = cards.find((c) => c.thumb && c.isPrimary) ?? cards.find((c) => c.thumb); return <ArchivedReference assets={assets} src={assets ? null : (ref?.thumb ?? null)} formatName={assets ? null : (ref?.name ?? null)} approved={approved} requested={requested.length} />; })()
-            : <FormatGrid eventId={id} event={{ title: event.title, date: event.event_date }} cards={cards} downloadable={cards.filter((c) => c.requested && c.state === "approved" && c.thumb).length} canApprove={event.status !== "archived" && isApprover} title={assets ? "Assets" : undefined} meta={assets ? `${approved} approved · ${requested.length - approved} in progress` : `${approved} approved · ${requested.length - approved} in progress · ${cards.length - requested.length} N/A`}  />}
+            : <FormatGrid eventId={id} event={{ title: event.title, date: event.event_date }} cards={cards} downloadable={guest ? 0 : cards.filter((c) => c.requested && c.state === "approved" && c.thumb).length} canApprove={event.status !== "archived" && isApprover} title={assets ? "Assets" : undefined} meta={assets ? `${approved} approved · ${requested.length - approved} in progress` : `${approved} approved · ${requested.length - approved} in progress · ${cards.length - requested.length} N/A`}  />}
         </div>
         {showActivity && <ActivityFeed items={(activity ?? []).map((a) => { const who = a.actor as unknown as { name: string | null; email: string; avatar_url: string | null } | null; return { id: a.id, who: who?.name ?? who?.email ?? "Design & Concur", initials: initials(who?.name ?? null, who?.email ?? "?"), avatar: who?.avatar_url ?? null, what: (VERB[a.kind] ?? (() => a.kind))(a.payload as Record<string, string>), when: a.created_at }; })} />}
       </div>

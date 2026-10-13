@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireActiveUser } from "@/lib/auth";
+import { requireViewer } from "@/lib/auth";
 import { after } from "next/server";
 import { markAllRead } from "@/app/actions/inbox";
 import { updateEmailPref } from "@/app/actions/prefs";
@@ -15,7 +15,7 @@ export const metadata = { title: "Inbox" };
 const ICONS: Record<string, string> = { "access.approved": "how_to_reg", "slot.assigned": "assignment_ind", "slot.due": "schedule", "event.published": "campaign", "version.uploaded": "upload", "review.waiting": "pending_actions", "reviews.waiting": "pending_actions", "comments.pending": "check_circle", "version.changes_requested": "rule", "changes.requested": "rule", "version.approved": "check_circle", "primary.approved": "workspace_premium", "project.ending": "hourglass_bottom", "version.reopened": "replay", "comment.mention": "alternate_email", "comment.posted": "chat_bubble", "comments.posted": "forum", "comments.unsent": "edit_note", "versions.approved": "done_all", "event.all_approved": "celebration", "access.requested": "person_add", "event.archived": "inventory_2", "event.deleted": "delete", "draft.expiring": "hourglass_top", "draft.swept": "auto_delete", "devices.refresh": "devices" };
 
 export default async function InboxPage() {
-  const { supabase, user } = await requireActiveUser();
+  const { supabase, user, member } = await requireViewer();
   const { data } = await supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(60);
   const items = data ?? []; const unread = items.filter((n) => !n.read_at).length;
   // Opening the Inbox counts as reading it: this view still shows what was new, the next one (and the app badge) will not.
@@ -26,7 +26,7 @@ export default async function InboxPage() {
       <div className="mb-8 space-y-3">
       <PushToggle publicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} />
       {/* Email is on hold until a sender domain exists; the row appears by itself once RESEND_API_KEY and EMAIL_FROM are set. */}
-      {emailConfigured() && (
+      {member && emailConfigured() && (
       <form action={updateEmailPref} className="flex flex-col gap-3 rounded-2xl bg-subtle p-5 md:flex-row md:items-center md:gap-4">
         <div className="min-w-0 flex-1"><p className="text-sm font-medium">Email me</p><p className="text-sm text-muted-foreground">Approvals, mentions, assignments and due dates. Everything always shows here too.</p></div>
         <div className="flex gap-2"><SelectField name="email_pref" defaultValue={user.email_pref} className="w-52"><option value="instant">as things happen</option><option value="digest">once a day</option><option value="off">never</option></SelectField><Button type="submit" variant="secondary" size="lg">Save</Button></div>

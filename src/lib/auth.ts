@@ -42,14 +42,40 @@ export async function getActiveUser(): Promise<ActiveContext | null> {
   return { ...session, org, isApprover: session.approverOrgIds.has(org.id) };
 }
 
-/** Active user with at least one org, or redirect (pages and server actions). */
+/** Active user with at least one org, or redirect (pages and server actions). Guests go to their shared projects. */
 export async function requireActiveUser(): Promise<ActiveContext> {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.user.status !== "active" || session.orgs.length === 0) redirect("/awaiting");
+  if (session.user.status !== "active") redirect("/awaiting");
+  if (session.orgs.length === 0) redirect("/shared");
   const ctx = await getActiveUser();
   if (!ctx) redirect("/awaiting");
   return ctx;
+}
+
+export type Viewer = NonNullable<Awaited<ReturnType<typeof getSession>>> & {
+  /** The member context (current organization), or null for a guest: active, in no organization. */
+  member: ActiveContext | null;
+};
+
+/**
+ * Anyone signed in and active: a member, or a guest who only sees the projects whose People list has their email
+ * (row-level security decides which). For the few pages a guest may open: their projects, a project, an asset, Inbox.
+ */
+export async function requireViewer(): Promise<Viewer> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.status !== "active") redirect("/awaiting");
+  return { ...session, member: session.orgs.length ? await getActiveUser() : null };
+}
+
+/**
+ * How this person sees one project: as a member of its organization (approving per that organization), or as a guest.
+ * Only call it with an event the person could read, so "not a member" means they are on its People list.
+ */
+export function projectAccess(viewer: Pick<Viewer, "orgs" | "approverOrgIds">, eventOrgId: string) {
+  const org = viewer.orgs.find((o) => o.id === eventOrgId) ?? null;
+  return { guest: !org, org, isApprover: !!org && viewer.approverOrgIds.has(org.id) };
 }
 
 export function initials(name: string | null, email: string) {

@@ -9,7 +9,7 @@ export const metadata = { title: "Awaiting access" };
 export default async function AwaitingPage() {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.user.status === "active" && session.orgs.length > 0) redirect("/events");
+  if (session.user.status === "active") redirect(session.orgs.length > 0 ? "/events" : "/shared");
   const removed = session.user.status === "removed";
   return (
     <main className="flex min-h-dvh items-center justify-center bg-subtle p-6">

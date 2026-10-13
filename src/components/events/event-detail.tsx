@@ -12,12 +12,12 @@ export interface ActivityItem { id: string | number; who: string; initials: stri
 
 export interface BriefView { date: string | null; timeText: string | null; inviteText: string | null; venueName: string | null; venueAddress: string | null; notes: string | null }
 /** What goes on the designs: when, where, the invite text. */
-export function BriefCard({ brief, locked, editHref, assets = false }: { brief: BriefView; locked: boolean; editHref: string; /** Assets-only request: an end date instead of when/where. */ assets?: boolean }) {
+export function BriefCard({ brief, locked, editHref, assets = false, canEdit = true }: { brief: BriefView; locked: boolean; editHref: string; /** Assets-only request: an end date instead of when/where. */ assets?: boolean; /** False for a guest: no Edit link. */ canEdit?: boolean }) {
   const ask = assets ? "What is needed" : "Invite text";
   const dt = "text-xs font-medium uppercase tracking-wide text-muted-foreground";
   return (
     <section className="rounded-2xl bg-subtle p-5">
-      <div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-semibold leading-7 tracking-[-0.01em]">Brief</h2>{locked ? <StateBadge state="requested" label="Locked · changes via comments" /> : <Link href={editHref} className="text-sm font-medium underline-offset-4 hover:underline">Edit</Link>}</div>
+      <div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-semibold leading-7 tracking-[-0.01em]">Brief</h2>{locked ? <StateBadge state="requested" label="Locked · changes via comments" /> : canEdit && <Link href={editHref} className="text-sm font-medium underline-offset-4 hover:underline">Edit</Link>}</div>
       {assets ? (
         // Requests are for people who know the drill: the end date and the first lines of what is needed. The rest
         // (what happens at the end, the type, the full text, notes) sits behind "See all details".

@@ -2,9 +2,10 @@ export interface ChatImage { url: string; alt: string; href: string }
 import { UserError } from "@/lib/user-error";
 
 /**
- * Google Chat or Slack incoming webhook. Both take { text } with the same *bold* and <url|label> markup; with an
- * `image`, Slack gets a Block Kit section + image and Google Chat a card under the text, both linking to `href`.
- * Failures are returned, never thrown.
+ * Post to a chat target: a Google Chat or Slack incoming webhook URL, or `slack:<channel id>` for a channel the
+ * Slack app was invited to (a project's own channel). All take { text } with the same *bold* and <url|label>
+ * markup; with an `image`, Slack gets a Block Kit section + image and Google Chat a card under the text, both
+ * linking to `href`. Failures are returned, never thrown.
  */
 export async function postChat(webhookUrl: string, text: string, image?: ChatImage | null) {
   const body: Record<string, unknown> = { text };
@@ -12,6 +13,7 @@ export async function postChat(webhookUrl: string, text: string, image?: ChatIma
     if (platformOf(webhookUrl) === "slack") body.blocks = [{ type: "section", text: { type: "mrkdwn", text } }, { type: "image", image_url: image.url, alt_text: image.alt.slice(0, 2000) }];
     else body.cardsV2 = [{ cardId: "preview", card: { sections: [{ widgets: [{ image: { imageUrl: image.url, altText: image.alt, onClick: { openLink: { url: image.href } } } }] }] } }];
   }
+  if (webhookUrl.startsWith(SLACK_CHANNEL)) return postSlackChannel(webhookUrl.slice(SLACK_CHANNEL.length), body);
   try {
     const res = await fetch(webhookUrl, { method: "POST", headers: { "Content-Type": "application/json; charset=UTF-8" }, body: JSON.stringify(body) });
     if (!res.ok) {
@@ -25,10 +27,29 @@ export async function postChat(webhookUrl: string, text: string, image?: ChatIma
   } catch (e) { return { error: (e as Error).message }; }
 }
 
+import { SLACK_CHANNEL } from "@/lib/chat-target";
+export { SLACK_CHANNEL, parseChatTarget } from "@/lib/chat-target";
+
+/** Post as the Slack app (bot token, chat:write). Its errors are turned into what to do next. */
+async function postSlackChannel(channel: string, body: Record<string, unknown>): Promise<{ ok: true } | { error: string }> {
+  const token = process.env.SLACK_BOT_TOKEN;
+  if (!token) return { error: "Slack is not set up for channel links yet (SLACK_BOT_TOKEN is missing). Paste the channel's incoming-webhook URL instead." };
+  try {
+    const res = await fetch("https://slack.com/api/chat.postMessage", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=utf-8" }, body: JSON.stringify({ channel, unfurl_links: false, ...body }) });
+    const data = (await res.json()) as { ok: boolean; error?: string };
+    if (data.ok) return { ok: true };
+    if (data.error === "not_in_channel" || data.error === "channel_not_found") return { error: "The Design & Concur app is not in that channel yet. In the channel, type /invite @Design & Concur, then connect again." };
+    if (data.error === "missing_scope") return { error: "The Slack app needs one more permission (chat:write) before it can post to project channels. See docs/notifications.md → Project channels." };
+    if (data.error === "is_archived") return { error: "That Slack channel is archived." };
+    return { error: `Slack said ${data.error ?? res.status}` };
+  } catch (e) { return { error: (e as Error).message }; }
+}
+
 export type ChatPlatform = "gchat" | "slack";
 
-/** Which platform a webhook URL belongs to; decides the @mention syntax. */
-export function platformOf(webhookUrl: string): ChatPlatform { return /hooks\.slack\.com/.test(webhookUrl) ? "slack" : "gchat"; }
+/** Which platform a chat target belongs to; decides the @mention syntax. */
+export function platformOf(webhookUrl: string): ChatPlatform { return webhookUrl.startsWith(SLACK_CHANNEL) || /hooks\.slack\.com/.test(webhookUrl) ? "slack" : "gchat"; }
+
 
 /** Chat text formatting shared by Google Chat and Slack: *bold*, _italic_, <url|label>. */
 export const chat = { bold: (s: string) => `*${s.replace(/\*/g, "")}*`, link: (url: string, label: string) => `<${url}|${label.replace(/[<>|]/g, "")}>` };

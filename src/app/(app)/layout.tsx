@@ -1,11 +1,15 @@
 import { cookies } from "next/headers";
 import { capFor } from "@/lib/project";
 import { AppShell } from "@/components/app-shell";
-import { requireActiveUser, initials } from "@/lib/auth";
+import { GuestShell } from "@/components/guest-shell";
+import { requireViewer, initials } from "@/lib/auth";
 import { RELEASES, LATEST_RELEASE } from "@/config/changelog";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { supabase, user, orgs, org, isApprover } = await requireActiveUser();
+  const viewer = await requireViewer();
+  // A guest (no organization) gets the plain frame; each page below decides whether a guest may open it at all.
+  if (!viewer.member) return <GuestShell user={{ name: viewer.user.name ?? viewer.user.email, email: viewer.user.email, initials: initials(viewer.user.name, viewer.user.email), avatar: viewer.user.avatar_url }}>{children}</GuestShell>;
+  const { supabase, user, orgs, org, isApprover } = viewer.member;
   const sidebarOpen = (await cookies()).get("sidebar_state")?.value !== "false";
   const [{ count }, { data: shared }] = await Promise.all([
     supabase.from("events").select("id", { count: "exact", head: true }).eq("org_id", org.id).eq("status", "active").is("deleted_at", null),
