@@ -2,7 +2,6 @@ import { makePreview } from "@/lib/images";
 import { BUCKET } from "@/lib/storage";
 import { createServiceClient } from "@/lib/supabase/service";
 import { MARK_VERSION } from "@/config/marks";
-import type { ActiveContext } from "@/lib/auth";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -10,7 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * the service client then writes the new file and bumps mark_version. New path per generation so no CDN cache serves
  * the old image.
  */
-export async function refreshPreviews(ctx: ActiveContext, sideIds: string[]) {
+export async function refreshPreviews(ctx: { supabase: SupabaseClient }, sideIds: string[]) {
   const { data: sides } = await ctx.supabase.from("version_sides").select("id,optimised_path,preview_path,mime,mark_version").in("id", sideIds.slice(0, 8));
   return restamp(createServiceClient(), sides ?? []);
 }

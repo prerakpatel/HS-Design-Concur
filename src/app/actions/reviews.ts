@@ -3,7 +3,8 @@ import { MINUTE_MS } from "@/lib/time";
 import { QUIET_RESEND_MINUTES } from "@/config/limits";
 import { slotName } from "@/lib/project";
 import { revalidatePath } from "next/cache";
-import { requireActiveUser } from "@/lib/auth";
+import { requireViewer, projectContext } from "@/lib/auth";
+import { serviceOr } from "@/lib/supabase/service";
 import { loadProjectPeople } from "@/lib/project-people";
 import { notify, eventParticipants, taggedMemberIds, approverIds } from "@/lib/notify";
 import { signedUrl, BUCKET } from "@/lib/storage";
@@ -12,11 +13,13 @@ import { recomputeSlotState } from "@/lib/slot-state";
 import { sanitizeComment, plainText, mentionIds, groupMentionIds } from "@/lib/rich-text";
 import { UserError } from "@/lib/user-error";
 
+/** The version and its project, for a member of the project's organization or a guest on the project. */
 async function loadVersion(versionId: string) {
-  const ctx = await requireActiveUser();
-  const { data: v } = await ctx.supabase.from("versions").select("*,slots(id,event_id,assignee_id,state,is_primary,label,formats(name),events(id,org_id,title,status,created_by))").eq("id", versionId).maybeSingle();
+  const viewer = await requireViewer();
+  const { data: v } = await viewer.supabase.from("versions").select("*,slots(id,event_id,assignee_id,state,is_primary,label,formats(name),events(id,org_id,title,status,created_by))").eq("id", versionId).maybeSingle();
   const slot = v?.slots as unknown as { id: string; event_id: string; assignee_id: string | null; state: string; is_primary: boolean; label: string | null; formats: { name: string }; events: { id: string; org_id: string; title: string; status: string; created_by: string } } | null;
-  if (!v || !slot || slot.events.org_id !== ctx.org.id) throw new UserError("Version not found");
+  const ctx = slot ? projectContext(viewer, slot.events.org_id) : null;
+  if (!v || !slot || !ctx) throw new UserError("Version not found");
   if (slot.events.status === "archived") throw new UserError("This event is archived and read-only");
   return { ...ctx, version: v, slot, event: slot.events, formatName: slotName(slot.formats?.name, slot.label) };
 }
@@ -36,7 +39,7 @@ async function assertDecidable({ supabase, version, slot }: Loaded, verb: string
  * replace it or add the back side first; this is the moment the slot moves to In review and people are told.
  */
 export async function sendForReview(versionId: string) {
-  const { supabase, user, org, version, slot, event, formatName } = await loadVersion(versionId);
+  const { supabase, user, org, version, slot, event, formatName, guest } = await loadVersion(versionId);
   if (version.uploaded_by !== user.id && slot.assignee_id !== user.id && user.role !== "core_admin") throw new UserError("Only the uploader, the assigned designer or a Core Admin can send this for review");
   if (version.sent_at) throw new UserError("This version is already with the approvers");
   if (version.decision !== "pending") throw new UserError("Only a pending version can be sent");
@@ -55,12 +58,14 @@ export async function sendForReview(versionId: string) {
     ]);
     quietResend = !decided?.length && !talked?.length;
   }
-  await supabase.from("versions").update({ decision: "superseded" }).eq("slot_id", slot.id).neq("id", versionId).in("decision", ["pending", "changes_requested"]);
+  // Older open versions step aside. A guest may not change other people's versions, so theirs runs with the service key.
+  await (guest ? serviceOr(supabase) : supabase).from("versions").update({ decision: "superseded" }).eq("slot_id", slot.id).neq("id", versionId).in("decision", ["pending", "changes_requested"]);
   await supabase.from("versions").update({ sent_at: now }).eq("id", versionId);
   await supabase.from("slots").update({ state: "in_review", updated_at: now }).eq("id", slot.id);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.sent", payload: { format: formatName, number: version.number, ...(quietResend ? { resent: true } : {}) } });
   if (quietResend) { revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`); return { ok: true, quiet: true }; }
-  const approvers = await approverIds(supabase, org.id);
+  // Read with the service key when a guest sends: they may not see the organization's approvers.
+  const approvers = await approverIds(serviceOr(supabase), org.id);
   await notify(supabase, [...approvers, event.created_by], "version.uploaded", { eventId: event.id, slotId: slot.id, versionId, title: event.title, format: formatName, number: version.number, by: user.name ?? user.email }, user.id, { orgId: org.id });
   revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`);
   return { ok: true };
@@ -256,12 +261,14 @@ export async function discardCommentBatch(versionId: string) {
 /** addressed ("done") and reopen: anyone on the event. confirmed: approvers. */
 export async function setCommentFlag(commentId: string, flag: "addressed" | "unaddress" | "confirmed" | "reopen") {
   if (!["addressed", "unaddress", "confirmed", "reopen"].includes(flag)) throw new UserError("Unknown action");
-  const { supabase, user, org, isApprover } = await requireActiveUser();
-  const { data: c } = await supabase.from("comments").select("confirmed_at,versions(slots(events(org_id)))").eq("id", commentId).maybeSingle();
+  const viewer = await requireViewer();
+  const { data: c } = await viewer.supabase.from("comments").select("confirmed_at,versions(slots(events(org_id)))").eq("id", commentId).maybeSingle();
   if (!c) throw new UserError("Comment not found");
   // Being an approver is per organisation: judge it against the organisation this comment belongs to.
   const commentOrg = (c.versions as unknown as { slots: { events: { org_id: string } } } | null)?.slots?.events?.org_id;
-  if (commentOrg !== org.id) throw new UserError("Comment not found");
+  const ctx = commentOrg ? projectContext(viewer, commentOrg) : null;
+  if (!ctx) throw new UserError("Comment not found");
+  const { supabase, user, isApprover } = ctx;
   const now = new Date().toISOString();
   const patch = flag === "addressed" ? { addressed_at: now, addressed_by: user.id }
     : flag === "confirmed" ? { confirmed_at: now, confirmed_by: user.id }
@@ -348,7 +355,7 @@ export async function deleteVersionSide(versionId: string, side: "front" | "back
 }
 
 export async function editComment(commentId: string, body: string) {
-  const { supabase, user } = await requireActiveUser();
+  const { supabase, user } = await requireViewer();
   const html = sanitizeComment(body); if (!plainText(html)) throw new UserError("Empty comment");
   const { data: c } = await supabase.from("comments").select("author_id,is_draft,versions(slots(id,event_id))").eq("id", commentId).maybeSingle();
   if (!c) throw new UserError("Comment not found");
@@ -360,7 +367,7 @@ export async function editComment(commentId: string, body: string) {
 }
 
 export async function deleteComment(commentId: string) {
-  const { supabase, user } = await requireActiveUser();
+  const { supabase, user } = await requireViewer();
   const { data: c } = await supabase.from("comments").select("author_id,versions(slots(id,event_id))").eq("id", commentId).maybeSingle();
   if (!c) throw new UserError("Comment not found");
   if (c.author_id !== user.id && user.role !== "core_admin") throw new UserError("You can only delete your own comments");

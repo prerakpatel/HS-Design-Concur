@@ -32,9 +32,10 @@ Repeat for a second channel if ACC has its own (one webhook URL per channel).
 
 ## A3 · Project channels (5 minutes, once)
 
-A project with guests (People → add someone outside the organisation) keeps its posts out of the main channels. Its
-creator, an approver, a designer or a Core Admin connects the project's own Slack channel or Google Chat space under
-**People → Project chat**. Google Chat takes the space's webhook (Apps & integrations → Webhooks → Add). Slack takes
+Any project can have its own chat; a project with guests (People → add someone outside the organisation) should,
+because guests are not in the main channels. Rule: a project posts to its own chat when one is connected, otherwise to
+the main channels (and groups) as usual. Its creator, an approver, a designer or a Core Admin connects it under
+**People → Project chat**; disconnecting sends posts back to the main channels. Google Chat takes the space's webhook (Apps & integrations → Webhooks → Add). Slack takes
 the channel link, posted to by the Design & Concur app, which needs one more permission:
 
 1. https://api.slack.com/apps → Design & Concur → **OAuth & Permissions** → **Bot Token Scopes** → add `chat:write`

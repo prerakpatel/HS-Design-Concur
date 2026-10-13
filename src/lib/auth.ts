@@ -69,6 +69,13 @@ export async function requireViewer(): Promise<Viewer> {
   return { ...session, member: session.orgs.length ? await getActiveUser() : null };
 }
 
+/** The same without redirects, for route handlers (they answer 401 themselves). */
+export async function getViewer(): Promise<Viewer | null> {
+  const session = await getSession();
+  if (!session || session.user.status !== "active") return null;
+  return { ...session, member: session.orgs.length ? await getActiveUser() : null };
+}
+
 /**
  * How this person sees one project: as a member of its organization (approving per that organization), or as a guest.
  * Only call it with an event the person could read, so "not a member" means they are on its People list.
@@ -76,6 +83,17 @@ export async function requireViewer(): Promise<Viewer> {
 export function projectAccess(viewer: Pick<Viewer, "orgs" | "approverOrgIds">, eventOrgId: string) {
   const org = viewer.orgs.find((o) => o.id === eventOrgId) ?? null;
   return { guest: !org, org, isApprover: !!org && viewer.approverOrgIds.has(org.id) };
+}
+
+/**
+ * The context for acting on one project (comment, upload, ask for changes): a member of its organization working in
+ * that organization, or a guest on its People list. `org` is the project's organization (for a guest, only its id is
+ * filled in). Null when a member is working in another organization.
+ */
+export function projectContext(viewer: Viewer, eventOrgId: string): (ActiveContext & { guest: boolean }) | null {
+  const access = projectAccess(viewer, eventOrgId);
+  if (!access.guest) return viewer.member && viewer.member.org.id === eventOrgId ? { ...viewer.member, guest: false } : null;
+  return { ...viewer, org: { id: eventOrgId } as Organization, isApprover: false, guest: true };
 }
 
 export function initials(name: string | null, email: string) {

@@ -7,17 +7,19 @@ import { recomputeSlotState } from "@/lib/slot-state";
 import { pruneOldVersions } from "@/lib/uploads/prune";
 import type { ActiveContext } from "@/lib/auth";
 import { MARK_VERSION } from "@/config/marks";
+import { serviceOr } from "@/lib/supabase/service";
 
 /**
  * Step 2 of an upload: process the temporary file into optimised / preview / thumb renditions and record the
  * version. Lives behind /api/uploads/finalize so the image and PDF libraries are traced into that one function
  * only, keeping page functions small and quick to start.
  */
-export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpPath: string, mime: string, side: "front" | "back" = "front", mode: "auto" | "new" = "auto") {
+export async function finalizeUploadFor(ctx: ActiveContext & { guest?: boolean }, slotId: string, tmpPath: string, mime: string, side: "front" | "back" = "front", mode: "auto" | "new" = "auto") {
   const { supabase, user, org } = ctx;
   const { data: slot } = await supabase.from("slots").select("*,events(id,org_id,title,created_by,brief_locked_at),label,formats(name,class)").eq("id", slotId).maybeSingle();
   const event = slot?.events as unknown as { id: string; org_id: string; title: string; created_by: string; brief_locked_at: string | null } | null;
   if (!slot || !event || event.org_id !== org.id) return { error: "Slot not found" };
+  // Guests upload too (to any format of their project); only approving and assigning stay with the organization.
   const fmt = slot.formats as unknown as { name: string; class: string };
 
   const { data: file, error: dlErr } = await supabase.storage.from(BUCKET).download(tmpPath);
@@ -121,7 +123,8 @@ export async function finalizeUploadFor(ctx: ActiveContext, slotId: string, tmpP
     await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slotId, version_id: versionId, actor_id: user.id, kind: inPlace && keptInReview ? "version.updated" : "version.uploaded", payload: { format: slotName(fmt.name, slot.label), number } });
     if (inPlace) await recomputeSlotState(supabase, slotId);
     // A new version pushes the oldest out: only the newest VERSIONS_KEPT keep files (approved ones always do).
-    else await pruneOldVersions(supabase, slotId);
+    // A guest may not change other people's versions, so their prune runs with the service key.
+    else await pruneOldVersions("guest" in ctx && ctx.guest ? serviceOr(supabase) : supabase, slotId);
   }
   revalidatePath(`/events/${event.id}`);
   revalidatePath(`/events/${event.id}/slots/${slotId}`);

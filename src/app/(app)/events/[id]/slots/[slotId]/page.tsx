@@ -79,8 +79,6 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
       ...(projectGuests.length ? [] : groups).map((g) => ({ id: `group:${g.id}`, name: g.name, handle: groupHandle(g.name), avatar: null, kind: "group" as const })),
     ];
   const canApprove = isApprover;
-  // Guests read along for now: commenting, asking for changes and uploading come next (docs/testing.md → Guests).
-  const readOnlyGuest = guest;
   const uploader = current?.uploader as unknown as { name: string | null; email: string } | null;
   const isPrint = fmt.class === "print";
   const print = isPrint && fmt.unit === "in" && fmt.width && fmt.height ? { bleedIn: Number(fmt.bleed_in ?? 0), safeIn: Number(fmt.safe_margin_in ?? 0), widthIn: Number(fmt.width), heightIn: Number(fmt.height) } : null;
@@ -96,17 +94,18 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const sent = !!current?.sent_at;
   const state = !slot.requested ? "na" : current && !sent ? "unsent" : slot.state;
   const who = uploader ? (uploader.name ?? uploader.email) : null;
-  const canUpload = !guest && (user.role === "core_admin" || slot.assignee_id === user.id || user.function_tags.includes("designer"));
-  const canSend = !guest && !!current && current.decision === "pending" && (current.uploaded_by === user.id || slot.assignee_id === user.id || user.role === "core_admin");
+  // Guests upload to any format of their project (people there work interchangeably); they never approve or assign.
+  const canUpload = guest || user.role === "core_admin" || slot.assignee_id === user.id || user.function_tags.includes("designer");
+  const canSend = !!current && current.decision === "pending" && (current.uploaded_by === user.id || slot.assignee_id === user.id || user.role === "core_admin");
   const openChanges = cviews.filter((c) => c.version === current?.number && c.needs_change && !c.draft && !c.addressed_at && !c.confirmed_at).length;
   // Anyone can ask for a change, on the newest sent version. On an approved one that reopens it (the comment box asks first).
-  const canRequestChanges = !readOnlyGuest && !!current && sent && current.id === vlist[0]?.id && !readOnly && slot.requested;
+  const canRequestChanges = !!current && sent && current.id === vlist[0]?.id && !readOnly && slot.requested;
   // Who a change is for when nobody is @mentioned: the uploader, or the format's designer when the asker is the uploader.
   const nameOf = (id: string | null | undefined) => { const m = [...orgMembers, ...projectGuests.map((p) => ({ id: p.userId, name: p.name, email: p.email }))].find((x) => x.id === id) as unknown as { name: string | null; email: string } | undefined; return m ? (m.name ?? m.email.split("@")[0]).split(" ")[0] : null; };
   const defaultAssignee = current && current.uploaded_by !== user.id ? nameOf(current.uploaded_by) : slot.assignee_id && slot.assignee_id !== user.id ? nameOf(slot.assignee_id) : null;
-  const actionProps = current && slot.requested && !readOnly && !guest ? { versionId: current.id, openChanges, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved, sent, canSend } : null;
+  const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, openChanges, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved, sent, canSend } : null;
 
-  const chips = vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, sent: !!x.sent_at, purged: !!x.purged_at, canManage: !guest && (x.uploaded_by === user.id || user.role === "core_admin"), hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }));
+  const chips = vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, sent: !!x.sent_at, purged: !!x.purged_at, canManage: x.uploaded_by === user.id || (!guest && user.role === "core_admin"), hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }));
   const decision = actionProps ? <ReviewActions {...actionProps} label={`${slotName(fmt.name, slot.label)} v${current?.number ?? ""}`} eventTitle={event.title} layout="fill" /> : null;
   const decisionRow = actionProps ? <ReviewActions {...actionProps} label={`${slotName(fmt.name, slot.label)} v${current?.number ?? ""}`} eventTitle={event.title} /> : null;
 
@@ -128,7 +127,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
           {sizeOff && <p className="flex items-start gap-2 rounded-2xl bg-warning-soft px-5 py-3 text-sm text-warning-text"><Icon name="aspect_ratio" className="mt-px !text-[18px]" /><span>This file is {sizeOff} px; the format asks for {nativeW} × {nativeH}. It is shown as uploaded. Upload a corrected version if the size matters.</span></p>}
           {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{readOnly ? (sides[0]?.src ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept.") : `Only the ${VERSIONS_KEPT} most recent versions keep their files. v${current?.number}'s were removed when a newer version arrived; its comments are kept below.`}</p>}
           {stalePreviews.length > 0 && <PreviewRefresher sideIds={stalePreviews} />}
-          <AssetStage canRequestChanges={canRequestChanges} versionApproved={current?.decision === "approved"} defaultAssignee={defaultAssignee} versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} comments={cviews} members={mlist} canComment={!readOnly && !readOnlyGuest} canModerate={!guest && user.role === "core_admin"}
+          <AssetStage canRequestChanges={canRequestChanges} versionApproved={current?.decision === "approved"} defaultAssignee={defaultAssignee} versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} comments={cviews} members={mlist} canComment={!readOnly} canModerate={!guest && user.role === "core_admin"}
             versions={chips} currentVersionId={current?.id ?? null} eventId={id} slotId={slotId} upload={canUpload && !readOnly ? { accept: fmt.allowed_mimes, isPrint, nextNumber: (vlist[0]?.number ?? 0) + 1 } : null}
             status={{ state: state as "requested" | "unsent", version: current?.number ?? null, uploader: purged ? (who ? `${who} (reference)` : "Reference") : who, uploadedAt: current?.created_at ?? null, assigneeId: slot.assignee_id, canAssign: !guest && (user.role === "core_admin" || isApprover) }} decision={decision} decisionBar={decisionRow} readOnly={readOnly}
             mockup={{ size: formatSize(fmt, { w: slot.custom_w, h: slot.custom_h }), formatKey: fmt.key, frame: fmt.frame, event: { title: event.title, date: event.event_date } }} />

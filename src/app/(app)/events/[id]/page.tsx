@@ -38,7 +38,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
     supabase.from("activity").select("*,actor:actor_id(name,email,avatar_url)").eq("event_id", id).order("created_at", { ascending: false }).limit(12),
     supabase.from("users").select("name,email").eq("id", event.created_by).maybeSingle(),
     loadProjectPeople(supabase, event),
-    loadChatLink(event.id),
+    loadChatLink(supabase, event.id),
     guest ? Promise.resolve({ data: false }) : supabase.rpc("can_manage_project", { p_event: event.id }),
     // Suggestions while adding someone: the organization's members (never shown to a guest).
     guest ? Promise.resolve({ data: [] }) : supabase.from("users").select("name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", event.org_id),

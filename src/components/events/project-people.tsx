@@ -52,7 +52,7 @@ export function ProjectPeople(p: ProjectPeopleProps) {
         {warn && (
           <p className="flex items-start gap-2 rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-text">
             <Icon name="warning" className="mt-px !text-[18px]" />
-            <span>{guests.length === 1 ? "The guest on this project won't" : "Guests on this project won't"} get chat updates until a chat is connected below. Until then they can only be reached by email.</span>
+            <span>This project posts to the main channels, and {guests.length === 1 ? "its guest isn't" : "its guests aren't"} in them. Connect a project chat below; until then guests only get updates in the app and by email.</span>
           </p>
         )}
         {p.canManage && <AddPerson eventId={p.eventId} first={p.people.length === 0} suggestions={p.suggestions} />}
@@ -134,7 +134,7 @@ function ChatSection({ eventId, chat, canManage, slackChannels }: { eventId: str
       {canManage && <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => start(async () => { try { await disconnectProjectChat(eventId); } catch (e) { toast.error(errorMessage(e)); } })}>Disconnect</Button>}
     </section>
   );
-  if (!canManage) return <p className="rounded-xl bg-subtle px-4 py-3 text-sm text-muted-foreground">This project has no chat of its own yet.</p>;
+  if (!canManage) return <p className="rounded-xl bg-subtle px-4 py-3 text-sm text-muted-foreground">This project posts to the main channels.</p>;
   const steps = platform === "gchat" ? STEPS.gchat : slackChannels ? STEPS.slack : STEPS.slackHook;
   return (
     <section className="space-y-3 rounded-xl border border-border p-4">
@@ -146,7 +146,7 @@ function ChatSection({ eventId, chat, canManage, slackChannels }: { eventId: str
           ))}
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">Create the {platform === "gchat" ? "space" : "channel"} yourself with everyone listed above, then connect it. Its updates then go there instead of the main channels.</p>
+      <p className="text-xs text-muted-foreground">Without one, this project posts to the main channels. Create a {platform === "gchat" ? "space" : "channel"} with everyone listed above and connect it: from then on its updates go only there. Disconnect it and they go back to the main channels.</p>
       <ol className="list-decimal space-y-1 pl-5 text-sm">{steps.map((s) => <li key={s}>{s}</li>)}</ol>
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); start(async () => { try { await connectProjectChat(eventId, link); setLink(""); toast.success("Connected. A hello was posted there."); } catch (err) { toast.error(errorMessage(err)); } }); }}>
         <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder={platform === "gchat" ? "https://chat.googleapis.com/…" : slackChannels ? "https://…slack.com/archives/C…" : "https://hooks.slack.com/services/…"} aria-label="Chat link" className="h-10" />

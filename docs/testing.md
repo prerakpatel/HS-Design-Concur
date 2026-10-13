@@ -61,7 +61,8 @@ Use any Gmail address of yours that has never been added to an organisation. Mak
 Google Chat space for this test (not a real team channel).
 - [ ] On a published sandbox project, click **People**. Empty: "Everyone in Test sandbox can open this project…".
 - [ ] Add the Gmail address. The list now shows the creator, the sandbox approvers and Core Admins, and the Gmail as
-      **Guest · Hasn't signed in yet**. The amber note says guests won't get chat updates. The People button has an amber dot.
+      **Guest · Hasn't signed in yet**. The amber note says the project posts to the main channels, where guests aren't.
+      The People button has an amber dot.
 - [ ] Remove an approver: works. Try to remove the last approver: the × is greyed out ("One approver stays").
 - [ ] Connect chat. Slack: in the test channel type `/invite @Design & Concur`, right-click the channel → Copy link,
       paste, Connect (needs chat:write, docs/notifications.md → Project channels). Google Chat: the space → Apps &
@@ -70,12 +71,25 @@ Google Chat space for this test (not a real team channel).
 - [ ] Sign in with the Gmail (private window). No "You are on the list" screen: it lands on **Your projects** with
       only this project. The top bar has Your projects, Inbox and the avatar (Sign out). No sidebar, archive, glossary, settings.
 - [ ] As the guest, open the project: no Edit, no Delete, no Download. **People** lists only the project's people.
-- [ ] As the guest, open a format: the design and its comments show; no comment box, upload, approve, assign or delete.
+- [ ] As the guest, open a format: the design and its comments show; no approve, assign or other people's delete.
 - [ ] As the guest, type `/events`, `/archive`, `/glossary`, `/settings` in the address bar: each sends you back to Your projects.
 - [ ] As a member, comment on that format and @mention the guest (they are in the @ list). The comment posts in the
       test channel, **not** the sandbox's (or any) main channel, and the guest gets it in their Inbox.
-- [ ] Disconnect the chat: the amber note is back; nothing posts to any channel for this project.
+- [ ] Disconnect the chat: the amber note is back and this project posts to the main channels again (the sandbox has
+      none, so nothing appears anywhere).
 - [ ] Delete the project (event menu → Delete): the guest's Your projects is empty and the link 404s. (Archiving closes it the same way.)
+
+### Guests, stage 2: comment, ask for changes, upload (as the guest from stage 1, project chat connected)
+- [ ] Post a comment. It shows in the thread; the project chat gets it; members get it in their Inbox.
+- [ ] The @ list shows only the people on the project (no one else from the organisation, no groups).
+- [ ] Turn on "Request a change" on a sent version and post: the version goes to Changes requested.
+- [ ] Upload a design to a format that is **not** assigned to you: it works (v1, or a new version), then Send for review.
+      Approvers are told; the project chat gets the post with the preview.
+- [ ] Your own upload: the delete icon works. Someone else's version: no delete icon.
+- [ ] No Approve button anywhere, no assign dropdown, no Edit event, no Download.
+- [ ] Edit and delete your own comment; you can't edit anyone else's.
+- [ ] As a member, with the chat **disconnected**, comment again: the post goes to the main channel (none in the
+      sandbox), not to the old project chat.
 
 ### What should NOT happen
 - [ ] Nothing posted in the real Slack or Google Chat channels. If anything did, stop and check the sandbox organisation's Settings → Organizations has no webhook.
