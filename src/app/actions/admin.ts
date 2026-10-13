@@ -30,7 +30,9 @@ export async function decideAccess(userId: string, formData: FormData) {
   // Only a request that is still waiting can be decided: this must never demote, remove or reset someone already working here.
   const { data: target } = await supabase.from("users").select("status").eq("id", userId).maybeSingle();
   if (target?.status !== "pending") throw new UserError("This request was already handled");
-  await supabase.from("users").update({ status: approve ? "active" : "removed" }).eq("id", userId);
+  // If this fails nothing else may happen: a request marked decided while the person stays pending cannot be retried.
+  const { error: statusError } = await supabase.from("users").update({ status: approve ? "active" : "removed" }).eq("id", userId);
+  if (statusError) throw new UserError(statusError.message);
   await supabase.from("access_requests").update({ decided_by: user.id, decided_at: new Date().toISOString(), decision: approve ? "approved" : "denied" }).eq("user_id", userId).is("decided_at", null);
   if (approve) {
     await setMemberships(supabase, userId, orgIds, []);
