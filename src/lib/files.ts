@@ -1,3 +1,4 @@
+import { request as httpsRequest } from "node:https";
 import { AwsClient } from "aws4fetch";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -33,13 +34,29 @@ const keyOf = (path: string) => path.slice(R2.length);
 /** Where a new file goes: R2 when it is configured, otherwise Supabase. `path` is the plain <org>/<event>/... path. */
 export const newPath = (path: string) => (r2Enabled() ? R2 + path : path);
 
+/**
+ * A signed write to R2 sent with Node's own HTTPS client, which always states the body's length. Next.js wraps the
+ * global fetch on Vercel and that wrapper can send a body without one, which R2 refuses (411 Length Required).
+ */
+async function putR2(key: string, body: Buffer, headers: Record<string, string>): Promise<number> {
+  const signed = await r2().aws.sign(objectUrl(key), { method: "PUT", headers, body: new Uint8Array(body) });
+  const url = new URL(signed.url);
+  const out: Record<string, string> = { "Content-Length": String(body.length) };
+  signed.headers.forEach((v, k) => { out[k] = v; });
+  return new Promise((resolve, reject) => {
+    const req = httpsRequest({ method: "PUT", hostname: url.hostname, path: url.pathname + url.search, headers: out }, (res) => { res.resume(); res.on("end", () => resolve(res.statusCode ?? 0)); });
+    req.on("error", reject);
+    req.end(body);
+  });
+}
+
 /** Files never change in place (a new version or a re-stamp gets a new path), so browsers may keep them. */
 const CACHE = "private, max-age=31536000, immutable";
 
 export async function writeFile(supabase: SupabaseClient, path: string, body: Buffer, contentType: string): Promise<void> {
   if (isR2(path)) {
-    const res = await r2().aws.fetch(objectUrl(keyOf(path)), { method: "PUT", body: new Uint8Array(body), headers: { "Content-Type": contentType, "Cache-Control": CACHE } });
-    if (!res.ok) throw new Error(`Could not store the file (R2 ${res.status})`);
+    const status = await putR2(keyOf(path), body, { "Content-Type": contentType, "Cache-Control": CACHE });
+    if (status >= 300) throw new Error(`Could not store the file (R2 ${status})`);
     return;
   }
   const { error } = await supabase.storage.from(BUCKET).upload(path, body, { contentType, upsert: true });
@@ -58,9 +75,9 @@ export async function readFile(supabase: SupabaseClient, path: string): Promise<
 /** Copy within R2, or across stores (an old Supabase front carried into a new R2 version) by reading and writing. */
 export async function copyFile(supabase: SupabaseClient, from: string, to: string): Promise<void> {
   if (isR2(from) && isR2(to)) {
-    const { aws, bucket } = r2();
-    const res = await aws.fetch(objectUrl(keyOf(to)), { method: "PUT", headers: { "x-amz-copy-source": `/${bucket}/${keyOf(from).split("/").map(encodeURIComponent).join("/")}` } });
-    if (!res.ok) throw new Error(`Could not copy the file (R2 ${res.status})`);
+    const { bucket } = r2();
+    const status = await putR2(keyOf(to), Buffer.alloc(0), { "x-amz-copy-source": `/${bucket}/${keyOf(from).split("/").map(encodeURIComponent).join("/")}` });
+    if (status >= 300) throw new Error(`Could not copy the file (R2 ${status})`);
     return;
   }
   if (!isR2(from) && !isR2(to)) {

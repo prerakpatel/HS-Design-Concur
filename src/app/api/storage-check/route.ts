@@ -20,9 +20,12 @@ export async function GET() {
   const none = null as never;
   await step("write", () => writeFile(none, a, Buffer.from("hello"), "text/plain"));
   await step("read", async () => (await readFile(none, a))?.toString() === "hello");
+  // A design-sized file (2 MB), like a real upload.
+  const big = `${R2}tmp/storage-check/${id}-big.bin`;
+  await step("write 2 MB", async () => { await writeFile(none, big, Buffer.alloc(2 * 1024 * 1024, 7), "application/octet-stream"); return (await readFile(none, big))?.length === 2 * 1024 * 1024; });
   await step("copy", () => copyFile(none, a, b));
   await step("signed link", async () => { const url = await signedUrl(none, b); return url ? (await fetch(url)).ok : false; });
-  await step("delete", async () => { await removeFiles(none, [a, b]); return (await readFile(none, a)) === null; });
+  await step("delete", async () => { await removeFiles(none, [a, b, big]); return (await readFile(none, a)) === null; });
   const ok = Object.values(steps).every((v) => v === "ok");
   return NextResponse.json({ r2: true, ok, steps }, { headers: { "Cache-Control": "no-store" } });
 }
