@@ -95,3 +95,7 @@ begin
     update slots set state = 'changes_requested', updated_at = now() where id = v.slot_id;
   end if;
 end $$;
+
+-- Organisation rows (with the main channels' webhook links) are for members only: not for people still waiting
+-- for access, and not for guests. The sign-in page uses the org_branding view.
+alter policy org_read on organisations using ((select is_staff()));
