@@ -15,12 +15,6 @@ export async function refreshPreviews(ctx: ActiveContext, sideIds: string[]) {
   return restamp(createServiceClient(), sides ?? []);
 }
 
-/** Batch for the daily job: any side still carrying an older mark, oldest first. */
-export async function refreshStalePreviews(db: SupabaseClient, limit = 20) {
-  const { data: sides } = await db.from("version_sides").select("id,optimised_path,preview_path,mime,mark_version").lt("mark_version", MARK_VERSION).not("preview_path", "is", null).neq("mime", "image/gif").order("id").limit(limit);
-  return restamp(db, sides ?? []);
-}
-
 type SideRow = { id: string; optimised_path: string | null; preview_path: string | null; mime: string | null; mark_version: number | null };
 async function restamp(svc: SupabaseClient, sides: SideRow[]) {
   let done = 0;

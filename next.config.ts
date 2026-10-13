@@ -7,7 +7,6 @@ const nextConfig: NextConfig = {
   // pdf.js loads its worker file from next to itself at runtime; it is not imported anywhere, so it has to be listed.
   outputFileTracingIncludes: {
     "/api/uploads/*": ["./src/assets/**", "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
-    "/api/jobs/*": ["./src/assets/**"],
   },
   // Every deployment keeps its own copy of each function, and Vercel counts them all against Functions Storage.
   // Vercel runs x64 glibc Linux, so the musl and WebAssembly builds of sharp and canvas are dead weight (~60 MB per function).

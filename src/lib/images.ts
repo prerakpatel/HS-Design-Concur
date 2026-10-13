@@ -46,12 +46,6 @@ async function stampDraft(previewBase: Buffer): Promise<Buffer> {
   return sharp(previewBase).composite([{ input: await draftMark(pm.width ?? PREVIEW_MAX, pm.height ?? PREVIEW_MAX), top: 0, left: 0, blend: "over" }]).webp({ quality: 80 }).toBuffer();
 }
 
-/** Post-event reference image (PRD §7.2): long edge 800px, WebP q60. */
-export async function makeReference(input: Buffer): Promise<Rendition> {
-  const buf = await sharp(input, { failOn: "none", pages: 1 }).resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true }).webp({ quality: 60 }).toBuffer();
-  return { buf, mime: "image/webp", ext: "webp" };
-}
-
 /** The watermarked preview for an already-optimised file (used to re-stamp previews made by an older mark). */
 export async function makePreview(optimised: Buffer): Promise<Rendition> {
   const previewBase = await sharp(optimised, { failOn: "none", limitInputPixels: 80_000_000 }).resize({ width: PREVIEW_MAX, height: PREVIEW_MAX, fit: "inside", withoutEnlargement: true }).toBuffer();

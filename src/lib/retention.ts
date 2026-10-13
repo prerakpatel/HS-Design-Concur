@@ -1,6 +1,6 @@
 import { DAY_MS } from "@/lib/time";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { makeReference } from "@/lib/images";
+import { makeReference } from "@/lib/reference-image";
 import { BUCKET } from "@/lib/storage";
 import { PURGE_AFTER_DAYS, DELETE_RESTORE_DAYS, DRAFT_SWEEP_DAYS, DRAFT_WARN_DAYS } from "@/config/limits";
 import { DEVICE_REFRESH_DAY } from "@/config/devices";

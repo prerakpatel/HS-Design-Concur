@@ -8,7 +8,6 @@ import { sendEmail, appUrl, emailConfigured } from "@/lib/email";
 import { notificationText, notificationHref } from "@/lib/labels";
 import { notify, subjectFor, approverIds, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
-import { refreshStalePreviews } from "@/lib/uploads/refresh-preview";
 import { pruneAllSlots, sweepTmpUploads } from "@/lib/uploads/prune";
 import { matchSlackIds } from "@/lib/slack";
 import { mentionIds, groupMentionIds } from "@/lib/rich-text";
@@ -25,7 +24,6 @@ export const maxDuration = 60;
  * 2. Retention (PRD §8): archive + purge a week after the event date, hard-delete after the restore window,
  *    draft warning / sweep, yearly device-preset reminder. See src/lib/retention.ts.
  * 3. Daily digest email for users whose email_pref is "digest", then instant emails for job-created kinds.
- * 4. Re-stamp up to 20 previews that still carry an older DRAFT mark.
  * Vercel Cron calls it with the CRON_SECRET bearer; a signed-in Core Admin may also open the URL to run it now.
  */
 export async function GET(req: Request) {
@@ -193,7 +191,5 @@ export async function GET(req: Request) {
   // 3d. Slack member IDs for anyone still missing one (email lookup; needs SLACK_BOT_TOKEN).
   report.slackMatched = (await matchSlackIds(db)).matched;
 
-  // 4. Old watermark previews
-  report.previews = await refreshStalePreviews(db, 20);
   return NextResponse.json({ ok: true, today, ...report });
 }
