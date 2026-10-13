@@ -1,3 +1,4 @@
+import path from "node:path";
 import { createCanvas } from "@napi-rs/canvas";
 
 export const PDF_MAX_PAGES = 2;   // page 1 = front, page 2 = back (PRD ยง7.1)
@@ -9,7 +10,10 @@ export const PDF_DPI = 150;       // raster resolution for print previews (PRD ย
  */
 export async function rasterisePdf(input: Buffer): Promise<Buffer[]> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const task = pdfjs.getDocument({ data: new Uint8Array(input), useSystemFonts: true, disableFontFace: true });
+  // pdf.js loads its decoders and font data from files next to it: JPEG 2000 pictures (common in print PDFs) need the
+  // OpenJPEG wasm, unembedded standard fonts need standard_fonts. Listed in next.config.ts so they ship with the function.
+  const dir = (sub: string) => path.join(process.cwd(), "node_modules/pdfjs-dist", sub) + path.sep;
+  const task = pdfjs.getDocument({ data: new Uint8Array(input), useSystemFonts: false, disableFontFace: true, wasmUrl: dir("wasm"), standardFontDataUrl: dir("standard_fonts"), cMapUrl: dir("cmaps"), cMapPacked: true, iccUrl: dir("iccs") });
   const doc = await task.promise;
   try {
     if (doc.numPages > PDF_MAX_PAGES) throw new Error(`A print PDF can have at most ${PDF_MAX_PAGES} pages (front and back). This one has ${doc.numPages}.`);

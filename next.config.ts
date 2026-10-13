@@ -4,9 +4,9 @@ const nextConfig: NextConfig = {
   // Native / WASM packages used by the upload pipeline must not be bundled.
   serverExternalPackages: ["sharp", "pdfjs-dist", "@napi-rs/canvas"],
   // The watermark font is read from disk at runtime; make sure it ships with the upload function.
-  // pdf.js loads its worker file from next to itself at runtime; it is not imported anywhere, so it has to be listed.
+  // pdf.js loads its worker, decoders (JPEG 2000 etc.), fonts and colour profiles from next to itself at runtime; none is imported, so they are listed.
   outputFileTracingIncludes: {
-    "/api/uploads/*": ["./src/assets/**", "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
+    "/api/uploads/*": ["./src/assets/**", "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs", "./node_modules/pdfjs-dist/{wasm,standard_fonts,cmaps,iccs}/**"],
   },
   // Every deployment keeps its own copy of each function, and Vercel counts them all against Functions Storage.
   // Vercel runs x64 glibc Linux, so the musl and WebAssembly builds of sharp and canvas are dead weight (~60 MB per function).

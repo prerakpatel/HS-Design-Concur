@@ -247,7 +247,7 @@ export function AssetStage({ canRequestChanges = false, versionApproved = false,
                     )}
                     {mode === "view" && manage && current && (
                       <div className="absolute right-2.5 top-2.5 flex gap-2">
-                        {isNewest && <button type="button" onClick={() => requestUpload({ side: s.side })} aria-label={`Replace the ${sides.length > 1 || upload?.isPrint ? s.side : "design"}`} className="flex h-9 items-center gap-1.5 rounded-full bg-black/55 px-3.5 text-sm font-medium text-white transition-colors hover:bg-black/75"><Icon name="upload" className="!text-[18px]" />Replace</button>}
+                        {isNewest && <button type="button" onClick={() => requestUpload({ side: s.side })} aria-label={`Replace the ${sides.length > 1 || upload?.isPrint ? s.side : "design"}`} className="flex h-9 items-center rounded-full bg-black/55 px-4 text-sm font-medium text-white transition-colors hover:bg-black/75">Replace</button>}
                         <button type="button" onClick={() => setConfirmDelete(s.side)} aria-label={sides.length > 1 ? `Delete the ${s.side}` : `Delete v${current.number}`} title={sides.length > 1 ? `Delete the ${s.side}` : `Delete v${current.number}`} className="flex size-9 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-destructive"><Icon name="delete" className="!text-[18px]" /></button>
                       </div>
                     )}
