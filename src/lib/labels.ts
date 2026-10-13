@@ -86,7 +86,7 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
     case "comments.posted": return { head: `💬 ${t} · ${f}${n}`, body: `${by}:\n${String(p.excerpt ?? "")}` };
     case "changes.requested": {
       const who = (Array.isArray(p.assignees) ? p.assignees as string[] : []).map((id) => `{@${id}}`).join(" ");
-      return { head: `✏️ ${t} · ${f}${n} · changes needed`, body: `${by}${who ? ` asked ${who} to` : ""} change${Number(p.count) > 1 ? ` ${p.count} things` : ""}:\n${String(p.excerpt ?? "")}` };
+      return { head: p.reopened ? `↩️ ${t} · ${f}${n} · reopened with changes` : `✏️ ${t} · ${f}${n} · changes needed`, body: `${by}${who ? ` asked ${who} to` : ""} change${Number(p.count) > 1 ? ` ${p.count} things` : ""}:\n${String(p.excerpt ?? "")}` };
     }
     case "access.requested": return { head: `🔑 ${p.name ?? p.email} asked for access`, body: `${p.email} · approve or deny in Settings → Requests.` };
     case "access.approved": return { head: `👋 ${p.name ?? "A new member"} joined`, body: `Approved by ${by}. Welcome!` };

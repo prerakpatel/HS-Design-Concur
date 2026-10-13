@@ -81,8 +81,11 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const canUpload = user.role === "core_admin" || slot.assignee_id === user.id || user.function_tags.includes("designer");
   const canSend = !!current && current.decision === "pending" && (current.uploaded_by === user.id || slot.assignee_id === user.id || user.role === "core_admin");
   const openChanges = cviews.filter((c) => c.version === current?.number && c.needs_change && !c.draft && !c.addressed_at && !c.confirmed_at).length;
-  // Only an approver asks for changes, on the newest version, while it is in review or already has changes requested.
-  const canRequestChanges = !!current && isApprover && sent && current.decision !== "approved" && current.id === vlist[0]?.id && !readOnly && slot.requested;
+  // Anyone can ask for a change, on the newest sent version. On an approved one that reopens it (the comment box asks first).
+  const canRequestChanges = !!current && sent && current.id === vlist[0]?.id && !readOnly && slot.requested;
+  // Who a change is for when nobody is @mentioned: the uploader, or the format's designer when the asker is the uploader.
+  const nameOf = (id: string | null | undefined) => { const m = (members ?? []).find((x) => x.id === id) as unknown as { name: string | null; email: string } | undefined; return m ? (m.name ?? m.email.split("@")[0]).split(" ")[0] : null; };
+  const defaultAssignee = current && current.uploaded_by !== user.id ? nameOf(current.uploaded_by) : slot.assignee_id && slot.assignee_id !== user.id ? nameOf(slot.assignee_id) : null;
   const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, openChanges, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved, sent, canSend } : null;
 
   const chips = vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, sent: !!x.sent_at, purged: !!x.purged_at, canManage: x.uploaded_by === user.id || user.role === "core_admin", hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }));
@@ -107,7 +110,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
           {sizeOff && <p className="flex items-start gap-2 rounded-2xl bg-warning-soft px-5 py-3 text-sm text-warning-text"><Icon name="aspect_ratio" className="mt-px !text-[18px]" /><span>This file is {sizeOff} px; the format asks for {nativeW} × {nativeH}. It is shown as uploaded. Upload a corrected version if the size matters.</span></p>}
           {purged && <p className="rounded-2xl bg-subtle px-5 py-4 text-sm text-muted-foreground">{readOnly ? (sides[0]?.src ? "Files for this event were removed a week after its date. This is the compressed reference of the approved version." : "This version was not approved, so its files were removed a week after the event. Comments and decisions are kept.") : `Only the ${VERSIONS_KEPT} most recent versions keep their files. v${current?.number}'s were removed when a newer version arrived; its comments are kept below.`}</p>}
           {stalePreviews.length > 0 && <PreviewRefresher sideIds={stalePreviews} />}
-          <AssetStage canRequestChanges={canRequestChanges} versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} comments={cviews} members={mlist} canComment={!readOnly} canModerate={user.role === "core_admin"}
+          <AssetStage canRequestChanges={canRequestChanges} versionApproved={current?.decision === "approved"} defaultAssignee={defaultAssignee} versionId={current?.id ?? null} sides={scaledSides} safe={safe} print={print} comments={cviews} members={mlist} canComment={!readOnly} canModerate={user.role === "core_admin"}
             versions={chips} currentVersionId={current?.id ?? null} eventId={id} slotId={slotId} upload={canUpload && !readOnly ? { accept: fmt.allowed_mimes, isPrint, nextNumber: (vlist[0]?.number ?? 0) + 1 } : null}
             status={{ state: state as "requested" | "unsent", version: current?.number ?? null, uploader: purged ? (who ? `${who} (reference)` : "Reference") : who, uploadedAt: current?.created_at ?? null, assigneeId: slot.assignee_id, canAssign: user.role === "core_admin" || isApprover }} decision={decision} decisionBar={decisionRow} readOnly={readOnly}
             mockup={{ size: formatSize(fmt, { w: slot.custom_w, h: slot.custom_h }), formatKey: fmt.key, frame: fmt.frame, event: { title: event.title, date: event.event_date } }} />

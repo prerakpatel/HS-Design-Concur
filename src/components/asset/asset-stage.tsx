@@ -45,9 +45,11 @@ export interface StatusView { state: BadgeState; version: number | null; uploade
  * get their decision here on desktop) and the comment thread. Comment mode: click the design, a bubble drops, a
  * small composer opens under it.
  */
-export function AssetStage({ canRequestChanges = false, versionId, sides, safe, print, comments, members, canComment, canModerate = false, versions, currentVersionId, eventId, slotId, upload, status, decision, decisionBar, readOnly, mockup }: {
-  /** An approver on the newest sent version: comments can become change requests. */
-  canRequestChanges?: boolean;
+export function AssetStage({ canRequestChanges = false, versionApproved = false, defaultAssignee = null, versionId, sides, safe, print, comments, members, canComment, canModerate = false, versions, currentVersionId, eventId, slotId, upload, status, decision, decisionBar, readOnly, mockup }: {
+  /** The newest sent version: any comment can become a change request. On an approved version that reopens it. */
+  canRequestChanges?: boolean; versionApproved?: boolean;
+  /** First name of who a change is for when nobody is @mentioned. */
+  defaultAssignee?: string | null;
   versionId: string | null; sides: SideView[]; safe: SafeArea; print: PrintGuides | null;
   comments: CommentView[]; members: Member[]; canComment: boolean; canModerate?: boolean;
   versions: VersionChip[]; currentVersionId: string | null; eventId: string; slotId: string;
@@ -65,7 +67,9 @@ export function AssetStage({ canRequestChanges = false, versionId, sides, safe, 
   // The thread box: a plain comment unless the approver turns it into a change request (for whoever is @mentioned, else the uploader).
   const [changeOn, setChangeOn] = useState(false);
   const [mentioned, setMentioned] = useState<{ id: string; label: string } | null>(null);
-  const uploaderFirst = status.uploader?.split(" ")[0] ?? "the designer";
+  const [confirmReopen, setConfirmReopen] = useState(false);
+  // Review mode and the toggle both make change requests, except on an approved version, where only the toggle can (after a warning).
+  const reviewChanges = canRequestChanges && !versionApproved;
   const [active, setActive] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [textEmpty, setTextEmpty] = useState(true);
@@ -118,13 +122,13 @@ export function AssetStage({ canRequestChanges = false, versionId, sides, safe, 
   const stop = () => { setDraft(null); draftHtml.current = ""; setDraftEmpty(true); };
   const post = (body: string, pin: { side: Side; x: number; y: number } | null) => start(async () => {
     // In review mode every comment is a targeted change; in the thread box it is one only when the toggle is on.
-    const change = canRequestChanges && (review || (!pin && changeOn));
-    try { await addComment(versionId!, body, pin, { draft: review, change }); textHtml.current = ""; setTextEmpty(true); setComposerKey((k) => k + 1); setChangeOn(false); setMentioned(null); stop(); if (!review) toast.success(change ? "Change requested" : pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
+    const change = canRequestChanges && (review ? !versionApproved : (!pin && changeOn));
+    try { await addComment(versionId!, body, pin, { draft: review, change, reopen: change && versionApproved }); textHtml.current = ""; setTextEmpty(true); setComposerKey((k) => k + 1); setChangeOn(false); setMentioned(null); stop(); if (!review) toast.success(change ? (versionApproved ? "Reopened with a change" : "Change requested") : pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
     catch (e) { toast.error(errorMessage(e)); }
   });
   const sendReview = () => start(async () => {
     setSending(true);
-    try { const r = await sendCommentBatch(versionId!); setReview(false); stop(); toast.success(canRequestChanges ? (r.count === 1 ? "Change sent" : `${r.count} changes sent`) : r.count === 1 ? "Comment sent" : `${r.count} comments sent`); router.refresh(); }
+    try { const r = await sendCommentBatch(versionId!); setReview(false); stop(); toast.success(reviewChanges ? (r.count === 1 ? "Change sent" : `${r.count} changes sent`) : r.count === 1 ? "Comment sent" : `${r.count} comments sent`); router.refresh(); }
     catch (e) { toast.error(errorMessage(e)); }
     finally { setSending(false); }
   });
@@ -377,10 +381,10 @@ export function AssetStage({ canRequestChanges = false, versionId, sides, safe, 
               {canRequestChanges && !review && (
                 <div className={cn("grid transition-[grid-template-rows,opacity] duration-200", !textEmpty ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
                   <div className="overflow-hidden">
-                    <button type="button" tabIndex={textEmpty ? -1 : 0} aria-pressed={changeOn} onClick={() => setChangeOn((v) => !v)}
+                    <button type="button" tabIndex={textEmpty ? -1 : 0} aria-pressed={changeOn} onClick={() => { if (!changeOn && versionApproved) setConfirmReopen(true); else setChangeOn((v) => !v); }}
                       className={cn("mt-2 inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors", changeOn ? "border-info bg-info text-white" : "border-border text-muted-foreground hover:text-foreground")}>
                       <Icon name={changeOn ? "check" : "edit_note"} className="!text-[16px]" />
-                      {changeOn ? `Change for ${(mentioned?.label ?? uploaderFirst).split(" ")[0]}` : mentioned ? `Assign to ${mentioned.label.split(" ")[0]}` : "Request a change"}
+                      {changeOn ? `Change${(mentioned?.label ?? defaultAssignee) ? ` for ${(mentioned?.label ?? defaultAssignee ?? "").split(" ")[0]}` : ""}` : mentioned ? `Assign to ${mentioned.label.split(" ")[0]}` : "Request a change"}
                     </button>
                   </div>
                 </div>
@@ -389,15 +393,24 @@ export function AssetStage({ canRequestChanges = false, versionId, sides, safe, 
           )}
         </div>
       </div>
+      <Dialog open={confirmReopen} onOpenChange={setConfirmReopen}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader><DialogTitle>Reopen v{currentNo}?</DialogTitle><DialogDescription>v{currentNo} is approved. Asking for a change reopens it and sends it back to {defaultAssignee ?? "the designer"}; everyone on the event is told. Do you want to go ahead?</DialogDescription></DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Button size="lg" onClick={() => { setChangeOn(true); setConfirmReopen(false); }}>Reopen and request the change</Button>
+            <Button size="lg" variant="outline" onClick={() => setConfirmReopen(false)}>Keep it approved</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Review mode bar: blue like the comment pins, so it reads as a mode you are in until you send. */}
       {review && canComment && versionId && (
         <div role="region" aria-label="Review mode" className={cn("fixed z-40 inset-x-3 flex items-center gap-2 rounded-full bg-info p-1.5 pl-4 text-white shadow-md md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:gap-3 md:pl-5", decisionBar ? "bottom-[calc(env(safe-area-inset-bottom)+84px)] md:bottom-6" : "bottom-[max(env(safe-area-inset-bottom),16px)] md:bottom-6")}>
           <Icon name="forum" className="shrink-0 !text-[20px]" />
           <p className="min-w-0 flex-1 truncate text-sm font-medium md:flex-none">
-            {unsent === 0 ? "Tap to comment" : canRequestChanges ? `${unsent} change${unsent === 1 ? "" : "s"}` : `${unsent} comment${unsent === 1 ? "" : "s"}`}
+            {unsent === 0 ? "Tap to comment" : reviewChanges ? `${unsent} change${unsent === 1 ? "" : "s"}` : `${unsent} comment${unsent === 1 ? "" : "s"}`}
           </p>
           <button type="button" onClick={leaveReview} disabled={pending} className="h-10 shrink-0 rounded-full px-3.5 text-sm font-medium text-white/90 hover:bg-white/15 disabled:opacity-60">{unsent > 0 ? "Discard" : "Cancel"}</button>
-          <button type="button" onClick={sendReview} disabled={pending || unsent === 0} className="inline-flex h-10 shrink-0 items-center rounded-full bg-white px-5 text-sm font-semibold text-info-text shadow-sm transition-opacity hover:bg-white/90 disabled:opacity-50">{sending ? "Sending…" : canRequestChanges ? (unsent > 1 ? `Send ${unsent} changes` : "Send change") : unsent > 1 ? `Send ${unsent}` : "Send"}</button>
+          <button type="button" onClick={sendReview} disabled={pending || unsent === 0} className="inline-flex h-10 shrink-0 items-center rounded-full bg-white px-5 text-sm font-semibold text-info-text shadow-sm transition-opacity hover:bg-white/90 disabled:opacity-50">{sending ? "Sending…" : reviewChanges ? (unsent > 1 ? `Send ${unsent} changes` : "Send change") : unsent > 1 ? `Send ${unsent}` : "Send"}</button>
         </div>
       )}
       {/* Phones: the decision rides in a fixed bar */}

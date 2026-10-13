@@ -41,7 +41,8 @@ Designer = you. Approver = the second admin (a second browser profile or phone w
 - [ ] Type a comment, @ someone (the list only appears after the first letters), pick them: the toggle reads "Assign to {first name}". Turn it on and post: the version goes to Changes requested and the comment shows "Change · {name}".
 - [ ] Toggle on with no @: it says "Change for {uploader's first name}".
 - [ ] Review mode (Comment button, pins): there is no toggle; the bar says "N changes" and "Send change(s)". Sending flips the version to Changes requested.
-- [ ] A designer (not an approver) in the thread box sees no toggle; their comments stay plain.
+- [ ] Anyone, designers included, sees the toggle on the newest sent version and can request a change; it sends the version back to Changes requested.
+- [ ] On an **approved** version, turning the toggle on shows "Reopen v3?" with a warning. Keep it approved = nothing changes; "Reopen and request the change" = the version reopens and the designer is told.
 - [ ] Approve with a change still open: the dialog says "N changes are still open".
 
 ### Round trip (as designer, then approver)
