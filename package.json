@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/lib/glossary/glossary.test.ts src/lib/aspect.test.ts src/lib/rich-text.test.ts src/lib/chat-target.test.ts",
+    "test": "node --test src/lib/glossary/glossary.test.ts src/lib/aspect.test.ts src/lib/rich-text.test.ts src/lib/chat-target.test.ts src/lib/files.test.ts",
     "screenshots": "node scripts/screenshots.mjs",
     "icons": "node scripts/icon-names.mjs"
   },
@@ -24,6 +24,7 @@
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
     "@tiptap/suggestion": "^3.31.3",
+    "aws4fetch": "^1.0.20",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.3.0",

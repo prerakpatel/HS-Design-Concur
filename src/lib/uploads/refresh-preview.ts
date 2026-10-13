@@ -1,5 +1,5 @@
 import { makePreview } from "@/lib/images";
-import { BUCKET } from "@/lib/storage";
+import { readFile, writeFile, removeFiles } from "@/lib/files";
 import { createServiceClient } from "@/lib/supabase/service";
 import { MARK_VERSION } from "@/config/marks";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -19,14 +19,13 @@ async function restamp(svc: SupabaseClient, sides: SideRow[]) {
   let done = 0;
   for (const s of sides) {
     if (!s.optimised_path || !s.preview_path || s.mime === "image/gif" || (s.mark_version ?? 0) >= MARK_VERSION) continue;
-    const { data: file } = await svc.storage.from(BUCKET).download(s.optimised_path);
+    const file = await readFile(svc, s.optimised_path);
     if (!file) continue;
-    const preview = await makePreview(Buffer.from(await file.arrayBuffer()));
+    const preview = await makePreview(file);
     const next = s.preview_path.replace(/(-m\d+)?\.\w+$/, `-m${MARK_VERSION}.${preview.ext}`);
-    const { error } = await svc.storage.from(BUCKET).upload(next, preview.buf, { contentType: preview.mime, upsert: true });
-    if (error) continue;
+    try { await writeFile(svc, next, preview.buf, preview.mime); } catch { continue; }
     await svc.from("version_sides").update({ preview_path: next, mark_version: MARK_VERSION }).eq("id", s.id);
-    if (next !== s.preview_path) await svc.storage.from(BUCKET).remove([s.preview_path]);
+    if (next !== s.preview_path) await removeFiles(svc, [s.preview_path]);
     done++;
   }
   return { done };

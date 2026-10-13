@@ -1,7 +1,7 @@
 import { DAY_MS } from "@/lib/time";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { makeReference } from "@/lib/reference-image";
-import { BUCKET } from "@/lib/storage";
+import { readFile, writeFile, removeFiles, newPath } from "@/lib/files";
 import { PURGE_AFTER_DAYS, DELETE_RESTORE_DAYS, DRAFT_SWEEP_DAYS, DRAFT_WARN_DAYS } from "@/config/limits";
 import { DEVICE_REFRESH_DAY } from "@/config/devices";
 
@@ -110,12 +110,11 @@ export async function purgeEventFiles(db: SupabaseClient, eventId: string, orgId
       for (const s of v.version_sides ?? []) {
         let reference = keepReferences ? s.reference_path : null;
         if (keep && v.id === keep.id && s.optimised_path && !reference) {
-          const { data: file } = await db.storage.from(BUCKET).download(s.optimised_path);
+          const file = await readFile(db, s.optimised_path);
           if (file) {
-            const ref = await makeReference(Buffer.from(await file.arrayBuffer()));
-            const path = `${orgId}/${eventId}/${slot.id}/reference/${s.side}.${ref.ext}`;
-            const { error: upErr } = await db.storage.from(BUCKET).upload(path, ref.buf, { contentType: ref.mime, upsert: true });
-            if (upErr) throw new Error(`reference for slot ${slot.id}: ${upErr.message}`);
+            const ref = await makeReference(file);
+            const path = newPath(`${orgId}/${eventId}/${slot.id}/reference/${s.side}.${ref.ext}`);
+            try { await writeFile(db, path, ref.buf, ref.mime); } catch (e) { throw new Error(`reference for slot ${slot.id}: ${(e as Error).message}`); }
             reference = path;
           }
         }
@@ -129,8 +128,8 @@ export async function purgeEventFiles(db: SupabaseClient, eventId: string, orgId
   let removed = 0;
   for (let i = 0; i < remove.length; i += 100) {
     const chunk = remove.slice(i, i + 100);
-    const { error: rmErr } = await db.storage.from(BUCKET).remove(chunk);
-    if (rmErr) throw new Error(`storage remove: ${rmErr.message}`);
+    const rmErr = await removeFiles(db, chunk);
+    if (rmErr) throw new Error(`storage remove: ${rmErr}`);
     removed += chunk.length;
   }
   return removed;

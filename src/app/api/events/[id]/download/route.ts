@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { slotName } from "@/lib/project";
 import { zipSync, strToU8 } from "fflate";
 import { getActiveUser } from "@/lib/auth";
-import { BUCKET } from "@/lib/storage";
+import { readFile } from "@/lib/files";
 import { assetFilename, slugify } from "@/lib/labels";
 
 export const maxDuration = 60;
@@ -36,10 +36,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
   }
   // Fetch every file at once; they are added in the order of the formats.
-  const fetched = await Promise.all(jobs.map(async (j) => ({ j, file: (await supabase.storage.from(BUCKET).download(j.path)).data })));
+  const fetched = await Promise.all(jobs.map(async (j) => ({ j, file: await readFile(supabase, j.path) })));
   for (const { j, file } of fetched) {
     if (!file) { missing.push(j.formatName); continue; }
-    files[j.name] = new Uint8Array(await file.arrayBuffer());
+    files[j.name] = new Uint8Array(file);
   }
   if (Object.keys(files).length === 0) return NextResponse.json({ error: "Nothing approved to download yet" }, { status: 404 });
   if (missing.length) files["README.txt"] = strToU8(`Not included (files no longer stored): ${[...new Set(missing)].join(", ")}\n`);

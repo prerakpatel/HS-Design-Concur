@@ -68,7 +68,7 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
     try {
       const start = await createUploadUrl(slotId, file.name, file.type, file.size);
       if ("error" in start) throw new Error(start.error);
-      await putWithProgress(start.path, start.token, file, xhr, (pct) => setProgress((p) => p && { ...p, pct }));
+      await putWithProgress(start, file, xhr, (pct) => setProgress((p) => p && { ...p, pct }));
       setBusy("Optimising…"); setProgress((p) => p && { ...p, phase: "optimise", pct: 100 });
       const res = await fetch("/api/uploads/finalize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slotId, tmpPath: start.path, mime: file.type, side, mode }) });
       const done = await res.json().catch(() => ({ error: `Processing failed (${res.status})` })) as { error?: string; number?: number; outcome?: string };
@@ -124,15 +124,20 @@ function outcomeMessage(outcome: string | undefined, n: number | undefined) {
 interface Progress { name: string; phase: "upload" | "optimise" | "done"; pct: number }
 const typesLabel = (accept: string[]) => accept.map((m) => m.split("/")[1].toUpperCase().replace("JPEG", "JPG")).join(", ");
 
-/** PUT to the signed storage URL with XHR (fetch has no upload progress). Same request supabase-js makes. */
-function putWithProgress(path: string, token: string, file: File, ref: { current: XMLHttpRequest | null }, onPct: (pct: number) => void) {
+/**
+ * PUT to the signed upload link with XHR (fetch has no upload progress). Cloudflare R2 takes the file as the body;
+ * Supabase (before R2, or without it) takes a form, the same request supabase-js makes.
+ */
+function putWithProgress(target: { url: string; kind: "r2" | "supabase" }, file: File, ref: { current: XMLHttpRequest | null }, onPct: (pct: number) => void) {
   return new Promise<void>((resolve, reject) => {
-    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/upload/sign/assets/${path}?token=${encodeURIComponent(token)}`;
-    const body = new FormData(); body.append("cacheControl", "3600"); body.append("", file);
     const x = new XMLHttpRequest(); ref.current = x;
-    x.open("PUT", url);
-    x.setRequestHeader("apikey", process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
-    x.setRequestHeader("x-upsert", "false");
+    x.open("PUT", target.url);
+    let body: Document | XMLHttpRequestBodyInit = file;
+    if (target.kind === "supabase") {
+      const form = new FormData(); form.append("cacheControl", "3600"); form.append("", file); body = form;
+      x.setRequestHeader("apikey", process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
+      x.setRequestHeader("x-upsert", "false");
+    } else x.setRequestHeader("Content-Type", file.type || "application/octet-stream");
     x.upload.onprogress = (e) => { if (e.lengthComputable) onPct(Math.round((e.loaded / e.total) * 100)); };
     x.onload = () => x.status < 300 ? resolve() : reject(new Error(uploadError(x.responseText, x.status)));
     x.onerror = () => reject(new Error("The upload didn't go through. Check your connection and try again."));

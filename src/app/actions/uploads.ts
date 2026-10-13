@@ -1,6 +1,6 @@
 "use server";
 import { requireViewer, projectContext } from "@/lib/auth";
-import { BUCKET } from "@/lib/storage";
+import { newPath, uploadTarget } from "@/lib/files";
 import { MAX_UPLOAD_BYTES } from "@/config/limits";
 
 const IMAGE_MIMES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
@@ -19,8 +19,7 @@ export async function createUploadUrl(slotId: string, filename: string, mime: st
   const fmt = slot.formats as unknown as { allowed_mimes: string[] } | null;
   if (fmt && !fmt.allowed_mimes.includes(mime)) return { error: `This format accepts ${fmt.allowed_mimes.map((m) => m.split("/")[1].toUpperCase()).join(", ")}.` };
   const ext = filename.match(/\.([a-z0-9]{1,5})$/i)?.[1].toLowerCase() ?? "bin";
-  const path = `tmp/${slotId}/${crypto.randomUUID()}.${ext}`;
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
-  if (error || !data) return { error: error?.message ?? "Could not start upload" };
-  return { path, token: data.token };
+  // Straight from the browser to storage (Cloudflare R2 when configured), then processed by /api/uploads/finalize.
+  try { return await uploadTarget(supabase, newPath(`tmp/${slotId}/${crypto.randomUUID()}.${ext}`)); }
+  catch (e) { return { error: (e as Error).message }; }
 }

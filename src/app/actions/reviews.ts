@@ -7,7 +7,8 @@ import { requireViewer, projectContext } from "@/lib/auth";
 import { serviceOr } from "@/lib/supabase/service";
 import { loadProjectPeople } from "@/lib/project-people";
 import { notify, eventParticipants, taggedMemberIds, approverIds } from "@/lib/notify";
-import { signedUrl, BUCKET } from "@/lib/storage";
+import { signedUrl } from "@/lib/storage";
+import { removeFiles } from "@/lib/files";
 import { assetFilename } from "@/lib/labels";
 import { recomputeSlotState } from "@/lib/slot-state";
 import { sanitizeComment, plainText, mentionIds, groupMentionIds } from "@/lib/rich-text";
@@ -324,7 +325,7 @@ export async function deleteVersion(versionId: string) {
   if (version.decision === "approved" && user.role !== "core_admin") throw new UserError("An approved version can only be deleted by a Core Admin");
   const { data: sides } = await supabase.from("version_sides").select("optimised_path,preview_path,thumb_path,reference_path").eq("version_id", versionId);
   const paths = (sides ?? []).flatMap((s) => [s.optimised_path, s.preview_path, s.thumb_path, s.reference_path]).filter((p): p is string => !!p);
-  if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
+  if (paths.length) await removeFiles(supabase, paths);
   const { error } = await supabase.from("versions").delete().eq("id", versionId);
   if (error) throw new UserError(error.message);
   await recomputeSlotState(supabase, slot.id);
@@ -346,7 +347,7 @@ export async function deleteVersionSide(versionId: string, side: "front" | "back
   if (!target) throw new UserError(`This version has no ${side} to delete`);
   if ((sides ?? []).length <= 1) { await deleteVersion(versionId); return { ok: true, versionRemoved: true }; }
   const paths = [target.optimised_path, target.preview_path, target.thumb_path, target.reference_path].filter((p): p is string => !!p);
-  if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
+  if (paths.length) await removeFiles(supabase, paths);
   const { error } = await supabase.from("version_sides").delete().eq("id", target.id);
   if (error) throw new UserError(error.message);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.updated", payload: { format: formatName, number: version.number } });

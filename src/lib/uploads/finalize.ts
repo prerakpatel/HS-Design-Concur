@@ -2,11 +2,12 @@ import { revalidatePath } from "next/cache";
 import { slotName } from "@/lib/project";
 import { processUpload } from "@/lib/images";
 import { rasterisePdf } from "@/lib/pdf";
-import { BUCKET } from "@/lib/storage";
+import { readFile, writeFile, copyFile, removeFiles, newPath } from "@/lib/files";
 import { recomputeSlotState } from "@/lib/slot-state";
 import { pruneOldVersions } from "@/lib/uploads/prune";
 import type { ActiveContext } from "@/lib/auth";
 import { MARK_VERSION } from "@/config/marks";
+import { MAX_UPLOAD_BYTES } from "@/config/limits";
 import { serviceOr } from "@/lib/supabase/service";
 
 /**
@@ -22,9 +23,10 @@ export async function finalizeUploadFor(ctx: ActiveContext & { guest?: boolean }
   // Guests upload too (to any format of their project); only approving and assigning stay with the organization.
   const fmt = slot.formats as unknown as { name: string; class: string };
 
-  const { data: file, error: dlErr } = await supabase.storage.from(BUCKET).download(tmpPath);
-  if (dlErr || !file) return { error: "Upload not found in storage" };
-  const input = Buffer.from(await file.arrayBuffer());
+  const input = await readFile(supabase, tmpPath);
+  if (!input) return { error: "Upload not found in storage" };
+  // A signed upload link cannot cap the size, so the size is checked here (the browser checks it first as well).
+  if (input.length > MAX_UPLOAD_BYTES) { await removeFiles(supabase, [tmpPath]); return { error: `Files must be under ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB.` }; }
   const isPdf = mime === "application/pdf";
   if (isPdf && fmt.class !== "print") return { error: "PDF uploads are for print formats. Export a PNG or JPG for digital formats." };
 
@@ -32,7 +34,7 @@ export async function finalizeUploadFor(ctx: ActiveContext & { guest?: boolean }
   let inputs: { side: "front" | "back"; buf: Buffer; mime: string }[];
   try {
     inputs = isPdf ? (await rasterisePdf(input)).map((buf, i) => ({ side: i === 0 ? "front" as const : "back" as const, buf, mime: "image/jpeg" })) : [{ side, buf: input, mime }];
-  } catch (e) { await supabase.storage.from(BUCKET).remove([tmpPath]); return { error: (e as Error).message }; }
+  } catch (e) { await removeFiles(supabase, [tmpPath]); return { error: (e as Error).message }; }
   const processedSides: { side: "front" | "back"; processed: Awaited<ReturnType<typeof processUpload>> }[] = [];
   try { for (const inp of inputs) processedSides.push({ side: inp.side, processed: await processUpload(inp.buf, inp.mime) }); }
   catch (e) { return { error: `Could not read that file: ${(e as Error).message}` }; }
@@ -66,7 +68,7 @@ export async function finalizeUploadFor(ctx: ActiveContext & { guest?: boolean }
   const written: string[] = [];
   /** A failed upload leaves nothing behind: files already written go, and a version made for it goes too. */
   const undo = async () => {
-    if (written.length) await supabase.storage.from(BUCKET).remove(written);
+    if (written.length) await removeFiles(supabase, written);
     if (inserted && versionId) await supabase.from("versions").delete().eq("id", versionId);
   };
   if (!versionId) {
@@ -80,9 +82,8 @@ export async function finalizeUploadFor(ctx: ActiveContext & { guest?: boolean }
       if (fs?.optimised_path) {
         const copy = async (from: string | null, name: string) => {
           if (!from) return null;
-          const to = `${org.id}/${event.id}/${slotId}/v${number}/front/${name}.${from.split(".").pop()}`;
-          const { error } = await supabase.storage.from(BUCKET).copy(from, to);
-          if (error) throw new Error(error.message);
+          const to = newPath(`${org.id}/${event.id}/${slotId}/v${number}/front/${name}.${from.split(".").pop()}`);
+          await copyFile(supabase, from, to);
           written.push(to);
           return to;
         };
@@ -97,9 +98,8 @@ export async function finalizeUploadFor(ctx: ActiveContext & { guest?: boolean }
     for (const { side: s, processed } of processedSides) {
       const base = `${org.id}/${event.id}/${slotId}/v${number}/${s}${inPlace ? `-${Date.now().toString(36)}` : ""}`;
       const put = async (name: string, r: { buf: Buffer; mime: string; ext: string }) => {
-        const p = `${base}/${name}.${r.ext}`;
-        const { error } = await supabase.storage.from(BUCKET).upload(p, r.buf, { contentType: r.mime, upsert: true });
-        if (error) throw new Error(error.message);
+        const p = newPath(`${base}/${name}.${r.ext}`);
+        await writeFile(supabase, p, r.buf, r.mime);
         written.push(p);
         return p;
       };
@@ -112,10 +112,10 @@ export async function finalizeUploadFor(ctx: ActiveContext & { guest?: boolean }
     // Everything new is stored: now the replaced files and any side the new file no longer has can go.
     const stale = changing.filter((c) => !processedSides.some((p) => p.side === c));
     if (stale.length) await supabase.from("version_sides").delete().eq("version_id", latest.id).in("side", stale);
-    if (oldPaths.length) await supabase.storage.from(BUCKET).remove(oldPaths);
+    if (oldPaths.length) await removeFiles(supabase, oldPaths);
     await supabase.from("versions").update({ uploaded_by: user.id, created_at: new Date().toISOString() }).eq("id", latest.id);
   }
-  await supabase.storage.from(BUCKET).remove([tmpPath]);
+  await removeFiles(supabase, [tmpPath]);
 
   // Uploading is private: the slot only moves to In review when the designer sends the version (sendForReview).
   if (firstSide === "front" || inserted) {

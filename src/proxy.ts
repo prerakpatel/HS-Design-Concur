@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // /api/jobs is called by Vercel Cron with no session; the route itself checks the cron bearer token or a Core Admin.
-const PUBLIC = ["/login", "/auth", "/awaiting", "/manifest.webmanifest", "/api/status", "/api/jobs", "/sw.js", ...(process.env.DESIGN_PREVIEW === "1" ? ["/preview"] : [])];
+const PUBLIC = ["/login", "/auth", "/awaiting", "/manifest.webmanifest", "/api/status", "/api/storage-check", "/api/jobs", "/sw.js", ...(process.env.DESIGN_PREVIEW === "1" ? ["/preview"] : [])];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

@@ -25,7 +25,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ op: str
 
   const body = await req.json().catch(() => null) as { slotId?: string; tmpPath?: string; mime?: string; side?: "front" | "back"; mode?: "auto" | "new" } | null;
   if (!body?.slotId || !body.tmpPath || !body.mime) return NextResponse.json({ error: "Missing upload details" }, { status: 400 });
-  if (!/^[0-9a-f-]{36}$/i.test(body.slotId) || !new RegExp(`^tmp/${body.slotId}/[0-9a-f-]{36}\\.[a-z0-9]{1,5}$`, "i").test(body.tmpPath)) return NextResponse.json({ error: "Bad upload path" }, { status: 400 });
+  if (!/^[0-9a-f-]{36}$/i.test(body.slotId) || !new RegExp(`^(r2:)?tmp/${body.slotId}/[0-9a-f-]{36}\\.[a-z0-9]{1,5}$`, "i").test(body.tmpPath)) return NextResponse.json({ error: "Bad upload path" }, { status: 400 });
   // Members of the project's organization and guests on its People list may upload.
   const { data: slot } = await viewer.supabase.from("slots").select("events(org_id)").eq("id", body.slotId).maybeSingle();
   const orgId = (slot?.events as unknown as { org_id: string } | null)?.org_id;
