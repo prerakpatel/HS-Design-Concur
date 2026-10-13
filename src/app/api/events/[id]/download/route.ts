@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { slotName } from "@/lib/project";
 import { zipSync, strToU8 } from "fflate";
-import { getActiveUser } from "@/lib/auth";
+import { getViewer, projectContext } from "@/lib/auth";
 import { readFile } from "@/lib/files";
 import { assetFilename, slugify } from "@/lib/labels";
 
@@ -10,16 +10,20 @@ export const maxDuration = 60;
 /**
  * One ZIP of every approved design in the event, named like the single downloads
  * (year_event_format_vN.ext, "-back" for the back of a print piece). Archived events have only reference
- * images left, so those are what they get. Anyone on the org can download; the files are already approved.
+ * images left, so those are what they get. Anyone who can open the project can download (its organization, and its
+ * guests); the files are already approved. `?slot=` limits it to one format (its front and back).
  */
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const ctx = await getActiveUser();
-  if (!ctx) return NextResponse.json({ error: "unauthorised" }, { status: 401 });
-  const { supabase, org } = ctx;
+  const slotId = new URL(req.url).searchParams.get("slot");
+  const viewer = await getViewer();
+  if (!viewer) return NextResponse.json({ error: "unauthorised" }, { status: 401 });
+  const { supabase } = viewer;
   const { data: event } = await supabase.from("events").select("id,org_id,title,event_date").eq("id", id).is("deleted_at", null).maybeSingle();
-  if (!event || event.org_id !== org.id) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const { data: slots } = await supabase.from("slots").select("id,label,formats(name,sort),versions(number,decision,version_sides(side,optimised_path,reference_path))").eq("event_id", id).eq("requested", true).eq("state", "approved");
+  if (!event || !projectContext(viewer, event.org_id)) return NextResponse.json({ error: "not found" }, { status: 404 });
+  let query = supabase.from("slots").select("id,label,formats(name,sort),versions(number,decision,version_sides(side,optimised_path,reference_path))").eq("event_id", id).eq("requested", true).eq("state", "approved");
+  if (slotId) query = query.eq("id", slotId);
+  const { data: slots } = await query;
 
   const files: Record<string, Uint8Array> = {};
   const missing: string[] = [];
@@ -44,6 +48,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (Object.keys(files).length === 0) return NextResponse.json({ error: "Nothing approved to download yet" }, { status: 404 });
   if (missing.length) files["README.txt"] = strToU8(`Not included (files no longer stored): ${[...new Set(missing)].join(", ")}\n`);
   const zip = zipSync(files, { level: 0 }); // images are already compressed; store them as-is
-  const name = `${event.event_date?.slice(0, 4) ?? new Date().getFullYear()}_${slugify(event.title)}_approved.zip`;
+  const one = slotId && rows[0] ? `_${slugify(slotName((rows[0].formats as unknown as { name: string } | null)?.name, rows[0].label as string | null))}` : "";
+  const name = `${event.event_date?.slice(0, 4) ?? new Date().getFullYear()}_${slugify(event.title)}${one}_approved.zip`;
   return new Response(new Uint8Array(zip), { headers: { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${name}"`, "Cache-Control": "private, no-store" } });
 }

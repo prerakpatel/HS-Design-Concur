@@ -16,8 +16,10 @@ import { errorMessage } from "@/lib/user-error";
  * Admin) and nothing to approvers; a sent one shows approve (notify / download), request changes, reopen.
  * Downloads are named year_event_format_vN and saved, not opened.
  */
-export function ReviewActions({ versionId, label, eventTitle, decision, canApprove, isOwnUpload, hasBack, openChanges = 0, sent = true, canSend = false, layout = "row" }: {
+export function ReviewActions({ versionId, label, eventTitle, decision, canApprove, isOwnUpload, hasBack, openChanges = 0, sent = true, canSend = false, layout = "row", zip }: {
   versionId: string; label: string; eventTitle: string; decision: string; canApprove: boolean; isOwnUpload: boolean; hasBack: boolean;
+  /** ZIP downloads once approved: every approved design in the project, and this format's front and back. */
+  zip?: { all: string; format: string };
   /** Change requests on this version that are not done yet: the approval dialog says so. */
   openChanges?: number;
   /** Has the designer sent this version to the approvers yet? */
@@ -44,9 +46,11 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
     <>
       <Button variant="secondary" disabled={pending} onClick={() => start(async () => { try { await download("front"); } catch (e) { toast.error(errorMessage(e)); } })}>Download{hasBack ? " front" : ""}</Button>
       {hasBack && <Button variant="secondary" disabled={pending} onClick={() => start(async () => { try { await download("back"); } catch (e) { toast.error(errorMessage(e)); } })}>Download back</Button>}
+      {zip && hasBack && <Button asChild variant="secondary"><a href={zip.format} download>Front and back · ZIP</a></Button>}
+      {zip && <Button asChild variant="secondary"><a href={zip.all} download>All approved · ZIP</a></Button>}
     </>
   );
-  const wrap = layout === "fill" ? "flex flex-col gap-2 [&>button]:w-full" : "flex flex-wrap gap-2";
+  const wrap = layout === "fill" ? "flex flex-col gap-2 [&>a]:w-full [&>button]:w-full" : "flex flex-wrap gap-2";
   if (!sent) {
     if (!canSend) return <p className="text-sm text-muted-foreground">Not sent for review yet. The designer is still working on it.</p>;
     return (
