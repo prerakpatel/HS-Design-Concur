@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { requireViewer, projectAccess, initials } from "@/lib/auth";
-import { loadProjectPeople, loadChatLink } from "@/lib/project-people";
+import { loadProjectPanel } from "@/lib/project-people";
 import { ProjectPeople } from "@/components/events/project-people";
-import { signedUrl } from "@/lib/storage";
+import { signedUrls } from "@/lib/storage";
 import { formatSize } from "@/lib/labels";
 import { PageHeader, BackLink } from "@/components/page-header";
 import { StateBadge } from "@/components/state-badge";
@@ -31,17 +31,13 @@ export default async function EventPage({ params, searchParams }: { params: Prom
   const { guest, org, isApprover } = projectAccess(viewer, event.org_id);
   // A member works in one organization at a time (the switcher); another organization's project is not found here.
   if (!guest && event.org_id !== viewer.member?.org.id) notFound();
-  const [{ data: brief }, { data: slots }, { data: formats }, { data: activity }, { data: creator }, people, chatLink, { data: canManage }, { data: orgPeople }] = await Promise.all([
+  const [{ data: brief }, { data: slots }, { data: formats }, { data: activity }, { data: creator }, panel] = await Promise.all([
     supabase.from("briefs").select("*").eq("event_id", id).maybeSingle<Brief>(),
     supabase.from("slots").select("*,assignee:assignee_id(name,email,avatar_url),versions(id,number,uploaded_by,created_at,sent_at,version_sides(side,thumb_path,reference_path))").eq("event_id", id),
     supabase.from("formats").select("*").order("sort").returns<Format[]>(),
     supabase.from("activity").select("*,actor:actor_id(name,email,avatar_url)").eq("event_id", id).order("created_at", { ascending: false }).limit(12),
     supabase.from("users").select("name,email").eq("id", event.created_by).maybeSingle(),
-    loadProjectPeople(supabase, event),
-    loadChatLink(supabase, event.id),
-    guest ? Promise.resolve({ data: false }) : supabase.rpc("can_manage_project", { p_event: event.id }),
-    // Suggestions while adding someone: the organization's members (never shown to a guest).
-    guest ? Promise.resolve({ data: [] }) : supabase.from("users").select("name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", event.org_id),
+    loadProjectPanel(supabase, event.id),
   ]);
   const assets = isAssets(event);
   const bySlotFormat = new Map((slots ?? []).map((s) => [s.format_id, s]));
@@ -50,21 +46,25 @@ export default async function EventPage({ params, searchParams }: { params: Prom
   const pairs: [Format, unknown][] = assets
     ? (slots ?? []).flatMap((sl) => { const f = fmtById.get(sl.format_id); return f ? [[f, sl] as [Format, unknown]] : []; }).sort(([fa, a], [fb, b]) => byFormatThenLabel({ sort: fa.sort, label: (a as Slot).label }, { sort: fb.sort, label: (b as Slot).label }))
     : (formats ?? []).map((f) => [f, bySlotFormat.get(f.id)] as [Format, unknown]);
+  type SlotRow = Slot & { assignee: { name: string | null; email: string; avatar_url: string | null } | null; versions: { id: string; number: number; uploaded_by: string; created_at: string; sent_at: string | null; version_sides: { side: string; thumb_path: string | null; reference_path: string | null }[] }[] };
+  const frontOf = (slot: SlotRow | undefined) => { const latest = [...(slot?.versions ?? [])].sort((a, b) => b.number - a.number)[0]; const front = latest?.version_sides?.find((s) => s.side === "front"); return front?.thumb_path ?? front?.reference_path ?? null; };
+  // Every thumbnail's link in one request.
+  const thumbs = await signedUrls(supabase, pairs.map(([, raw]) => frontOf(raw as SlotRow | undefined)));
   const built = (await Promise.all(pairs.map(async ([f, raw]) => {
     const slot = raw as (Slot & { assignee: { name: string | null; email: string; avatar_url: string | null } | null; versions: { id: string; number: number; uploaded_by: string; created_at: string; sent_at: string | null; version_sides: { side: string; thumb_path: string | null; reference_path: string | null }[] }[] }) | undefined;
     if (!slot || (!f.active && !slot.requested)) return null;
     const latest = [...(slot.versions ?? [])].sort((a, b) => b.number - a.number)[0];
     const front = latest?.version_sides?.find((s) => s.side === "front");
-    const thumb = await signedUrl(supabase, front?.thumb_path ?? front?.reference_path ?? null);
+    const thumbPath = front?.thumb_path ?? front?.reference_path ?? null;
+    const thumb = thumbPath ? thumbs.get(thumbPath) ?? null : null;
     return { slotId: slot.id, name: slotName(f.name, slot.label), size: formatSize(f, { w: slot.custom_w, h: slot.custom_h }), state: latest && !latest.sent_at ? "unsent" : slot.state, requested: slot.requested, version: latest?.number ?? null, versionId: latest?.id ?? null, uploadedByMe: latest?.uploaded_by === user.id, thumb, formatKey: f.key, frame: f.frame, due: slot.due_on, assignee: slot.assignee ? { name: slot.assignee.name ?? slot.assignee.email, initials: initials(slot.assignee.name, slot.assignee.email), avatar: slot.assignee.avatar_url } : null, isPrimary: slot.is_primary, sort: f.sort, firstUploadAt: slot.versions?.length ? slot.versions.map((x) => x.created_at).sort()[0] : null };
   }))).filter((c): c is NonNullable<typeof c> => !!c);
   // Requests keep the order they were listed in; events put the primary and the earliest work first.
   const cards: FormatCardData[] = (assets ? built : orderSlots(built.map((c) => ({ ...c, is_primary: c.isPrimary })))).map((c) => { const { sort, firstUploadAt, ...rest } = c as typeof c & { is_primary?: boolean }; void sort; void firstUploadAt; delete rest.is_primary; return rest as FormatCardData; });
   const requested = cards.filter((c) => c.requested); const approved = requested.filter((c) => c.state === "approved").length;
   const canDelete = !guest && (user.role === "core_admin" || event.created_by === user.id);
-  const listed = new Set(people.map((p) => p.email));
-  const peopleButton = event.status !== "draft" && (!guest || people.length > 0) ? <ProjectPeople eventId={id} orgName={org?.name ?? "the organization"} people={people} chat={chatLink} canManage={!!canManage && event.status === "active"} slackChannels={!!process.env.SLACK_BOT_TOKEN}
-    suggestions={((orgPeople ?? []) as { name: string | null; email: string }[]).filter((u) => !listed.has(u.email.toLowerCase())).map((u) => ({ email: u.email.toLowerCase(), name: u.name ?? u.email }))} /> : null;
+  const { people, chat: chatLink } = panel; const canManage = !guest && panel.canManage;
+  const peopleButton = event.status !== "draft" && (!guest || people.length > 0) ? <ProjectPeople eventId={id} orgName={org?.name ?? "the organization"} people={people} chat={chatLink} canManage={!!canManage && event.status === "active"} slackChannels={!!process.env.SLACK_BOT_TOKEN} /> : null;
   const d = event.event_date ? format(new Date(event.event_date + "T00:00:00"), "EEE d MMM yyyy") : "Date not set";
   return (
     <>

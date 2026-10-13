@@ -2,7 +2,7 @@ import { VERSIONS_KEPT } from "@/config/limits";
 import { notFound } from "next/navigation";
 import { requireViewer, projectAccess, initials } from "@/lib/auth";
 import { loadProjectPeople } from "@/lib/project-people";
-import { signedUrl } from "@/lib/storage";
+import { signedUrls } from "@/lib/storage";
 import { formatSize } from "@/lib/labels";
 import { loadGroups, groupHandle } from "@/lib/groups";
 import { orderSlots } from "@/lib/slot-order";
@@ -23,7 +23,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const { supabase, user } = viewer;
   const homeOrg = viewer.member?.org.id ?? null;
   // Everything this page needs that does not depend on another answer, asked at once. The org check comes after.
-  const [{ data: event }, { data: slotRow }, { data: versions }, { data: members }, { data: siblings }, { data: comments }, groups] = await Promise.all([
+  const [{ data: event }, { data: slotRow }, { data: versions }, { data: members }, { data: siblings }, { data: comments }, groups, people] = await Promise.all([
     supabase.from("events").select("*").eq("id", id).is("deleted_at", null).maybeSingle<EventRow>(),
     supabase.from("slots").select("*,fmt:formats(*)").eq("id", slotId).eq("event_id", id).maybeSingle<Slot & { fmt: Format | null }>(),
     supabase.from("versions").select("*,version_sides(*),uploader:uploaded_by(name,email)").eq("slot_id", slotId).order("number", { ascending: false }),
@@ -33,12 +33,12 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
     // The whole conversation for this format, across versions: what was asked on v1 is the reason v2 exists.
     supabase.from("comments").select("*,author:author_id(name,email,avatar_url,role,function_tags),assignee:assignee_id(name,email),versions!inner(slot_id)").eq("versions.slot_id", slotId).order("created_at"),
     homeOrg ? loadGroups(supabase, [homeOrg]) : Promise.resolve([]),
+    loadProjectPeople(supabase, { id }),
   ]);
   // Row-level security already limits this to members of the project's organization and guests on its People list.
   if (!event || !slotRow) notFound();
   const { guest, isApprover } = projectAccess(viewer, event.org_id);
   if (!guest && event.org_id !== homeOrg) notFound();
-  const people = await loadProjectPeople(supabase, event);
   const projectGuests = people.filter((p) => p.guest && p.userId);
   const orgMembers = guest ? [] : (members ?? []);
   const { fmt, ...slot } = slotRow;
@@ -57,10 +57,13 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const purged = !!current?.purged_at;
   const readOnly = event.status === "archived";
   const pick = (s: (typeof rawSides)[number]) => approved ? (s.optimised_path ?? s.reference_path) : (s.preview_path ?? s.optimised_path ?? s.reference_path);
-  const sides: SideView[] = (await Promise.all(["front", "back"].map(async (k) => {
+  // Both sides' links in one request.
+  const links = await signedUrls(supabase, rawSides.map(pick));
+  const sides: SideView[] = (["front", "back"] as const).map((k) => {
     const s = rawSides.find((x) => x.side === k); if (!s) return null;
-    return { side: k as "front" | "back", src: await signedUrl(supabase, pick(s)), isGif: s.mime === "image/gif", width: s.width, height: s.height };
-  }))).filter((s): s is SideView => !!s);
+    const p = pick(s);
+    return { side: k, src: p ? links.get(p) ?? null : null, isGif: s.mime === "image/gif", width: s.width, height: s.height };
+  }).filter((s): s is SideView => !!s);
   const hasBack = sides.some((s) => s.side === "back");
   const stalePreviews = !approved && !purged ? rawSides.filter((s) => s.preview_path && s.mime !== "image/gif" && (s.mark_version ?? 0) < MARK_VERSION).map((s) => s.id) : [];
 

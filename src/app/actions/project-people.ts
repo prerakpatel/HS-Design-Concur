@@ -66,6 +66,14 @@ export async function addProjectPerson(eventId: string, rawEmail: string) {
   return { chat: !!link };
 }
 
+/** The organization's members not on the list yet, offered while typing an email (loaded when the panel opens). */
+export async function projectSuggestions(eventId: string, exclude: string[]) {
+  const { supabase, event } = await manageable(eventId);
+  const { data } = await supabase.from("users").select("name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", event.org_id);
+  const skip = new Set(exclude.map((e) => e.toLowerCase()));
+  return ((data ?? []) as { name: string | null; email: string }[]).filter((u) => !skip.has(u.email.toLowerCase())).map((u) => ({ email: u.email.toLowerCase(), name: u.name ?? u.email }));
+}
+
 /** Take someone off the People list. The creator and assigned designers stay; at least one approver must stay. */
 export async function removeProjectPerson(eventId: string, email: string) {
   const { supabase, event } = await manageable(eventId);

@@ -114,3 +114,11 @@ alter policy sides_guest_read on version_sides using (cardinality((select my_gue
 alter policy comments_guest_read on comments using (cardinality((select my_guest_event_ids())::uuid[]) > 0 and version_event(version_id) = any ((select my_guest_event_ids())::uuid[]) and (not is_draft or author_id = auth.uid()));
 alter policy activity_guest_read on activity using (event_id = any ((select my_guest_event_ids())::uuid[]));
 alter policy assets_read on storage.objects using (bucket_id = 'assets' and (member_of(asset_path_org(name)) or (cardinality((select my_guest_event_ids())::uuid[]) > 0 and guest_path_ok(name))));
+
+-- One request for the project page's People button: the list, where the chat goes, and whether the viewer may change them.
+create or replace function public.project_panel(p_event uuid) returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'people', coalesce((select jsonb_agg(to_jsonb(p)) from project_people(p_event) p), '[]'::jsonb),
+    'chat', (select to_jsonb(c) from project_chat_info(p_event) c limit 1),
+    'can_manage', can_manage_project(p_event))
+$$;

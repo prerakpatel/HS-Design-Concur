@@ -2,6 +2,7 @@
 import { DAY_MS } from "@/lib/time";
 import { capFor } from "@/lib/project";
 import { revalidatePath } from "next/cache";
+import { forget } from "@/lib/memo";
 import { requireActiveUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
 import { normaliseSlackId } from "@/lib/chat";
@@ -107,6 +108,7 @@ export async function updateOrgSettings(orgId: string, formData: FormData) {
   const { error } = await supabase.from("organisations").update(patch).eq("id", orgId);
   if (error) throw new UserError(error.message);
   if ("logo_path" in patch && cur?.logo_path && cur.logo_path !== patch.logo_path) await supabase.storage.from("branding").remove([cur.logo_path]);
+  forget("orgs");
   revalidatePath("/settings"); revalidatePath("/", "layout");
 }
 
@@ -157,5 +159,6 @@ export async function setMaintenance(on: boolean, message: string) {
   const { supabase, user } = await requireCoreAdmin();
   const { error } = await supabase.from("app_settings").update({ maintenance: on, maintenance_message: on ? message.trim().slice(0, 300) || null : null, maintenance_at: on ? new Date().toISOString() : null, maintenance_by: on ? user.id : null }).eq("id", true);
   if (error) throw new UserError(error.message);
+  forget("maintenance");
   revalidatePath("/settings");
 }

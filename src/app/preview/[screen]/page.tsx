@@ -59,12 +59,12 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
   </>);
   if (screen === "guest-event") { const req = F.CARDS.filter((c) => c.requested); const ok = req.filter((c) => c.state === "approved").length; return guestShell(<>
     <PageHeader back={<Link href="#" className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card pl-2 pr-3.5 text-sm font-medium"><Icon name="arrow_back" className="!text-[18px]" />Your projects</Link>} title="Diwali Annakut Darshan" subtitle="Sun 8 Nov 2026 · Harisumiran Mandir, Edison · Created by Rina Desai"
-      actions={<><ProjectPeople eventId="e-1" orgName="Harisumiran" people={PEOPLE} chat={{ platform: "slack", label: "#annakut-2026" }} canManage={false} suggestions={[]} slackChannels /><Button variant="outline"><Icon name="history" className="!text-[18px]" />Activity</Button></>} />
+      actions={<><ProjectPeople eventId="e-1" orgName="Harisumiran" people={PEOPLE} chat={{ platform: "slack", label: "#annakut-2026" }} canManage={false} slackChannels /><Button variant="outline"><Icon name="history" className="!text-[18px]" />Activity</Button></>} />
     <div className="space-y-10"><BriefCard brief={{ ...F.BRIEF_VIEW, inviteText: F.BRIEF }} locked={false} canEdit={false} editHref="#" /><FormatGrid eventId="e-1" event={{ title: "Diwali Annakut Darshan", date: F.BRIEF_VIEW.date }} cards={F.CARDS} meta={`${ok} approved · ${req.length - ok} in progress`} /></div>
   </>); }
   if (screen === "people" || screen === "people-empty") return shell(<>
     <PageHeader title="Diwali Annakut Darshan" subtitle="Sun 8 Nov 2026 · Harisumiran Mandir, Edison · Created by Rina Desai"
-      actions={<><ProjectPeople eventId="e-1" orgName="Harisumiran" people={screen === "people" ? PEOPLE : []} chat={null} canManage suggestions={[{ email: "dev@harisumiran.org", name: "Dev Mehta" }]} slackChannels /><Button variant="secondary">Edit event</Button></>} />
+      actions={<><ProjectPeople eventId="e-1" orgName="Harisumiran" people={screen === "people" ? PEOPLE : []} chat={null} canManage slackChannels /><Button variant="secondary">Edit event</Button></>} />
   </>);
   if (screen === "events") return shell(<>
     <PageHeader title="Projects" subtitle={`${org.name} · 5 of 15 project slots in use`} actions={<NewRequest assets />} />

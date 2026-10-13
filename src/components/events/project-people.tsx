@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Icon } from "@/components/material-icon";
 import { UserAvatar } from "@/components/user-avatar";
-import { addProjectPerson, removeProjectPerson, connectProjectChat, disconnectProjectChat } from "@/app/actions/project-people";
+import { addProjectPerson, removeProjectPerson, connectProjectChat, disconnectProjectChat, projectSuggestions } from "@/app/actions/project-people";
 import { errorMessage } from "@/lib/user-error";
 import { cn } from "@/lib/utils";
 import type { ProjectPerson, ChatLink } from "@/lib/project-people";
@@ -18,8 +18,6 @@ export interface ProjectPeopleProps {
   people: ProjectPerson[]; chat: ChatLink | null;
   /** Creator, approvers, designers and Core Admins of the organization may change the list and the chat. */
   canManage: boolean;
-  /** Organization members not on the list yet, offered as suggestions while typing. */
-  suggestions: { email: string; name: string }[];
   /** Slack channel links work (the app has a bot token); otherwise Slack takes a webhook. */
   slackChannels: boolean;
 }
@@ -31,9 +29,12 @@ export interface ProjectPeopleProps {
  */
 export function ProjectPeople(p: ProjectPeopleProps) {
   const guests = p.people.filter((x) => x.guest);
+  // The organization's members as suggestions, fetched only when someone who can add people opens the panel.
+  const [suggestions, setSuggestions] = useState<{ email: string; name: string }[]>([]);
+  const onOpen = (open: boolean) => { if (open && p.canManage && !suggestions.length) projectSuggestions(p.eventId, p.people.map((x) => x.email)).then(setSuggestions).catch(() => {}); };
   const warn = guests.length > 0 && !p.chat;
   return (
-    <Dialog>
+    <Dialog onOpenChange={onOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" className="relative">
           <Icon name="group" className="!text-[18px]" />People{p.people.length ? ` · ${p.people.length}` : ""}
@@ -55,7 +56,7 @@ export function ProjectPeople(p: ProjectPeopleProps) {
             <span>This project posts to the main channels, and {guests.length === 1 ? "its guest isn't" : "its guests aren't"} in them. Connect a project chat below; until then guests only see updates in the app (Inbox).</span>
           </p>
         )}
-        {p.canManage && <AddPerson eventId={p.eventId} first={p.people.length === 0} suggestions={p.suggestions} />}
+        {p.canManage && <AddPerson eventId={p.eventId} first={p.people.length === 0} suggestions={suggestions.filter((x) => !p.people.some((y) => y.email === x.email))} />}
         {p.people.length > 0 && <PeopleList eventId={p.eventId} people={p.people} canManage={p.canManage} />}
         <ChatSection eventId={p.eventId} chat={p.chat} canManage={p.canManage} slackChannels={p.slackChannels} />
         <CopyLink eventId={p.eventId} />

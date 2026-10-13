@@ -2,7 +2,7 @@ import { DAY_MS } from "@/lib/time";
 import Link from "next/link";
 import { format } from "date-fns";
 import { requireActiveUser } from "@/lib/auth";
-import { signedUrl } from "@/lib/storage";
+import { signedUrls } from "@/lib/storage";
 import { relativeTime } from "@/lib/labels";
 import { restoreEvent } from "@/app/actions/admin";
 import { PageHeader, SectionHeader } from "@/components/page-header";
@@ -24,11 +24,14 @@ export default async function ArchivePage() {
     supabase.from("events").select("id,title,event_date,archived_at,slots(state,requested,versions(decision,version_sides(side,reference_path,thumb_path)))").eq("org_id", org.id).eq("status", "archived").is("deleted_at", null).order("event_date", { ascending: false }).returns<ArchivedRow[]>(),
     user.role === "core_admin" ? supabase.from("events").select("id,title,event_date,status,deleted_at").eq("org_id", org.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }).returns<DeletedRow[]>() : Promise.resolve({ data: [] as DeletedRow[] }),
   ]);
-  const cards = await Promise.all((archived ?? []).map(async (e) => {
+  const rows = (archived ?? []).map((e) => {
     const approved = e.slots.filter((s) => s.requested && s.state === "approved");
     const front = e.slots.flatMap((s) => s.versions).flatMap((v) => v.version_sides).find((s) => s.side === "front" && s.reference_path) ?? approved.flatMap((s) => s.versions.filter((v) => v.decision === "approved")).flatMap((v) => v.version_sides).find((s) => s.side === "front");
-    return { id: e.id, title: e.title, date: e.event_date, approved: approved.length, requested: e.slots.filter((s) => s.requested).length, cover: await signedUrl(supabase, front?.reference_path ?? front?.thumb_path ?? null) };
-  }));
+    return { e, approved, coverPath: front?.reference_path ?? front?.thumb_path ?? null };
+  });
+  // Every cover's link in one request.
+  const covers = await signedUrls(supabase, rows.map((r) => r.coverPath));
+  const cards = rows.map(({ e, approved, coverPath }) => ({ id: e.id, title: e.title, date: e.event_date, approved: approved.length, requested: e.slots.filter((s) => s.requested).length, cover: coverPath ? covers.get(coverPath) ?? null : null }));
   const restorable = (deleted ?? []).map((d) => ({ ...d, left: daysLeft(d.deleted_at) })).filter((d) => d.left > 0);
 
   return (

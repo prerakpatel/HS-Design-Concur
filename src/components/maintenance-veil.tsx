@@ -10,7 +10,7 @@ import type { MaintenanceState } from "@/lib/maintenance";
 
 // icons: construction
 export const DEFAULT_HOLD_MESSAGE = "We’re making a quick improvement and should be back in a moment.";
-const POLL_MS = 15_000;
+const POLL_MS = 60_000;
 
 /**
  * The maintenance hold. Sits on top of the app without unmounting it, so anything someone was typing stays put

@@ -4,8 +4,24 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { AppUser, Organization } from "@/lib/types";
 import { DEFAULT_ORG } from "@/config/orgs";
+import { createServiceClient } from "@/lib/supabase/service";
+import { remember } from "@/lib/memo";
 
 export const ORG_COOKIE = "dc.org";
+
+const ORG_COLUMNS = "id,slug,name,short_name,accepting_signups,email_enabled,chat_enabled,slack_enabled,logo_path,event_cap,asset_requests";
+type OrgRow = Omit<Organization, "chat_webhook_url" | "slack_webhook_url">;
+
+/**
+ * All organizations, everything except the webhook URLs (secrets; this object is handed to client components).
+ * They rarely change, so with the service key one server instance reads them at most once a minute (Settings drops
+ * the copy when an organization is saved); without it, the person's own client reads them each time.
+ */
+async function loadOrganizations(supabase: Awaited<ReturnType<typeof createClient>>): Promise<{ data: OrgRow[] | null }> {
+  if (!process.env.SUPABASE_SECRET_KEY) return supabase.from("organisations").select(ORG_COLUMNS).order("name").returns<OrgRow[]>();
+  const data = await remember("orgs", 60_000, async () => (await createServiceClient().from("organisations").select(ORG_COLUMNS).order("name").returns<OrgRow[]>()).data ?? []);
+  return { data };
+}
 
 /**
  * Session for the current request. The token is verified locally (getClaims, cached signing keys), then the
@@ -19,8 +35,7 @@ export const getSession = cache(async () => {
   const [{ data: user }, { data: memberships }, { data: orgs }] = await Promise.all([
     supabase.from("users").select("*").eq("id", uid).single<AppUser>(),
     supabase.from("org_memberships").select("org_id,is_approver").eq("user_id", uid),
-    // Everything except the webhook URLs: they are secrets, and this object is handed to client components.
-    supabase.from("organisations").select("id,slug,name,short_name,accepting_signups,email_enabled,chat_enabled,slack_enabled,logo_path,event_cap,asset_requests").order("name").returns<Omit<Organization, "chat_webhook_url" | "slack_webhook_url">[]>(),
+    loadOrganizations(supabase),
   ]);
   if (!user) return null;
   const memberOrgIds = new Set((memberships ?? []).map((m) => m.org_id));

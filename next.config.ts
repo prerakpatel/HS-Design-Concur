@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Going back to a page seen in the last 30 seconds (the project after opening a design) reuses it instead of asking
+  // the server again. The app's own changes still refresh it at once (they revalidate their pages).
+  experimental: { staleTimes: { dynamic: 30 } },
   // Native / WASM packages used by the upload pipeline must not be bundled.
   serverExternalPackages: ["sharp", "pdfjs-dist", "@napi-rs/canvas"],
   // The watermark font is read from disk at runtime; make sure it ships with the upload function.

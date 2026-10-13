@@ -19,9 +19,21 @@ export interface ChatLink { platform: "slack" | "gchat"; label: string | null }
  * has none (then it is open to its organization as usual). Read through project_people(), which answers members of
  * the organization and the project's guests only.
  */
+type PeopleRow = { email: string; user_id: string | null; name: string | null; avatar_url: string | null; is_member: boolean; is_approver: boolean; is_creator: boolean; is_assigned: boolean; listed: boolean };
+
 export async function loadProjectPeople(supabase: SupabaseClient, event: { id: string }): Promise<ProjectPerson[]> {
   const { data } = await supabase.rpc("project_people", { p_event: event.id });
-  const rows = (data ?? []) as { email: string; user_id: string | null; name: string | null; avatar_url: string | null; is_member: boolean; is_approver: boolean; is_creator: boolean; is_assigned: boolean; listed: boolean }[];
+  return toPeople((data ?? []) as PeopleRow[]);
+}
+
+/** Everything the project page's People button needs, in one request: the list, the chat, and who may change them. */
+export async function loadProjectPanel(supabase: SupabaseClient, eventId: string): Promise<{ people: ProjectPerson[]; chat: ChatLink | null; canManage: boolean }> {
+  const { data } = await supabase.rpc("project_panel", { p_event: eventId });
+  const d = (data ?? {}) as { people?: PeopleRow[]; chat?: { platform: ChatLink["platform"]; label: string | null } | null; can_manage?: boolean };
+  return { people: toPeople(d.people ?? []), chat: d.chat ? { platform: d.chat.platform, label: d.chat.label } : null, canManage: !!d.can_manage };
+}
+
+function toPeople(rows: PeopleRow[]): ProjectPerson[] {
   const list = rows.map((r): ProjectPerson => ({
     email: r.email, userId: r.user_id, name: r.name ?? r.email.split("@")[0], initials: initials(r.name, r.email), avatar: r.avatar_url,
     guest: !r.is_member, approver: r.is_member && r.is_approver, creator: r.is_creator, assigned: r.is_assigned, listed: r.listed, signedIn: !!r.user_id,

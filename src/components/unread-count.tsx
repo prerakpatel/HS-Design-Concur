@@ -1,16 +1,21 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
 const UnreadContext = createContext(0);
 
-/** Unread notification count, kept fresh on navigation and focus. Feeds the Inbox badges and the home-screen app badge. */
+/** While someone clicks around, ask for the count at most this often (each ask is a trip to the database). */
+const NAV_SYNC_MS = 60_000;
+
+/** Unread notification count, kept fresh on focus and (at most once a minute) on navigation. Feeds the Inbox badges and the home-screen app badge. */
 export function UnreadProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [count, setCount] = useState(0);
+  const last = useRef(0);
   useEffect(() => {
     let alive = true;
     const sync = async () => {
+      last.current = Date.now();
       try {
         const r = await fetch("/api/unread", { cache: "no-store" });
         if (!r.ok || !alive) return;
@@ -18,7 +23,7 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
         if (alive) setCount(data.count);
       } catch { /* a badge is a nicety; never get in the way */ }
     };
-    void sync();
+    if (Date.now() - last.current > NAV_SYNC_MS) void sync();
     // Opening the Inbox marks everything read just after it renders; check again once that has happened.
     const later = pathname.startsWith("/inbox") ? setTimeout(sync, 2500) : null;
     const onVisible = () => { if (document.visibilityState === "visible") void sync(); };
