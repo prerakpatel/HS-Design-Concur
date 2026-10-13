@@ -37,7 +37,12 @@ Designer = you. Approver = the second admin (a second browser profile or phone w
 - [ ] Open the asset: Design / Preview toggle works; Guides is greyed out in Preview, not hidden.
 - [ ] Comment: pin a comment, post a general one, edit your own, delete your own.
 - [ ] Review mode: add two comments, then Send. They go out together.
-- [ ] Request changes with text. Slot becomes Changes requested.
+- [ ] Type a comment in the thread box: a small "Request a change" toggle appears. Leave it off and post: a plain comment, nothing changes, no "Mark as done".
+- [ ] Type a comment, @ someone (the list only appears after the first letters), pick them: the toggle reads "Assign to {first name}". Turn it on and post: the version goes to Changes requested and the comment shows "Change · {name}".
+- [ ] Toggle on with no @: it says "Change for {uploader's first name}".
+- [ ] Review mode (Comment button, pins): there is no toggle; the bar says "N changes" and "Send change(s)". Sending flips the version to Changes requested.
+- [ ] A designer (not an approver) in the thread box sees no toggle; their comments stay plain.
+- [ ] Approve with a change still open: the dialog says "N changes are still open".
 
 ### Round trip (as designer, then approver)
 - [ ] Upload after feedback. It creates **v3**, not a replace; the thread shows "Updated in v3".

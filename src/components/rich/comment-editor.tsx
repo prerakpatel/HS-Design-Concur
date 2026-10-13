@@ -64,6 +64,8 @@ function mentionSuggestion(members: EditorMember[]): Omit<SuggestionOptions<Edit
     char: "@",
     items: ({ query }) => {
       const q = query.toLowerCase();
+      // Typing "@" alone shows nothing: the list appears once they start the name.
+      if (!q) return [];
       // People first (name matches before handle matches), groups after; the list scrolls, so show plenty.
       const rank = (m: EditorMember) => (m.kind === "group" ? 3 : 0) + (!q ? 0 : m.name.toLowerCase().startsWith(q) ? 0 : m.name.toLowerCase().includes(q) ? 1 : 2);
       return members.filter((m) => !q || m.name.toLowerCase().includes(q) || m.handle.includes(q)).sort((a, b) => rank(a) - rank(b)).slice(0, 12);

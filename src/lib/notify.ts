@@ -11,7 +11,7 @@ import { htmlToChat, mentionIds } from "@/lib/rich-text";
 import { loadGroups } from "@/lib/groups";
 
 export type NotificationKind =
-  | "access.requested" | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "comment.posted" | "comments.posted" | "comments.unsent" | "reviews.waiting" | "comments.pending"
+  | "access.requested" | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "comment.posted" | "comments.posted" | "changes.requested" | "comments.unsent" | "reviews.waiting" | "comments.pending"
   | "version.uploaded" | "review.waiting" | "version.changes_requested" | "version.approved" | "versions.approved" | "version.reopened" | "primary.approved"
   | "event.all_approved" | "event.deleted" | "event.published" | "event.archived" | "project.ending"
   | "draft.expiring" | "draft.swept" | "devices.refresh";
@@ -24,7 +24,7 @@ export type NotificationKind =
 const CHAT: Partial<Record<NotificationKind, "mention" | "channel">> = {
   // Access moments stay out of chat on purpose: they would show a newcomer's name and email to the whole channel.
   "slot.assigned": "mention", "slot.due": "mention",
-  "comment.mention": "mention", "comment.posted": "mention", "comments.posted": "mention", "version.uploaded": "mention", "review.waiting": "mention", "reviews.waiting": "mention", "comments.pending": "mention",
+  "comment.mention": "mention", "comment.posted": "channel", "comments.posted": "channel", "changes.requested": "mention", "version.uploaded": "mention", "review.waiting": "mention", "reviews.waiting": "mention", "comments.pending": "mention",
   "version.changes_requested": "mention", "version.approved": "channel", "versions.approved": "mention", "version.reopened": "mention", "primary.approved": "mention",
   "event.all_approved": "mention", "event.published": "mention", "event.archived": "channel", "project.ending": "mention",
 };
@@ -45,6 +45,7 @@ const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> 
   "reviews.waiting": (p) => `${p.count} designs are waiting for review`,
   "comments.pending": (p) => `Comments waiting for you to mark as done${p.title ? ` · ${p.title}` : ""}`,
   "review.waiting": (p) => `Still waiting: ${p.format} v${p.number} · ${p.title}`,
+  "changes.requested": (p) => `Changes requested: ${p.format} v${p.number} · ${p.title}`,
   "version.changes_requested": (p) => `Changes requested: ${p.format} v${p.number} · ${p.title}`,
   "version.approved": (p) => `Approved: ${p.format} v${p.number} · ${p.title}`,
   "versions.approved": (p) => `Approved: ${p.count} designs · ${p.title}`,

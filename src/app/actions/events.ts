@@ -252,7 +252,7 @@ export async function assignSlot(slotId: string, userId: string | null) {
   const event = slot?.events as unknown as { id: string; org_id: string; title: string; status: string; created_by: string } | null;
   if (!slot || !event || event.org_id !== org.id) throw new UserError("Format not found");
   if (event.status === "archived") throw new UserError("Archived events are read-only");
-  if (user.role !== "core_admin" && event.created_by !== user.id && !isApprover) throw new UserError("Only Core Admins, approvers or the event creator can reassign a format");
+  if (user.role !== "core_admin" && !isApprover) throw new UserError("Only Core Admins and approvers can change who designs a format");
   if (userId) {
     const { data: member } = await supabase.from("users").select("id,org_memberships!inner(org_id)").eq("id", userId).eq("status", "active").eq("org_memberships.org_id", org.id).maybeSingle();
     if (!member) throw new UserError("That person is not in this organization");

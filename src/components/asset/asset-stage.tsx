@@ -33,7 +33,7 @@ import { errorMessage } from "@/lib/user-error";
 // icons: forum add_comment history grid_on zoom_out_map check close arrow_upward more_vert upload sync flip delete replay edit chat_bubble
 export type Side = "front" | "back";
 export interface SideView { side: Side; src: string | null; isGif: boolean; width: number; height: number; /** The requested size the safe bands are measured in, when it differs from the file. */ specW?: number; specH?: number }
-export interface CommentView { id: string; version: number; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; draft?: boolean; author: { name: string; initials: string; avatar?: string | null; role: string } }
+export interface CommentView { id: string; version: number; body: string; created_at: string; edited_at?: string | null; pin_x: number | null; pin_y: number | null; pin_side: Side; addressed_at: string | null; confirmed_at: string | null; mine?: boolean; draft?: boolean; /** A change request (work for `assignee`), as opposed to a plain comment. */ needs_change?: boolean; assignee?: string | null; author: { name: string; initials: string; avatar?: string | null; role: string } }
 export interface Member { id: string; name: string; handle: string; avatar?: string | null; kind?: "person" | "group" }
 export interface VersionChip { id: string; number: number; decision: string; sent?: boolean; canManage: boolean; hasBack: boolean; purged?: boolean }
 export interface StatusView { state: BadgeState; version: number | null; uploader: string | null; uploadedAt: string | null; assigneeId?: string | null; canAssign?: boolean }
@@ -45,7 +45,9 @@ export interface StatusView { state: BadgeState; version: number | null; uploade
  * get their decision here on desktop) and the comment thread. Comment mode: click the design, a bubble drops, a
  * small composer opens under it.
  */
-export function AssetStage({ versionId, sides, safe, print, comments, members, canComment, canModerate = false, versions, currentVersionId, eventId, slotId, upload, status, decision, decisionBar, readOnly, mockup }: {
+export function AssetStage({ canRequestChanges = false, versionId, sides, safe, print, comments, members, canComment, canModerate = false, versions, currentVersionId, eventId, slotId, upload, status, decision, decisionBar, readOnly, mockup }: {
+  /** An approver on the newest sent version: comments can become change requests. */
+  canRequestChanges?: boolean;
   versionId: string | null; sides: SideView[]; safe: SafeArea; print: PrintGuides | null;
   comments: CommentView[]; members: Member[]; canComment: boolean; canModerate?: boolean;
   versions: VersionChip[]; currentVersionId: string | null; eventId: string; slotId: string;
@@ -60,6 +62,10 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   // does not redraw the whole thread. Bumping composerKey starts the main box over after a post.
   const draftHtml = useRef(""); const textHtml = useRef(""); const editHtml = useRef("");
   const [draftEmpty, setDraftEmpty] = useState(true); const [composerKey, setComposerKey] = useState(0);
+  // The thread box: a plain comment unless the approver turns it into a change request (for whoever is @mentioned, else the uploader).
+  const [changeOn, setChangeOn] = useState(false);
+  const [mentioned, setMentioned] = useState<{ id: string; label: string } | null>(null);
+  const uploaderFirst = status.uploader?.split(" ")[0] ?? "the designer";
   const [active, setActive] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [textEmpty, setTextEmpty] = useState(true);
@@ -89,7 +95,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
   const pinNo = useMemo(() => { const per = new Map<number, number>(); return new Map(shown.filter((c) => c.pin_x != null && c.pin_y != null).map((c) => { const n = (per.get(c.version) ?? 0) + 1; per.set(c.version, n); return [c.id, n] as const; })); }, [shown]);
   const numbered = useMemo(() => new Map([...pinNo].filter(([id]) => shown.find((c) => c.id === id)?.version === currentNumber)), [pinNo, shown, currentNumber]);
   const pinsFor = (side: Side): Pin[] => shown.filter((c) => numbered.has(c.id) && c.pin_side === side).map((c) => ({ id: c.id, n: numbered.get(c.id)!, x: c.pin_x!, y: c.pin_y! }));
-  const openCount = comments.filter((c) => !isDone(c) && !c.draft).length;
+  const openCount = comments.filter((c) => c.needs_change && !isDone(c) && !c.draft).length;
   const resolvedCount = comments.filter(isDone).length;
   // Marker ↔ comment: picking one brings the other into view. `from` says which side was tapped.
   const [from, setFrom] = useState<"pin" | "list">("list");
@@ -111,12 +117,14 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
 
   const stop = () => { setDraft(null); draftHtml.current = ""; setDraftEmpty(true); };
   const post = (body: string, pin: { side: Side; x: number; y: number } | null) => start(async () => {
-    try { await addComment(versionId!, body, pin, { draft: review }); textHtml.current = ""; setTextEmpty(true); setComposerKey((k) => k + 1); stop(); if (!review) toast.success(pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
+    // In review mode every comment is a targeted change; in the thread box it is one only when the toggle is on.
+    const change = canRequestChanges && (review || (!pin && changeOn));
+    try { await addComment(versionId!, body, pin, { draft: review, change }); textHtml.current = ""; setTextEmpty(true); setComposerKey((k) => k + 1); setChangeOn(false); setMentioned(null); stop(); if (!review) toast.success(change ? "Change requested" : pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
     catch (e) { toast.error(errorMessage(e)); }
   });
   const sendReview = () => start(async () => {
     setSending(true);
-    try { const r = await sendCommentBatch(versionId!); setReview(false); stop(); toast.success(r.count === 1 ? "Comment sent" : `${r.count} comments sent`); router.refresh(); }
+    try { const r = await sendCommentBatch(versionId!); setReview(false); stop(); toast.success(canRequestChanges ? (r.count === 1 ? "Change sent" : `${r.count} changes sent`) : r.count === 1 ? "Comment sent" : `${r.count} comments sent`); router.refresh(); }
     catch (e) { toast.error(errorMessage(e)); }
     finally { setSending(false); }
   });
@@ -298,7 +306,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
 
         <div className="flex max-h-[min(78dvh,880px)] flex-col rounded-2xl border border-border">
           <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 text-sm">
-            <p className="font-medium">Comments{openCount > 0 && <span className="font-normal text-muted-foreground"> · {openCount} open</span>}</p>
+            <p className="font-medium">Comments{openCount > 0 && <span className="font-normal text-muted-foreground"> · {openCount} change{openCount === 1 ? "" : "s"} open</span>}</p>
             {resolvedCount > 0 && <button type="button" onClick={() => setShowResolved((v) => !v)} aria-pressed={showResolved} className="text-[13px] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{showResolved ? "Hide resolved" : `Show ${resolvedCount} resolved`}</button>}
           </div>
           <ul className="flex-1 overflow-y-auto px-2 py-2">
@@ -321,6 +329,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                       <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 text-sm">
                         <span className="font-medium">{c.author.name}</span>
                         <span className="text-xs text-muted-foreground">{relativeTime(c.created_at)}{c.edited_at ? " · edited" : ""}</span>
+                        {c.needs_change && <span className="rounded-full bg-warning-soft px-2 py-px text-[11px] font-medium text-warning-text">Change{c.assignee ? ` · ${c.assignee}` : ""}</span>}
                         {c.draft && <span className="rounded-full bg-info px-2 py-px text-[11px] font-medium text-white">Not sent</span>}
                         {pin != null && (here
                           ? <span title="Marker on the design: tap to find it" className="inline-flex items-center gap-1 text-xs text-muted-foreground"><PinChip n={pin} active={active === c.id} />{sides.length > 1 ? c.pin_side : null}</span>
@@ -330,7 +339,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                         <DropdownMenu>
                           <DropdownMenuTrigger aria-label="Comment options" className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-60 hover:bg-muted hover:opacity-100 group-hover/c:opacity-100"><Icon name="more_vert" className="!text-[18px]" /></DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44 rounded-xl p-1.5">
-                            {c.draft ? null : done ? <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "reopen")}><Icon name="replay" />Reopen</DropdownMenuItem> : <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "addressed")}><Icon name="check" />Mark as done</DropdownMenuItem>}
+                            {c.draft || !(c.needs_change || done) ? null : done ? <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "reopen")}><Icon name="replay" />Reopen</DropdownMenuItem> : <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => flag(c.id, "addressed")}><Icon name="check" />Mark as done</DropdownMenuItem>}
                             {(c.mine || canModerate) && <>
                               {c.mine && <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => { editHtml.current = c.body; setEditing({ id: c.id, text: c.body }); }}><Icon name="edit" />Edit</DropdownMenuItem>}
                               <DropdownMenuSeparator />
@@ -346,7 +355,7 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
                         <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending} onClick={() => start(async () => { try { await editComment(c.id, editHtml.current); setEditing(null); toast.success("Saved"); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } })}>Save</Button></div>
                       </div>
                     ) : <RichBody body={c.body} />}
-                    {!done && !c.draft && canComment && <button className="text-[13px] font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "addressed"); }} disabled={pending}>Mark as done</button>}
+                    {!done && !c.draft && c.needs_change && canComment && <button className="text-[13px] font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "addressed"); }} disabled={pending}>Mark as done</button>}
                     {done && <span className="flex items-center gap-1 text-[13px] text-success-text"><Icon name="check" className="!text-[16px]" />Resolved{c.confirmed_at ? " · confirmed" : ""}</span>}
                   </div>
                 </li>
@@ -360,9 +369,22 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
           {canComment && versionId && (
             <div className="relative border-t border-border p-3">
               <div className="flex items-end gap-2">
-                <CommentEditor key={composerKey} value="" onChange={(h, empty) => { textHtml.current = h; setTextEmpty(empty); }} onSubmit={() => { if (!textEmpty && !pending) post(textHtml.current, null); }} placeholder={review ? "Add a note… @ to mention" : "Write a comment… @ to mention"} members={members} className="min-w-0 flex-1" />
+                <CommentEditor key={composerKey} value="" onChange={(h, empty) => { textHtml.current = h; setTextEmpty(empty); const m = h.match(/<span[^>]*data-type="mention"[^>]*data-id="([^"]+)"[^>]*data-label="([^"]*)"/); setMentioned((prev) => { const next = m && !m[1].startsWith("group:") ? { id: m[1], label: m[2] } : null; return prev?.id === next?.id ? prev : next; }); }} onSubmit={() => { if (!textEmpty && !pending) post(textHtml.current, null); }} placeholder={review ? "Add a note… @ to mention" : "Write a comment… @ to mention"} members={members} className="min-w-0 flex-1" />
                 <Button size="icon" disabled={pending || textEmpty} onClick={() => post(textHtml.current, null)} aria-label={review ? "Add to review" : "Post"}><Icon name="arrow_upward" /></Button>
               </div>
+              {/* Approvers: a tiny toggle appears once there is something to say. Off = a plain comment. On = a change request for
+                  the person @mentioned (or the uploader), which sends the version back. */}
+              {canRequestChanges && !review && (
+                <div className={cn("grid transition-[grid-template-rows,opacity] duration-200", !textEmpty ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+                  <div className="overflow-hidden">
+                    <button type="button" tabIndex={textEmpty ? -1 : 0} aria-pressed={changeOn} onClick={() => setChangeOn((v) => !v)}
+                      className={cn("mt-2 inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors", changeOn ? "border-info bg-info text-white" : "border-border text-muted-foreground hover:text-foreground")}>
+                      <Icon name={changeOn ? "check" : "edit_note"} className="!text-[16px]" />
+                      {changeOn ? `Change for ${(mentioned?.label ?? uploaderFirst).split(" ")[0]}` : mentioned ? `Assign to ${mentioned.label.split(" ")[0]}` : "Request a change"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -372,10 +394,10 @@ export function AssetStage({ versionId, sides, safe, print, comments, members, c
         <div role="region" aria-label="Review mode" className={cn("fixed z-40 inset-x-3 flex items-center gap-2 rounded-full bg-info p-1.5 pl-4 text-white shadow-md md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:gap-3 md:pl-5", decisionBar ? "bottom-[calc(env(safe-area-inset-bottom)+84px)] md:bottom-6" : "bottom-[max(env(safe-area-inset-bottom),16px)] md:bottom-6")}>
           <Icon name="forum" className="shrink-0 !text-[20px]" />
           <p className="min-w-0 flex-1 truncate text-sm font-medium md:flex-none">
-            {unsent === 0 ? "Tap to comment" : `${unsent} comment${unsent === 1 ? "" : "s"}`}
+            {unsent === 0 ? "Tap to comment" : canRequestChanges ? `${unsent} change${unsent === 1 ? "" : "s"}` : `${unsent} comment${unsent === 1 ? "" : "s"}`}
           </p>
           <button type="button" onClick={leaveReview} disabled={pending} className="h-10 shrink-0 rounded-full px-3.5 text-sm font-medium text-white/90 hover:bg-white/15 disabled:opacity-60">{unsent > 0 ? "Discard" : "Cancel"}</button>
-          <button type="button" onClick={sendReview} disabled={pending || unsent === 0} className="inline-flex h-10 shrink-0 items-center rounded-full bg-white px-5 text-sm font-semibold text-info-text shadow-sm transition-opacity hover:bg-white/90 disabled:opacity-50">{sending ? "Sending…" : unsent > 1 ? `Send ${unsent}` : "Send"}</button>
+          <button type="button" onClick={sendReview} disabled={pending || unsent === 0} className="inline-flex h-10 shrink-0 items-center rounded-full bg-white px-5 text-sm font-semibold text-info-text shadow-sm transition-opacity hover:bg-white/90 disabled:opacity-50">{sending ? "Sending…" : canRequestChanges ? (unsent > 1 ? `Send ${unsent} changes` : "Send change") : unsent > 1 ? `Send ${unsent}` : "Send"}</button>
         </div>
       )}
       {/* Phones: the decision rides in a fixed bar */}

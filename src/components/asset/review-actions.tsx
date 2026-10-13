@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Textarea } from "@/components/ui/textarea";
-import { approveVersion, requestChanges, reopenVersion, downloadLink, sendForReview } from "@/app/actions/reviews";
+import { approveVersion, reopenVersion, downloadLink, sendForReview } from "@/app/actions/reviews";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/user-error";
@@ -16,14 +16,16 @@ import { errorMessage } from "@/lib/user-error";
  * Admin) and nothing to approvers; a sent one shows approve (notify / download), request changes, reopen.
  * Downloads are named year_event_format_vN and saved, not opened.
  */
-export function ReviewActions({ versionId, label, eventTitle, decision, canApprove, isOwnUpload, hasBack, sent = true, canSend = false, layout = "row" }: {
+export function ReviewActions({ versionId, label, eventTitle, decision, canApprove, isOwnUpload, hasBack, openChanges = 0, sent = true, canSend = false, layout = "row" }: {
   versionId: string; label: string; eventTitle: string; decision: string; canApprove: boolean; isOwnUpload: boolean; hasBack: boolean;
+  /** Change requests on this version that are not done yet: the approval dialog says so. */
+  openChanges?: number;
   /** Has the designer sent this version to the approvers yet? */
   sent?: boolean; canSend?: boolean;
   /** `row`: buttons side by side (phone bar). `fill`: stacked, full width (status card). */
   layout?: "row" | "fill";
 }) {
-  const [mode, setMode] = useState<"none" | "approve" | "changes" | "reopen">("none");
+  const [mode, setMode] = useState<"none" | "approve" | "reopen">("none");
   const [text, setText] = useState("");
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -63,12 +65,12 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
       <Button size="lg" variant="ghost" onClick={close}>Cancel</Button>
     </div>
   );
-  const title = mode === "approve" ? `Approve ${label}?` : mode === "changes" ? "What needs to change?" : `Reopen ${label}?`;
-  const desc = mode === "approve" ? (decision === "changes_requested" ? `${label} has changes requested and no newer version has been uploaded since (it may have been reopened by accident). Approve it as it is? Everyone on ${eventTitle} is notified.` : `Everyone on ${eventTitle} is notified. You can reopen it later.`) : mode === "changes" ? "Your note is posted as a comment and the designer is notified." : "It goes back to work-in-progress and everyone on the event is notified.";
+  const title = mode === "approve" ? `Approve ${label}?` : `Reopen ${label}?`;
+  const desc = mode === "approve" ? (decision === "changes_requested" ? `${label} has changes requested and no newer version has been uploaded since${openChanges > 0 ? ` (${openChanges} still open)` : " (it may have been reopened by accident)"}. Approve it as it is? Everyone on ${eventTitle} is notified.` : openChanges > 0 ? `${openChanges} change${openChanges === 1 ? " is" : "s are"} still open on ${label}. Approve anyway? Everyone on ${eventTitle} is notified.` : `Everyone on ${eventTitle} is notified. You can reopen it later.`) : "It goes back to work-in-progress and everyone on the event is notified.";
   const body = mode === "approve" ? approveBody : (
     <div className="flex flex-col gap-3">
-      <Textarea autoFocus rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder={mode === "changes" ? "Move the date above the fold…" : "Why is it being reopened?"} />
-      <div className="flex justify-end gap-2"><Button variant="ghost" onClick={close}>Cancel</Button><Button disabled={pending || !text.trim()} onClick={() => mode === "changes" ? run(() => requestChanges(versionId, text), "Changes requested · designer notified") : run(() => reopenVersion(versionId, text), "Reopened · everyone notified")}>{mode === "changes" ? "Request changes" : "Reopen"}</Button></div>
+      <Textarea autoFocus rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="Why is it being reopened?" />
+      <div className="flex justify-end gap-2"><Button variant="ghost" onClick={close}>Cancel</Button><Button disabled={pending || !text.trim()} onClick={() => run(() => reopenVersion(versionId, text), "Reopened · everyone notified")}>Reopen</Button></div>
     </div>
   );
 
@@ -80,7 +82,6 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
         ) : (
           <div className={cn(wrap, layout === "fill" && "flex-col-reverse")}>
             <Button disabled={isOwnUpload || pending} onClick={() => setMode("approve")}>Approve…</Button>
-            <Button variant="outline" onClick={() => setMode("changes")} disabled={isOwnUpload}><span className={layout === "row" ? "sm:hidden" : "hidden"}>Changes</span><span className={layout === "row" ? "hidden sm:inline" : ""}>Request changes</span></Button>
           </div>
         )}
         {isOwnUpload && !approved && <p className="w-full text-xs text-muted-foreground">You uploaded this version, so someone else has to approve it.</p>}

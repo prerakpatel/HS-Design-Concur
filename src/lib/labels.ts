@@ -20,6 +20,7 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
     case "reviews.waiting": return `${p.count} designs are waiting for your review`;
     case "comments.pending": return `You have ${p.count} comment${p.count === 1 ? "" : "s"} still open. Mark ${p.count === 1 ? "it" : "them"} as done once handled${p.title ? `: ${p.title}` : ""}`;
     case "version.changes_requested": return `${by} requested changes on ${f} v${p.number}`;
+    case "changes.requested": return `${by} requested ${Number(p.count) > 1 ? `${p.count} changes` : "a change"} on ${f} v${p.number}`;
     case "version.approved": return `${by} approved ${f} v${p.number}`;
     case "primary.approved": return `Congrats! The primary design for ${t} (${f}) is approved. You can start the other formats now.`;
     case "version.reopened": return `${by} reopened ${f} v${p.number} for changes`;
@@ -81,8 +82,12 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
     case "version.changes_requested": return { head: `✏️ ${t} · ${f}${n}`, body: `${by} requested changes${q ? `: ${q}` : "."}` };
     case "version.reopened": return { head: `↩️ ${t} · ${f}${n}`, body: `Reopened by ${by}${q ? `: ${q}` : "."}` };
     case "comment.mention": return { head: `💬 ${t} · ${f}${n}`, body: `${by}: ${q}` };
-    case "comment.posted": return { head: `💬 ${t} · ${f}${n}`, body: `${by} commented: ${q}` };
-    case "comments.posted": return { head: `💬 ${t} · ${f}${n}`, body: `${by} left ${p.count} comments:\n${String(p.excerpt ?? "")}` };
+    case "comment.posted": return { head: `💬 ${t} · ${f}${n}`, body: `${by}: ${q}` };
+    case "comments.posted": return { head: `💬 ${t} · ${f}${n}`, body: `${by}:\n${String(p.excerpt ?? "")}` };
+    case "changes.requested": {
+      const who = (Array.isArray(p.assignees) ? p.assignees as string[] : []).map((id) => `{@${id}}`).join(" ");
+      return { head: `✏️ ${t} · ${f}${n} · changes needed`, body: `${by}${who ? ` asked ${who} to` : ""} change${Number(p.count) > 1 ? ` ${p.count} things` : ""}:\n${String(p.excerpt ?? "")}` };
+    }
     case "access.requested": return { head: `🔑 ${p.name ?? p.email} asked for access`, body: `${p.email} · approve or deny in Settings → Requests.` };
     case "access.approved": return { head: `👋 ${p.name ?? "A new member"} joined`, body: `Approved by ${by}. Welcome!` };
     case "project.ending": return { head: `⏳ ${t} · ends in ${REMINDER_LEAD_DAYS} days`, body: "Download the final designs now: the files are cleared after the end date." };
