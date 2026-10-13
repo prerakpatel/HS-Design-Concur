@@ -52,7 +52,7 @@ export function ProjectPeople(p: ProjectPeopleProps) {
         {warn && (
           <p className="flex items-start gap-2 rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-text">
             <Icon name="warning" className="mt-px !text-[18px]" />
-            <span>This project posts to the main channels, and {guests.length === 1 ? "its guest isn't" : "its guests aren't"} in them. Connect a project chat below; until then guests only get updates in the app and by email.</span>
+            <span>This project posts to the main channels, and {guests.length === 1 ? "its guest isn't" : "its guests aren't"} in them. Connect a project chat below; until then guests only see updates in the app (Inbox).</span>
           </p>
         )}
         {p.canManage && <AddPerson eventId={p.eventId} first={p.people.length === 0} suggestions={p.suggestions} />}
