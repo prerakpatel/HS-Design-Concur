@@ -31,10 +31,13 @@ export function MobileTopBar({ org, orgs }: { org: Organization; orgs: Organizat
           </DropdownMenuContent>
         </DropdownMenu>
       ) : <span className="flex items-center gap-2 text-sm font-semibold"><OrgMark org={org} size={24} />{org.name}</span>}
-      <Link href="/inbox" aria-label="Inbox" className="relative flex size-10 items-center justify-center rounded-full hover:bg-muted">
-        <Icon name="notifications" size={24} />
-        <CountBubble count={unread} className="absolute right-0.5 top-0.5 ring-2 ring-background" />
-      </Link>
+      {/* On the Inbox itself the bottom tab is the bell: no second one. */}
+      {!pathname.startsWith("/inbox") && (
+        <Link href="/inbox" aria-label="Inbox" className="relative flex size-10 items-center justify-center rounded-full hover:bg-muted">
+          <Icon name="notifications" size={24} />
+          <CountBubble count={unread} className="absolute right-0.5 top-0.5 ring-2 ring-background" />
+        </Link>
+      )}
     </header>
   );
 }

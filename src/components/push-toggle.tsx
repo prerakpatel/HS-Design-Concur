@@ -55,13 +55,19 @@ export function PushToggle({ publicKey }: { publicKey: string | null }) {
     on: { title: "Notifying this device", hint: "Approvals, mentions, assignments and due dates arrive here as they happen." },
   };
   const c = copy[state];
+  // Nothing to do, nothing to say: no card while checking, when push isn't available, or when it's already on.
+  if (state === "checking" || state === "unconfigured" || state === "unsupported") return null;
+  if (state === "on") return (
+    <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+      <span className="flex items-center gap-2"><Icon name="notifications_active" size={20} />Notifications are on for this device</span>
+      <span className="flex gap-1"><Button type="button" variant="ghost" disabled={pending} onClick={test}>Send a test</Button><Button type="button" variant="ghost" disabled={pending} onClick={disable}>Turn off</Button></span>
+    </div>
+  );
   return (
     <div className="flex flex-col gap-3 rounded-2xl bg-subtle p-5 md:flex-row md:items-center md:gap-4">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card"><Icon name={state === "on" ? "notifications_active" : state === "ios-install" ? "ios_share" : "notifications_off"} size={20} /></span>
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card"><Icon name={state === "ios-install" ? "ios_share" : "notifications_off"} size={20} /></span>
       <div className="min-w-0 flex-1"><p className="text-sm font-medium">{c.title}</p><p className="text-sm text-muted-foreground">{c.hint}</p></div>
       <div className="flex gap-2">
-        {state === "on" && <Button type="button" variant="ghost" size="lg" disabled={pending} onClick={test}>Send a test</Button>}
-        {state === "on" && <Button type="button" variant="secondary" size="lg" disabled={pending} onClick={disable}>Turn off</Button>}
         {state === "off" && <Button type="button" size="lg" disabled={pending} onClick={enable}>Turn on</Button>}
       </div>
     </div>
