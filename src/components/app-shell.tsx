@@ -2,6 +2,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileNav } from "@/components/mobile-nav";
+import { MobileTopBar } from "@/components/mobile-top-bar";
 import { MainFrame } from "@/components/main-frame";
 import { UnreadProvider } from "@/components/unread-count";
 import { AppBadge } from "@/components/app-badge";
@@ -25,6 +26,7 @@ export function AppShell({ org, orgs, user, slots, sidebarOpen = true, changelog
       <AppSidebar org={org} orgs={orgs} user={user} slots={slots} whatsNewUnseen={changelog.unseen} />
       <Suspense><WhatsNewDialog state={changelog} /></Suspense>
       <SidebarInset className="min-h-dvh min-w-0 bg-background">
+        <MobileTopBar org={org} orgs={orgs} />
         {wide ? <main className="w-full">{children}</main> : <MainFrame>{children}</MainFrame>}
         <MobileNav user={{ initials: user.initials, avatar: user.avatar }} />
       </SidebarInset>
