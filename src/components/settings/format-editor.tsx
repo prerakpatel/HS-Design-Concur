@@ -84,7 +84,7 @@ function FormatPanel({ format, onClose }: { format: Format | "new" | null; onClo
   const [askRemove, setAskRemove] = useState(false);
   const router = useRouter();
   const changeKind = (k: "digital" | "print") => { setCls(k); setUnit(f && f.class === k ? (inFeet ? "ft" : f.unit) : DEFAULTS[k].unit); };
-  const remove = () => start(async () => { try { await removeFormat(f!.id); toast.success(`${f!.name} removed`); setAskRemove(false); onClose(); router.refresh(); } catch (err) { setAskRemove(false); toast.error(errorMessage(err)); } });
+  const remove = () => start(async () => { try { const r = await removeFormat(f!.id); toast.success(`${f!.name} removed${r.turnedOff ? ` · turned off in ${r.turnedOff} project${r.turnedOff === 1 ? "" : "s"}` : ""}`); setAskRemove(false); onClose(); router.refresh(); } catch (err) { setAskRemove(false); toast.error(errorMessage(err)); } });
   return (
     <>
     <Dialog open={!!format} onOpenChange={(o) => !o && onClose()}>
@@ -148,7 +148,7 @@ function FormatPanel({ format, onClose }: { format: Format | "new" | null; onClo
     </Dialog>
     <Dialog open={askRemove} onOpenChange={setAskRemove}>
       <DialogContent className="max-w-sm rounded-2xl">
-        <DialogHeader><DialogTitle>Remove {f?.name}?</DialogTitle><DialogDescription>It disappears from Settings and from every project&apos;s format list. If a project already uses it, it can&apos;t be removed; turn it off with Inactive instead.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Remove {f?.name}?</DialogTitle><DialogDescription>It disappears from Settings and from every project&apos;s format list. Projects that requested it but have no design for it yet will have it turned off. If any project has designs in it, it can&apos;t be removed; use Inactive instead.</DialogDescription></DialogHeader>
         <div className="flex flex-col gap-2">
           <Button size="lg" variant="destructive" disabled={pending} onClick={remove}>{pending ? "Removing…" : "Remove format"}</Button>
           <Button size="lg" variant="outline" onClick={() => setAskRemove(false)}>Keep it</Button>

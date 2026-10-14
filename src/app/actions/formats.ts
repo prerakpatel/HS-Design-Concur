@@ -64,13 +64,16 @@ export async function saveFormat(formData: FormData) {
 
 /**
  * Remove a format that is a mistake or no longer used. Any member may (the catalog is small and everyone sees it).
- * A format a project has requested, or that has designs, cannot be removed: turn it off with Inactive instead.
+ * A format with designs cannot be removed (turn it off with Inactive instead). Projects that only requested it, with
+ * no design yet, have the request switched off.
  */
-export async function removeFormat(id: string) {
+export async function removeFormat(id: string): Promise<{ turnedOff: number }> {
   const { supabase } = await requireActiveUser();
   const { data, error } = await supabase.rpc("remove_format", { p_format: id });
   if (error) throw new UserError(error.message);
   const out = String(data ?? "");
-  if (out.startsWith("in_use:")) { const n = Number(out.split(":")[1]); throw new UserError(`${n} project format${n === 1 ? " uses" : "s use"} this, so it can't be removed. Turn it off with Inactive instead.`); }
+  if (out.startsWith("in_use:")) { const n = Number(out.split(":")[1]); throw new UserError(`${n} project${n === 1 ? " has" : "s have"} designs in this format, so it can't be removed. Turn it off with Inactive instead.`); }
+  if (out.startsWith("other_org:")) { const n = Number(out.split(":")[1]); throw new UserError(`${n} project${n === 1 ? " in another organisation has" : "s in another organisation have"} it requested. A Core Admin can remove it.`); }
   revalidatePath("/settings"); revalidatePath("/events");
+  return { turnedOff: Number(out.split(":")[1] ?? 0) || 0 };
 }
