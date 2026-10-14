@@ -26,7 +26,7 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC.some((p) => path.startsWith(p));
   if (!user && !isPublic) {
-    const url = request.nextUrl.clone(); url.pathname = "/login"; url.searchParams.set("next", path);
+    const url = request.nextUrl.clone(); url.pathname = "/login"; url.search = ""; url.searchParams.set("next", path + request.nextUrl.search);
     return NextResponse.redirect(url);
   }
   if (user && path === "/login") {

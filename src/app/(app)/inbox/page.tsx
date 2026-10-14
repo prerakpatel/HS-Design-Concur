@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { SelectField } from "@/components/ui/select-field";
-import { notificationText, notificationHref, relativeTime } from "@/lib/labels";
+import { notificationText, notificationHref, openLink, relativeTime } from "@/lib/labels";
 import { PushToggle } from "@/components/push-toggle";
 import { emailConfigured } from "@/lib/email";
 
@@ -15,7 +15,8 @@ export const metadata = { title: "Inbox" };
 const ICONS: Record<string, string> = { "access.approved": "how_to_reg", "slot.assigned": "assignment_ind", "slot.due": "schedule", "event.published": "campaign", "version.uploaded": "upload", "review.waiting": "pending_actions", "reviews.waiting": "pending_actions", "comments.pending": "check_circle", "version.changes_requested": "rule", "changes.requested": "rule", "version.approved": "check_circle", "primary.approved": "workspace_premium", "project.ending": "hourglass_bottom", "version.reopened": "replay", "comment.mention": "alternate_email", "comment.posted": "chat_bubble", "comments.posted": "forum", "comments.unsent": "edit_note", "versions.approved": "done_all", "event.all_approved": "celebration", "access.requested": "person_add", "event.archived": "inventory_2", "event.deleted": "delete", "draft.expiring": "hourglass_top", "draft.swept": "auto_delete", "devices.refresh": "devices" };
 
 export default async function InboxPage() {
-  const { supabase, user, member } = await requireViewer();
+  const { supabase, user, member, orgs } = await requireViewer();
+  const orgById = new Map(orgs.map((o) => [o.id, o]));
   const { data } = await supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(60);
   const items = data ?? []; const unread = items.filter((n) => !n.read_at).length;
   // Opening the Inbox counts as reading it: this view still shows what was new, the next one (and the app badge) will not.
@@ -36,9 +37,9 @@ export default async function InboxPage() {
       {items.length === 0 ? <p className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">Nothing yet. Assignments, mentions, approvals and due-date reminders land here.</p> : (
         <ul className="divide-y divide-border">
           {items.map((n) => { const p = n.payload as Record<string, unknown>; return (
-            <li key={n.id}><Link href={notificationHref(p)} className="-mx-3 flex items-center gap-4 rounded-xl px-3 py-3.5 hover:bg-subtle">
+            <li key={n.id}><Link href={openLink(notificationHref(p), n.org_id ? orgById.get(n.org_id)?.slug : null)} className="-mx-3 flex items-center gap-4 rounded-xl px-3 py-3.5 hover:bg-subtle">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted"><Icon name={ICONS[n.kind] ?? "notifications"} size={20} /></span>
-              <span className="min-w-0 flex-1"><span className={"block text-sm leading-6 " + (n.read_at ? "" : "font-medium")}>{notificationText(n.kind, p)}</span><span className="block text-sm text-muted-foreground">{p.title ? `${p.title} · ` : ""}{relativeTime(n.created_at)}</span></span>
+              <span className="min-w-0 flex-1"><span className={"block text-sm leading-6 " + (n.read_at ? "" : "font-medium")}>{notificationText(n.kind, p)}</span><span className="block text-sm text-muted-foreground">{orgs.length > 1 && n.org_id && orgById.get(n.org_id) ? `${orgById.get(n.org_id)!.short_name} · ` : ""}{p.title ? `${p.title} · ` : ""}{relativeTime(n.created_at)}</span></span>
               {!n.read_at && <span className="size-2.5 shrink-0 rounded-full bg-brand" />}
             </Link></li>
           ); })}

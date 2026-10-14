@@ -103,6 +103,11 @@ export function notificationHref(p: Record<string, unknown>): string {
   return "/events";
 }
 
+/** `/open` switches to the organisation (when the person belongs to it) and then goes to the page. */
+export function openLink(path: string, orgSlug?: string | null) {
+  return orgSlug ? `/open?org=${encodeURIComponent(orgSlug)}&to=${encodeURIComponent(path)}` : path;
+}
+
 export function relativeTime(iso: string) {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
   if (diff < 60) return "just now";

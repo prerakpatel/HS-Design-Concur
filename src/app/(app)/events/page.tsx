@@ -26,7 +26,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const items = groups[tab as keyof typeof groups] ?? groups.upcoming;
   return (
     <>
-      <PageHeader title="Projects" subtitle={`${org.name} · ${used ?? 0} of ${capFor(org)} project slots in use`} actions={<NewRequest assets={!!org.asset_requests} />} />
+      <PageHeader title="Projects" subtitle={`${org.name} · ${used ?? 0} of ${capFor(org)} project slots in use`} subtitleClassName="hidden md:block" actions={<NewRequest assets={!!org.asset_requests} />} />
       <nav className="mb-6 flex gap-6 border-b border-border text-sm font-medium">
         {(["upcoming", "drafts", "past"] as const).map((k) => <Link key={k} href={`/events?tab=${k}`} className={"-mb-px flex items-center gap-2 border-b-2 pb-3 capitalize " + (tab === k ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{k}<span className="text-sm font-normal text-muted-foreground">{groups[k].length}</span></Link>)}
       </nav>
