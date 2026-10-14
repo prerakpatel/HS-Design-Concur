@@ -7,7 +7,6 @@ import { requireActiveUser } from "@/lib/auth";
 import { MONTHS_AHEAD, ASSET_MAX_DAYS } from "@/config/limits";
 import { notify } from "@/lib/notify";
 import { UserError } from "@/lib/user-error";
-import { insertDraftProject } from "@/lib/create-project";
 
 export type WizardStep = "event" | "formats" | "assign" | "review";
 const ORDER: WizardStep[] = ["event", "formats", "assign", "review"];
@@ -45,10 +44,17 @@ function readEventForm(formData: FormData) {
 
 /** Wizard step 1 (Event). Creates the draft with its brief in one go; drafts do not count toward the cap. */
 export async function createDraftEvent(formData: FormData) {
-  const ctx = await requireActiveUser();
-  const id = await insertDraftProject(ctx, readEventForm(formData));
+  const { supabase, user, org } = await requireActiveUser();
+  const f = readEventForm(formData);
+  const { data, error } = await supabase.from("events").insert({ org_id: org.id, title: f.title, event_date: f.eventDate, venue: f.venue_name, created_by: user.id, status: "draft" }).select("id").single();
+  if (error) throw new UserError(error.message);
+  await supabase.from("briefs").insert({ event_id: data.id, description: f.description, time_text: f.time_text, venue_name: f.venue_name, venue_address: f.venue_address, notes: f.notes });
+  const { data: formats } = await supabase.from("formats").select("id").eq("active", true);
+  // Every catalog format gets a slot, all off; the Formats step turns on the ones this event needs.
+  if (formats?.length) await supabase.from("slots").insert(formats.map((fm) => ({ event_id: data.id, format_id: fm.id, requested: false })));
+  await supabase.from("activity").insert({ org_id: org.id, event_id: data.id, actor_id: user.id, kind: "event.created", payload: { title: f.title } });
   revalidatePath("/events");
-  goto(id, formData, "formats");
+  goto(data.id, formData, "formats");
 }
 
 /**

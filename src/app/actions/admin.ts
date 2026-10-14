@@ -10,7 +10,6 @@ import { matchSlackIds, slackConfigured } from "@/lib/slack";
 import type { FunctionTag } from "@/lib/types";
 import { DELETE_RESTORE_DAYS, MAX_LOGO_BYTES } from "@/config/limits";
 import { UserError } from "@/lib/user-error";
-import { isAssistantOwner } from "@/lib/assistant/access";
 
 async function requireCoreAdmin() {
   const ctx = await requireActiveUser();
@@ -58,9 +57,7 @@ export async function updateUser(userId: string, formData: FormData) {
   const slack_user_id = normaliseSlackId(String(formData.get("slack_user_id") ?? ""));
   const gchat_user_id = String(formData.get("gchat_user_id") ?? "").trim().replace(/^users\//, "") || null;
   if (gchat_user_id && !/^\d{6,}$/.test(gchat_user_id)) throw new UserError("A Google Chat user ID is a long number");
-  // Only the assistant's owner can switch it on or off for someone; other Core Admins leave it as it is.
-  const assistant = isAssistantOwner(user) && formData.has("assistant_enabled") ? { assistant_enabled: formData.get("assistant_enabled") === "on" } : {};
-  await supabase.from("users").update({ role, is_glossary_steward, function_tags, slack_user_id, gchat_user_id, ...assistant }).eq("id", userId);
+  await supabase.from("users").update({ role, is_glossary_steward, function_tags, slack_user_id, gchat_user_id }).eq("id", userId);
   await setMemberships(supabase, userId, orgIds, approverOrgIds);
   if (formData.get("groups_present")) {
     // Only this organization's groups are on the form; memberships in the other org's groups are left alone.

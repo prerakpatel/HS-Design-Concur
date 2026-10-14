@@ -10,12 +10,11 @@ import { InstallNudge } from "@/components/install-nudge";
 import { WhatsNewDialog, type ChangelogState } from "@/components/whats-new";
 import { Suspense } from "react";
 import type { Organization } from "@/lib/types";
-import { Assistant, type AssistantProps } from "@/components/assistant/assistant";
 
-export interface ShellProps { org: Organization; orgs: Organization[]; user: { name: string; role: string; initials: string; avatar?: string | null }; slots: { used: number; max: number }; sidebarOpen?: boolean; changelog: ChangelogState; /** The assistant, for people it is switched on for. */ assistant?: AssistantProps | null }
+export interface ShellProps { org: Organization; orgs: Organization[]; user: { name: string; role: string; initials: string; avatar?: string | null }; slots: { used: number; max: number }; sidebarOpen?: boolean; changelog: ChangelogState }
 
 /** Desktop: fixed 256px sidebar (collapses to a 64px rail, remembered in a cookie) + content column. Mobile: bottom tab bar with a Profile tab for org switching and account (PRD §12.3). */
-export function AppShell({ org, orgs, user, slots, sidebarOpen = true, changelog, assistant, children, wide }: ShellProps & { children: React.ReactNode; wide?: boolean }) {
+export function AppShell({ org, orgs, user, slots, sidebarOpen = true, changelog, children, wide }: ShellProps & { children: React.ReactNode; wide?: boolean }) {
   return (
     <TooltipProvider delayDuration={200}>
     <UnreadProvider>
@@ -23,7 +22,6 @@ export function AppShell({ org, orgs, user, slots, sidebarOpen = true, changelog
       <AppBadge />
       <PushPrompt />
       <InstallNudge />
-      {assistant && <Assistant {...assistant} />}
       <AppSidebar org={org} orgs={orgs} user={user} slots={slots} whatsNewUnseen={changelog.unseen} />
       <Suspense><WhatsNewDialog state={changelog} /></Suspense>
       <SidebarInset className="min-h-dvh min-w-0 bg-background">

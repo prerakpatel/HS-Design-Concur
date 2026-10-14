@@ -14,13 +14,13 @@ import { Input } from "@/components/ui/input";
 import { updateUser, removeUser } from "@/app/actions/admin";
 import { errorMessage } from "@/lib/user-error";
 
-export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; approverOrgIds: string[]; glossarySteward: boolean; function_tags: string[]; orgIds: string[]; groupIds?: string[]; email_pref?: "instant" | "digest" | "off"; slack_user_id?: string | null; gchat_user_id?: string | null; assistant?: boolean }
+export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; approverOrgIds: string[]; glossarySteward: boolean; function_tags: string[]; orgIds: string[]; groupIds?: string[]; email_pref?: "instant" | "digest" | "off"; slack_user_id?: string | null; gchat_user_id?: string | null }
 export interface OrgOption { id: string; label: string }
 const TAGS = [{ value: "central", label: "Central" }, { value: "publication", label: "Publication" }, { value: "designer", label: "Designer" }];
 const tagLabel = (t: string) => TAGS.find((x) => x.value === t)?.label ?? t;
 
 /** Users list: one calm row per person; tap opens a side sheet with the full editor. */
-export function UsersList({ users, orgs, groups = [], currentUserId, canGrantAssistant = false }: { users: EditableUser[]; orgs: OrgOption[]; groups?: OrgOption[]; currentUserId: string; /** The assistant's owner sees a switch per person. */ canGrantAssistant?: boolean }) {
+export function UsersList({ users, orgs, groups = [], currentUserId }: { users: EditableUser[]; orgs: OrgOption[]; groups?: OrgOption[]; currentUserId: string }) {
   const [open, setOpen] = useState<EditableUser | null>(null);
   return (
     <>
@@ -37,7 +37,6 @@ export function UsersList({ users, orgs, groups = [], currentUserId, canGrantAss
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:mt-0">
                   {u.role === "core_admin" ? <StateBadge state="in_review" label="Core Admin" /> : <StateBadge state="requested" label="Member" />}
                   {u.glossarySteward && <StateBadge state="in_review" label="Glossary" />}
-                  {u.assistant && <StateBadge state="approved" label="Assistant" />}
                   {u.approverOrgIds.length > 0 && <StateBadge state="approved" label={u.approverOrgIds.length >= orgs.length ? "Approver" : `Approver · ${orgs.filter((o) => u.approverOrgIds.includes(o.id)).map((o) => o.label).join(", ")}`} />}
                   <span className="ml-1 text-[13px] text-muted-foreground md:hidden">{u.function_tags.map(tagLabel).join(" · ") || "No function"}</span>
                 </div>
@@ -54,12 +53,12 @@ export function UsersList({ users, orgs, groups = [], currentUserId, canGrantAss
           </li>
         ))}
       </ul>
-      <UserPanel user={open} orgs={orgs} groups={groups} isSelf={open?.id === currentUserId} canGrantAssistant={canGrantAssistant} onClose={() => setOpen(null)} />
+      <UserPanel user={open} orgs={orgs} groups={groups} isSelf={open?.id === currentUserId} onClose={() => setOpen(null)} />
     </>
   );
 }
 
-function UserPanel({ user, orgs, groups, isSelf, canGrantAssistant, onClose }: { user: EditableUser | null; orgs: OrgOption[]; groups: OrgOption[]; isSelf: boolean; canGrantAssistant: boolean; onClose: () => void }) {
+function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser | null; orgs: OrgOption[]; groups: OrgOption[]; isSelf: boolean; onClose: () => void }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   return (
@@ -78,7 +77,6 @@ function UserPanel({ user, orgs, groups, isSelf, canGrantAssistant, onClose }: {
                 <ChoiceChips name="approver_org" multiple defaultValue={user.approverOrgIds} options={orgs.map((o) => ({ value: o.id, label: o.label }))} />
               </Field>
               <GlossaryRow defaultOn={user.glossarySteward} />
-              {canGrantAssistant && <SwitchRow name="assistant_enabled" label="Assistant" hint="Can talk or type to the assistant to draft projects, formats and comments. Only you can switch this on." defaultOn={!!user.assistant} />}
               <Field label="Function" hint="Routes notifications. Designers and Core Admins can edit the format catalog.">
                 <ChoiceChips name="tag" multiple defaultValue={user.function_tags} options={TAGS} />
               </Field>
@@ -110,15 +108,11 @@ function UserPanel({ user, orgs, groups, isSelf, canGrantAssistant, onClose }: {
 }
 
 function GlossaryRow({ defaultOn }: { defaultOn: boolean }) {
-  return <SwitchRow name="glossary_steward" label="Glossary steward" hint="Can add, edit, delete and import words in the Glossary, in either organization. Everyone can read and search it." defaultOn={defaultOn} />;
-}
-
-function SwitchRow({ name, label, hint, defaultOn }: { name: string; label: string; hint: string; defaultOn: boolean }) {
   const [on, setOn] = useState(defaultOn);
   return (
     <label className="flex items-center justify-between gap-4 rounded-2xl border border-border p-4">
-      <span><span className="block text-sm font-medium">{label}</span><span className="block text-sm text-muted-foreground">{hint}</span></span>
-      <input type="hidden" name={name} value={on ? "on" : "off"} />
+      <span><span className="block text-sm font-medium">Glossary steward</span><span className="block text-sm text-muted-foreground">Can add, edit, delete and import words in the Glossary, in either organization. Everyone can read and search it.</span></span>
+      <input type="hidden" name="glossary_steward" value={on ? "on" : "off"} />
       <Switch checked={on} onCheckedChange={setOn} />
     </label>
   );
