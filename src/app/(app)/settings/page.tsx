@@ -34,7 +34,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     supabase.from("users").select("*").order("name").returns<AppUser[]>(),
     supabase.from("org_memberships").select("user_id,org_id,is_approver"),
     supabase.from("organisations").select("*").order("name").returns<Organization[]>(),
-    supabase.from("formats").select("*").order("sort").returns<Format[]>(),
+    supabase.from("formats").select("*").is("removed_at", null).order("sort").returns<Format[]>(),
     supabase.from("access_requests").select("user_id,requested_at").is("decided_at", null),
     loadGroups(supabase, [org.id]),
   ]);

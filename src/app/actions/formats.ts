@@ -22,10 +22,14 @@ export async function saveFormat(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) throw new UserError("Name is required");
   const cls = formData.get("class") === "print" ? "print" : "digital";
-  const unit = formData.get("unit") === "in" ? "in" : "px";
   const allow_custom_size = formData.get("allow_custom_size") === "on";
-  const width = allow_custom_size ? null : num(formData, "width");
-  const height = allow_custom_size ? null : num(formData, "height");
+  // Sizes can be typed in feet; they are stored in inches. A custom size has no unit field, so it follows the kind.
+  const typedUnit = String(formData.get("unit") ?? "");
+  const feet = !allow_custom_size && typedUnit === "ft";
+  const unit = allow_custom_size ? (cls === "print" ? "in" : "px") : typedUnit === "in" || feet ? "in" : "px";
+  const scale = (v: number | null) => (v == null ? null : feet ? Math.round(v * 12 * 1000) / 1000 : v);
+  const width = allow_custom_size ? null : scale(num(formData, "width"));
+  const height = allow_custom_size ? null : scale(num(formData, "height"));
   if (!allow_custom_size && (!width || !height)) throw new UserError("Width and height are required unless the size is custom");
   const mimes = formData.getAll("mime").map(String).filter((m) => MIMES.includes(m));
   if (mimes.length === 0) throw new UserError("Pick at least one file type");
@@ -57,3 +61,16 @@ export async function saveFormat(formData: FormData) {
   revalidatePath("/settings"); revalidatePath("/events");
 }
 
+
+/**
+ * Remove a format that is a mistake or no longer used. Any member may (the catalog is small and everyone sees it).
+ * A format a project has requested, or that has designs, cannot be removed: turn it off with Inactive instead.
+ */
+export async function removeFormat(id: string) {
+  const { supabase } = await requireActiveUser();
+  const { data, error } = await supabase.rpc("remove_format", { p_format: id });
+  if (error) throw new UserError(error.message);
+  const out = String(data ?? "");
+  if (out.startsWith("in_use:")) { const n = Number(out.split(":")[1]); throw new UserError(`${n} project format${n === 1 ? " uses" : "s use"} this, so it can't be removed. Turn it off with Inactive instead.`); }
+  revalidatePath("/settings"); revalidatePath("/events");
+}

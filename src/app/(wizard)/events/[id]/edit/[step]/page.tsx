@@ -39,7 +39,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
   if (assets && s === "formats") {
     const [{ data: slots }, { data: formats }] = await Promise.all([
       supabase.from("slots").select("*,versions(id),formats(sort)").eq("event_id", id).returns<(Slot & { versions: { id: string }[]; formats: { sort: number } | null })[]>(),
-      supabase.from("formats").select("*").order("sort").returns<Format[]>(),
+      supabase.from("formats").select("*").is("removed_at", null).order("sort").returns<Format[]>(),
     ]);
     const used = new Set((slots ?? []).map((sl) => sl.format_id));
     const options = (formats ?? []).filter((f) => f.active || used.has(f.id)).map((f) => ({ id: f.id, name: f.name, size: formatSize(f), customSize: f.allow_custom_size }));
