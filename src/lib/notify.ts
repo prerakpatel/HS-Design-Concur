@@ -6,7 +6,7 @@ import { sendEmail, appUrl } from "@/lib/email";
 import { postChat, chat, mention, everyone, platformOf, chatSafePayload, type ChatUser, type ChatImage } from "@/lib/chat";
 import { signedUrl } from "@/lib/storage";
 import { sendPush } from "@/lib/push";
-import { notificationText, notificationHref, chatLines } from "@/lib/labels";
+import { notificationText, notificationHref, openLink, chatLines } from "@/lib/labels";
 import { htmlToChat, mentionIds } from "@/lib/rich-text";
 import { loadGroups } from "@/lib/groups";
 import { projectRouting } from "@/lib/project-people";
@@ -83,12 +83,31 @@ export async function notify(supabase: SupabaseClient, userIds: Iterable<string 
   const ids = [...new Set(userIds)].filter((id): id is string => !!id && id !== exclude);
   const toChat = !!opts?.orgId && kind in CHAT;
   if (ids.length === 0 && !toChat) return;
-  if (ids.length) await supabase.from("notifications").insert(ids.map((user_id) => ({ user_id, kind, payload })));
+  if (ids.length) {
+    const org_id = await notificationOrg(supabase, payload, opts?.orgId);
+    await supabase.from("notifications").insert(ids.map((user_id) => ({ user_id, kind, payload, org_id })));
+  }
   const mentions = toChat ? [...new Set(opts?.mention ? [...opts.mention] : CHAT[kind] === "mention" ? ids : [])].filter((id): id is string => !!id && id !== exclude) : [];
   after(() => deliver(supabase, ids, kind, payload, opts?.orgId, mentions));
 }
 
+/** The organisation a notification belongs to: the one it was sent for, else the one that owns its project. Null for org-less moments. */
+async function notificationOrg(supabase: SupabaseClient, payload: Record<string, unknown>, orgId: NotifyOpts["orgId"]) {
+  if (typeof orgId === "string" && orgId !== "all") return orgId;
+  if (typeof payload.orgId === "string") return payload.orgId;
+  if (typeof payload.eventId !== "string") return null;
+  const { data } = await serviceOr(supabase).from("events").select("org_id").eq("id", payload.eventId).maybeSingle();
+  return (data?.org_id as string | undefined) ?? null;
+}
+
 interface OrgRow { id: string; email_enabled: boolean | null; chat_enabled: boolean; chat_webhook_url: string | null; slack_enabled: boolean; slack_webhook_url: string | null }
+
+/** An on-site link that first switches to the notification's organisation, so a deep link never lands in the wrong one. */
+async function openHref(supabase: SupabaseClient, payload: Record<string, unknown>, orgId: NotifyOpts["orgId"]) {
+  const id = await notificationOrg(supabase, payload, orgId);
+  const { data } = id ? await supabase.from("organisations").select("slug").eq("id", id).maybeSingle() : { data: null };
+  return openLink(notificationHref(payload), data?.slug as string | undefined);
+}
 
 async function deliver(caller: SupabaseClient, ids: string[], kind: NotificationKind, payload: Record<string, unknown>, orgId: NotifyOpts["orgId"], mentions: string[]) {
   // Who and where to tell is looked up with the service key when it is set: a guest who comments may not read the
@@ -101,7 +120,7 @@ async function deliver(caller: SupabaseClient, ids: string[], kind: Notification
     orgs = ((await q).data as OrgRow[] | null) ?? [];
   }
   const text = notificationText(kind, payload);
-  const href = appUrl(notificationHref(payload));
+  const href = appUrl(await openHref(supabase, payload, orgId));
   // A project with its own chat posts there and nowhere else; any other project uses the organization's channels.
   const routing = typeof payload.eventId === "string" ? await projectRouting(payload.eventId) : null;
 
