@@ -96,7 +96,7 @@ Google Chat space for this test (not a real team channel).
 - [ ] Tap a notification that belongs to the other organisation: the app switches to it and opens the page (no "not found").
 - [ ] A person removed from an organisation no longer sees that organisation's notifications; access requests and digests (no organisation) stay.
 - [ ] A guest's Inbox shows only notifications about their own projects.
-- [ ] Phone: a top bar shows the organisation switcher (left) and the bell with its count (right); the slots line is desktop-only.
+- [ ] Phone: a top bar shows the organisation switcher (left) and the bell with its count (right, the only Inbox entry; the bottom bar has Projects, Archive, Glossary, Profile); the slots line is desktop-only.
 
 ### What should NOT happen
 - [ ] Nothing posted in the real Slack or Google Chat channels. If anything did, stop and check the sandbox organisation's Settings → Organizations has no webhook.
