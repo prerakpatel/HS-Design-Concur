@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AspectIcon } from "@/components/aspect-icon";
@@ -9,6 +9,9 @@ import { cn } from "@/lib/utils";
 import type { FormatRow } from "@/components/wizard/steps";
 
 // icons: check
+let itemSeq = 0;
+const newItem = (orig: string | null, pick: string) => ({ key: itemSeq++, orig, pick });
+
 /**
  * The Formats step body. One quiet row per digital format: name and size, Need this / Skip, and, once needed,
  * a Primary toggle and an "Add note" link that opens the note field. Print sits last as a single row whose size is
@@ -25,8 +28,6 @@ export function FormatsPicker({ rows }: { rows: FormatRow[] }) {
   const initialPrint = print.filter((r) => r.requested).map((r) => r.slotId);
   const [printOn, setPrintOn] = useState(initialPrint.length > 0);
   // Each item has its own stable key: keyed by position, removing one handed its size to the next dropdown, which blanked them all.
-  const nextKey = useRef(0);
-  const newItem = (orig: string | null, pick: string) => ({ key: nextKey.current++, orig, pick });
   const [items, setItems] = useState<{ key: number; orig: string | null; pick: string }[]>(() => initialPrint.length ? initialPrint.map((id) => newItem(id, id)) : [newItem(null, print[0]?.slotId ?? "")]);
   const picks = items.map((it) => it.pick);
 
