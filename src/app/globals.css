@@ -254,3 +254,32 @@
 }
 .paper-pile { animation: paper-pile 2.1s cubic-bezier(0.2, 0.8, 0.2, 1) infinite both; }
 @media (prefers-reduced-motion: reduce) { .drop-ants, .paper-pile { animation: none; } }
+
+/* The assistant's character (src/components/assistant/buddy.tsx). It only moves for a real state: breathing when
+   calm, swelling with the voice while listening, looking up and circling while thinking, a tick when done. */
+@keyframes buddy-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+@keyframes buddy-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.08); } }
+@keyframes buddy-orbit { to { transform: rotate(360deg); } }
+@keyframes buddy-ring-pulse { 0% { transform: scale(1); opacity: 0.55; } 100% { transform: scale(1.6); opacity: 0; } }
+@keyframes buddy-pop { 0% { transform: scale(0.6) translateY(8px); opacity: 0; } 70% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes buddy-dots { 0%, 20% { content: ""; } 40% { content: "."; } 60% { content: ".."; } 80%, 100% { content: "..."; } }
+.buddy-body { transform-origin: 50% 60%; animation: buddy-breathe 3.6s ease-in-out infinite; }
+.buddy-eye { transform-box: fill-box; transform-origin: center; animation: buddy-blink 5.5s ease-in-out infinite; }
+.buddy-ring { opacity: 0; background: color-mix(in oklch, var(--brand) 35%, transparent); }
+.buddy-tick { opacity: 0; transform: scale(0.5); transition: opacity 0.2s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.buddy-dots { opacity: 0; transform-origin: 32px 32px; transition: opacity 0.2s; }
+.buddy[data-mood="listening"] .buddy-body { animation: none; transform: scale(calc(1 + var(--level, 0) * 0.14)); transition: transform 0.08s; }
+.buddy[data-mood="listening"] .buddy-ring { animation: buddy-ring-pulse 1.3s ease-out infinite; }
+.buddy[data-mood="listening"] .buddy-ring-2 { animation-delay: 0.65s; }
+.buddy[data-mood="listening"] .buddy-eye { animation: none; transform: scaleY(1.15); }
+.buddy[data-mood="thinking"] .buddy-body { animation: buddy-breathe 1.6s ease-in-out infinite; }
+.buddy[data-mood="thinking"] .buddy-eyes { transform: translateY(-2.5px); transition: transform 0.3s; }
+.buddy[data-mood="thinking"] .buddy-dots { opacity: 1; animation: buddy-orbit 1.4s linear infinite; }
+.buddy[data-mood="thinking"] .buddy-mouth { d: path("M26 42 Q32 42 38 42"); }
+.buddy[data-mood="done"] .buddy-body { animation: none; transform: scale(0.92); opacity: 0.35; transition: transform 0.25s, opacity 0.25s; }
+.buddy[data-mood="done"] .buddy-tick { opacity: 1; transform: scale(1); }
+.buddy[data-mood="needs-you"] .buddy-ring { opacity: 0.9; background: none; box-shadow: 0 0 0 3px var(--warning); animation: buddy-breathe 2s ease-in-out infinite; }
+.buddy-peek { filter: drop-shadow(0 6px 14px rgb(0 0 0 / 0.22)); }
+.buddy-pop { animation: buddy-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.buddy-dots-text::after { content: "..."; display: inline-block; width: 1.2em; text-align: left; animation: buddy-dots 1.2s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .buddy *, .buddy-peek, .buddy-pop { animation: none !important; transition: none !important; } }

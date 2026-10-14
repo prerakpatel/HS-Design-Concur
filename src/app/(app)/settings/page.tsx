@@ -1,3 +1,4 @@
+import { isAssistantOwner } from "@/lib/assistant/access";
 import { ASSET_MAX_DAYS, MAX_LOGO_BYTES } from "@/config/limits";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -59,7 +60,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <PageHeader title="Settings" subtitle={isAdmin ? "People, access, the format catalog and notifications" : "Format catalog · Designers can edit"} />
       <nav className="mb-8 flex gap-6 overflow-x-auto border-b border-border text-sm font-medium">{tabs.map(([k, l]) => <Link key={k} href={`/settings?tab=${k}`} className={"-mb-px shrink-0 border-b-2 pb-3 " + (tab === k ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{l}</Link>)}</nav>
 
-      {tab === "users" && <UsersList currentUserId={user.id} orgs={orgOptions} users={active.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, role: u.role, approverOrgIds: approverOrgsOf.get(u.id) ?? [], glossarySteward: u.is_glossary_steward, function_tags: u.function_tags, orgIds: orgsOf.get(u.id) ?? [], groupIds: groupsOf.get(u.id) ?? [], email_pref: u.email_pref, slack_user_id: u.slack_user_id, gchat_user_id: u.gchat_user_id }))} groups={groups.map((g) => ({ id: g.id, label: g.name }))} />}
+      {tab === "users" && <UsersList currentUserId={user.id} orgs={orgOptions} users={active.map((u) => ({ id: u.id, name: u.name ?? u.email, email: u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, role: u.role, approverOrgIds: approverOrgsOf.get(u.id) ?? [], glossarySteward: u.is_glossary_steward, function_tags: u.function_tags, orgIds: orgsOf.get(u.id) ?? [], groupIds: groupsOf.get(u.id) ?? [], email_pref: u.email_pref, slack_user_id: u.slack_user_id, gchat_user_id: u.gchat_user_id, assistant: u.assistant_enabled }))} groups={groups.map((g) => ({ id: g.id, label: g.name }))} canGrantAssistant={isAssistantOwner(user)} />}
 
       {tab === "groups" && <GroupsEditor groups={groups} users={active.filter((u) => (orgsOf.get(u.id) ?? []).includes(org.id)).map((u) => ({ id: u.id, name: u.name ?? u.email, initials: initials(u.name, u.email), avatar: u.avatar_url, hint: u.email }))} />}
 

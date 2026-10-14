@@ -96,6 +96,24 @@ Google Chat space for this test (not a real team channel).
 
 **Do not run the daily job (`/api/jobs/daily`) to test.** It covers every organisation, so it would send real reminders and digests to the real channels.
 
+### The assistant (first draft)
+Only its owner and the people the owner switches on see it. Test in the sandbox organisation.
+- [ ] Settings → People: you (owner) see an **Assistant** switch on each person; another Core Admin does not.
+- [ ] A small character peeks in from the right edge on every page. Drag it up or down; reload; it stays there.
+- [ ] Tap it: the sheet opens. Type "new project for Sharad Purnima and Annakut with a print card 8.5 by 5.5,
+      WhatsApp, Instagram, LED and website hero, and one for Kids Annakut with the same". Two project cards appear;
+      sizes only on formats that allow one; unknowns show in amber.
+- [ ] Say "drop LED from the kids one": the second card loses LED, the rest stays.
+- [ ] Create: both exist as drafts; you land on the first one's review step; the Formats step shows them ticked.
+- [ ] On a design that was sent for review, hold the character, say "tell <a member's first name> the text is cut
+      off at the sides and check the spelling of mahaprasad", release. The card names the person and lists two
+      points; Send posts two change requests, @mentioning them.
+- [ ] Hold-to-talk with no transcription key set still works in Chrome and Safari (the browser listens; the live words
+      show as you speak). With `SARVAM_API_KEY` set, `/voice-check` shows each service's transcript side by side.
+- [ ] Tap your own bubble, fix a word, Enter: the draft is redone from there.
+- [ ] Say something it can't do ("change my password"): a card with a link, not a guess.
+- [ ] Nothing is created until a button is tapped; Cancel and Start over leave no trace.
+
 ## Clean up
 Delete the test events (event menu → Delete). Soft-deleted events and their files are removed after
 `DELETE_RESTORE_DAYS`. The sandbox itself can stay.
