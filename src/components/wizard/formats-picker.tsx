@@ -9,6 +9,9 @@ import { cn } from "@/lib/utils";
 import type { FormatRow } from "@/components/wizard/steps";
 
 // icons: check
+let itemSeq = 0;
+const newItem = (orig: string | null, pick: string) => ({ key: itemSeq++, orig, pick });
+
 /**
  * The Formats step body. One quiet row per digital format: name and size, Need this / Skip, and, once needed,
  * a Primary toggle and an "Add note" link that opens the note field. Print sits last as a single row whose size is
@@ -24,14 +27,15 @@ export function FormatsPicker({ rows }: { rows: FormatRow[] }) {
   // server to move those designs to the new size (saveFormats swaps the formats), so nothing is lost.
   const initialPrint = print.filter((r) => r.requested).map((r) => r.slotId);
   const [printOn, setPrintOn] = useState(initialPrint.length > 0);
-  const [items, setItems] = useState<{ orig: string | null; pick: string }[]>(() => initialPrint.length ? initialPrint.map((id) => ({ orig: id, pick: id })) : [{ orig: null, pick: print[0]?.slotId ?? "" }]);
+  // Each item has its own stable key: keyed by position, removing one handed its size to the next dropdown, which blanked them all.
+  const [items, setItems] = useState<{ key: number; orig: string | null; pick: string }[]>(() => initialPrint.length ? initialPrint.map((id) => newItem(id, id)) : [newItem(null, print[0]?.slotId ?? "")]);
   const picks = items.map((it) => it.pick);
 
   const need = (id: string, want: boolean) => setOn((s) => { const n = new Set(s); if (want) n.add(id); else { n.delete(id); if (primary === id) setPrimary(""); } return n; });
   const chosenPrint = new Set(printOn ? picks.filter(Boolean) : []);
   const requested = (id: string) => on.has(id) || chosenPrint.has(id);
   const setPick = (i: number, v: string) => setItems((p) => { const next = p.map((it, j) => (j === i ? { ...it, pick: v } : it)); if (primary && !next.some((it) => it.pick === primary) && print.some((r) => r.slotId === primary)) setPrimary(""); return next; });
-  const removeItem = (i: number) => setItems((p) => { const next = p.filter((_, j) => j !== i); if (primary === p[i].pick) setPrimary(""); return next; });
+  const removeItem = (i: number) => { if (primary === items[i].pick) setPrimary(""); setItems(items.filter((_, j) => j !== i)); };
 
   return (
     <div>
@@ -60,7 +64,7 @@ export function FormatsPicker({ rows }: { rows: FormatRow[] }) {
                   const origRow = it.orig ? print.find((r) => r.slotId === it.orig) : null;
                   const moving = !!origRow?.hasVersions && it.pick !== it.orig;
                   return (
-                    <div key={i}>
+                    <div key={it.key}>
                       <input type="hidden" name={`print_orig_${i}`} value={it.orig ?? ""} /><input type="hidden" name={`print_pick_${i}`} value={it.pick} />
                       <div className="flex items-center gap-2">
                         <Select value={it.pick} onValueChange={(v) => setPick(i, v)}>
@@ -80,7 +84,7 @@ export function FormatsPicker({ rows }: { rows: FormatRow[] }) {
                     </div>
                   );
                 })}
-                {items.length < print.length && <button type="button" onClick={() => setItems((p) => [...p, { orig: null, pick: print.find((r) => !chosenPrint.has(r.slotId))?.slotId ?? "" }])} className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">+ Add a print item</button>}
+                {items.length < print.length && <button type="button" onClick={() => setItems((p) => [...p, newItem(null, print.find((r) => !chosenPrint.has(r.slotId))?.slotId ?? "")])} className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">+ Add a print item</button>}
               </div>
             )}
           </li>
