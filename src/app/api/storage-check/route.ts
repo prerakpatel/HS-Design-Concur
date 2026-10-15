@@ -4,14 +4,12 @@ import { r2Enabled, writeFile, readFile, copyFile, removeFiles, signedUrl, R2 } 
 
 /**
  * Checks the Cloudflare R2 connection end to end: write, read, copy, a signed link that really opens, delete.
- * Leaves nothing behind and returns only pass/fail. Open to Core Admins; on test links (Vercel previews) to anyone,
- * so it can be checked before going live.
+ * Leaves nothing behind and returns only pass/fail. Core Admins only, on every deployment: it writes and deletes
+ * with the storage credentials, so it is never open to a signed-out visitor.
  */
 export async function GET() {
-  if (process.env.VERCEL_ENV === "production") {
-    const ctx = await getActiveUser();
-    if (ctx?.user.role !== "core_admin") return NextResponse.json({ error: "Core Admins only" }, { status: 403 });
-  }
+  const ctx = await getActiveUser();
+  if (ctx?.user.role !== "core_admin") return NextResponse.json({ error: "Core Admins only" }, { status: 403 });
   if (!r2Enabled()) return NextResponse.json({ r2: false, note: "R2_* environment variables are not all set" });
   const id = crypto.randomUUID();
   const a = `${R2}tmp/storage-check/${id}.txt`, b = `${R2}tmp/storage-check/${id}-copy.txt`;

@@ -45,7 +45,7 @@ export default async function ArchivePage() {
             <li key={c.id}>
               <Link href={`/events/${c.id}`} className="group block overflow-hidden rounded-2xl border border-border bg-card transition hover:border-foreground/25 hover:shadow-sm">
                 <div className={"relative aspect-[5/4] " + (c.cover ? "bg-canvas" : "bg-muted")}>
-                  {c.cover ? <img src={c.cover} alt="" className="absolute inset-0 size-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><Icon name="inventory_2" size={24} /></div>}
+                  {c.cover ? <img loading="lazy" decoding="async" src={c.cover} alt="" className="absolute inset-0 size-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><Icon name="inventory_2" size={24} /></div>}
                 </div>
                 <div className="space-y-1 p-4">
                   <p className="truncate text-sm font-medium leading-5">{c.title}</p>

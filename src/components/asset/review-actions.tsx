@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,8 +15,8 @@ import { errorMessage } from "@/lib/user-error";
  * Admin) and nothing to approvers; a sent one shows approve (notify / download), request changes, reopen.
  * Downloads are named year_event_format_vN and saved, not opened.
  */
-export function ReviewActions({ versionId, label, eventTitle, decision, canApprove, isOwnUpload, hasBack, openChanges = 0, sent = true, canSend = false, layout = "row", zip }: {
-  versionId: string; label: string; eventTitle: string; decision: string; canApprove: boolean; isOwnUpload: boolean; hasBack: boolean;
+export function ReviewActions({ versionId, stamp, label, eventTitle, decision, canApprove, isOwnUpload, hasBack, openChanges = 0, sent = true, canSend = false, layout = "row", zip }: {
+  versionId: string; stamp?: string; label: string; eventTitle: string; decision: string; canApprove: boolean; isOwnUpload: boolean; hasBack: boolean;
   /** ZIP downloads once approved: every approved design in the project, and this format's front and back. */
   zip?: { all: string; format: string };
   /** Change requests on this version that are not done yet: the approval dialog says so. */
@@ -30,7 +29,6 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
   const [mode, setMode] = useState<"none" | "approve" | "reopen">("none");
   const [text, setText] = useState("");
   const [pending, start] = useTransition();
-  const router = useRouter();
   const mobile = useIsMobile();
   const approved = decision === "approved";
   const close = () => { setMode("none"); setText(""); };
@@ -40,7 +38,7 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
     const a = document.createElement("a"); a.href = url; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
     toast.success(side === "back" ? "Downloading the back" : "Download started");
   };
-  const run = (fn: () => Promise<unknown>, done: string | ((r: unknown) => string)) => start(async () => { try { const r = await fn(); close(); toast.success(typeof done === "function" ? done(r) : done); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } });
+  const run = (fn: () => Promise<unknown>, done: string | ((r: unknown) => string)) => start(async () => { try { const r = await fn(); close(); toast.success(typeof done === "function" ? done(r) : done); } catch (e) { toast.error(errorMessage(e)); } });
 
   const downloadButtons = (
     <>
@@ -64,8 +62,8 @@ export function ReviewActions({ versionId, label, eventTitle, decision, canAppro
 
   const approveBody = (
     <div className="flex flex-col gap-2">
-      <Button size="lg" disabled={pending} onClick={() => run(() => approveVersion(versionId), "Approved · everyone on the event is notified")}>Approve and notify</Button>
-      <Button size="lg" variant="secondary" disabled={pending} onClick={() => run(async () => { await approveVersion(versionId); await download("front"); if (hasBack) await download("back"); }, "Approved · download started")}>Approve and download</Button>
+      <Button size="lg" disabled={pending} onClick={() => run(() => approveVersion(versionId, stamp), "Approved · everyone on the event is notified")}>Approve and notify</Button>
+      <Button size="lg" variant="secondary" disabled={pending} onClick={() => run(async () => { await approveVersion(versionId, stamp); try { await download("front"); if (hasBack) await download("back"); } catch { toast.error("Approved, but the download did not start. Use the Download buttons."); } }, "Approved")}>Approve and download</Button>
       <Button size="lg" variant="ghost" onClick={close}>Cancel</Button>
     </div>
   );

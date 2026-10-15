@@ -37,7 +37,7 @@ export default async function InboxPage() {
       {items.length === 0 ? <p className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">Nothing yet. Assignments, mentions, approvals and due-date reminders land here.</p> : (
         <ul className="divide-y divide-border">
           {items.map((n) => { const p = n.payload as Record<string, unknown>; return (
-            <li key={n.id}><Link href={openLink(notificationHref(p), n.org_id ? orgById.get(n.org_id)?.slug : null)} className="-mx-3 flex items-center gap-4 rounded-xl px-3 py-3.5 hover:bg-subtle">
+            <li key={n.id}><Link prefetch={false} href={openLink(notificationHref(p), n.org_id ? orgById.get(n.org_id)?.slug : null)} className="-mx-3 flex items-center gap-4 rounded-xl px-3 py-3.5 hover:bg-subtle">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted"><Icon name={ICONS[n.kind] ?? "notifications"} size={20} /></span>
               <span className="min-w-0 flex-1"><span className={"block text-sm leading-6 " + (n.read_at ? "" : "font-medium")}>{notificationText(n.kind, p)}</span><span className="block text-sm text-muted-foreground">{orgs.length > 1 && n.org_id && orgById.get(n.org_id) ? `${orgById.get(n.org_id)!.short_name} · ` : ""}{p.title ? `${p.title} · ` : ""}{relativeTime(n.created_at)}</span></span>
               {!n.read_at && <span className="size-2.5 shrink-0 rounded-full bg-brand" />}

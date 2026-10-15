@@ -4,6 +4,7 @@ import { requireViewer, projectAccess, initials } from "@/lib/auth";
 import { loadProjectPeople } from "@/lib/project-people";
 import { signedUrls } from "@/lib/storage";
 import { formatSize } from "@/lib/labels";
+import { safeBody } from "@/lib/rich-text";
 import { loadGroups, groupHandle } from "@/lib/groups";
 import { orderSlots } from "@/lib/slot-order";
 import { UploadPanel } from "@/components/asset/upload-panel";
@@ -69,7 +70,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
 
   const versionNumber = new Map(vlist.map((x) => [x.id as string, x.number as number]));
   const roleOf = (u: { role: string; function_tags: string[] }) => u.role === "core_admin" ? "Core Admin" : u.function_tags?.[0] ? u.function_tags[0][0].toUpperCase() + u.function_tags[0].slice(1) : "Member";
-  const cviews: CommentView[] = (comments ?? []).map((c) => { const a = c.author as unknown as { name: string | null; email: string; avatar_url: string | null; role: string; function_tags: string[] }; return { id: c.id, version: versionNumber.get(c.version_id) ?? 0, body: c.body, created_at: c.created_at, pin_x: c.pin_x, pin_y: c.pin_y, pin_side: (c.pin_side ?? "front") as "front" | "back", edited_at: c.edited_at, mine: c.author_id === user.id, draft: !!c.is_draft, needs_change: !!c.needs_change, assignee: ((c.assignee as unknown as { name: string | null; email: string } | null)?.name ?? (c.assignee as unknown as { email: string } | null)?.email ?? "").split(" ")[0] || null, addressed_at: c.addressed_at, confirmed_at: c.confirmed_at, author: { name: a?.name ?? a?.email ?? "Someone", initials: initials(a?.name ?? null, a?.email ?? "?"), avatar: a?.avatar_url ?? null, role: a ? roleOf(a) : "" } }; });
+  const cviews: CommentView[] = (comments ?? []).map((c) => { const a = c.author as unknown as { name: string | null; email: string; avatar_url: string | null; role: string; function_tags: string[] }; return { id: c.id, version: versionNumber.get(c.version_id) ?? 0, body: safeBody(c.body), created_at: c.created_at, pin_x: c.pin_x, pin_y: c.pin_y, pin_side: (c.pin_side ?? "front") as "front" | "back", edited_at: c.edited_at, mine: c.author_id === user.id, draft: !!c.is_draft, needs_change: !!c.needs_change, assignee: ((c.assignee as unknown as { name: string | null; email: string } | null)?.name ?? (c.assignee as unknown as { email: string } | null)?.email ?? "").split(" ")[0] || null, addressed_at: c.addressed_at, confirmed_at: c.confirmed_at, author: { name: a?.name ?? a?.email ?? "Someone", initials: initials(a?.name ?? null, a?.email ?? "?"), avatar: a?.avatar_url ?? null, role: a ? roleOf(a) : "" } }; });
   // A guest only ever sees the people on the project. Members see their organization plus the project's guests;
   // groups post to the organization's chat, so a project with guests leaves them out.
   const toMember = (m: { id: string; name: string | null; email: string; avatar_url: string | null }) => ({ id: m.id, name: m.name ?? m.email.split("@")[0], handle: m.email.split("@")[0].toLowerCase(), avatar: m.avatar_url });
@@ -106,7 +107,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   // Who a change is for when nobody is @mentioned: the uploader, or the format's designer when the asker is the uploader.
   const nameOf = (id: string | null | undefined) => { const m = [...orgMembers, ...projectGuests.map((p) => ({ id: p.userId, name: p.name, email: p.email }))].find((x) => x.id === id) as unknown as { name: string | null; email: string } | undefined; return m ? (m.name ?? m.email.split("@")[0]).split(" ")[0] : null; };
   const defaultAssignee = current && current.uploaded_by !== user.id ? nameOf(current.uploaded_by) : slot.assignee_id && slot.assignee_id !== user.id ? nameOf(slot.assignee_id) : null;
-  const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, openChanges, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved, sent, canSend, zip: { all: `/api/events/${id}/download`, format: `/api/events/${id}/download?slot=${slot.id}` } } : null;
+  const actionProps = current && slot.requested && !readOnly ? { versionId: current.id, stamp: current.created_at as string, openChanges, decision: current.decision, canApprove, isOwnUpload: current.uploaded_by === user.id, hasBack: hasBack && approved, sent, canSend, zip: { all: `/api/events/${id}/download`, format: `/api/events/${id}/download?slot=${slot.id}` } } : null;
 
   const chips = vlist.map((x) => ({ id: x.id, number: x.number, decision: x.decision, sent: !!x.sent_at, purged: !!x.purged_at, canManage: x.uploaded_by === user.id || (!guest && user.role === "core_admin"), hasBack: ((x.version_sides as { side: string }[]) ?? []).some((sd) => sd.side === "back") }));
   const decision = actionProps ? <ReviewActions {...actionProps} label={`${slotName(fmt.name, slot.label)} v${current?.number ?? ""}`} eventTitle={event.title} layout="fill" /> : null;

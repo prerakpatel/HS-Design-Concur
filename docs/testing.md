@@ -98,6 +98,19 @@ Google Chat space for this test (not a real team channel).
 - [ ] A guest's Inbox shows only notifications about their own projects.
 - [ ] Phone: a top bar shows the organisation switcher (left) and the bell with its count (right, the only Inbox entry; the bottom bar has Projects, Archive, Glossary, Profile); the slots line is desktop-only.
 
+### Safety nets (after the full review)
+- [ ] Double-click **Next** on the first step of a new request: only one draft is made.
+- [ ] A new event dated more than 6 months out: the date picker will not offer it; if it somehow gets through, a message appears and what you typed stays.
+- [ ] Press Enter in a wizard text field: it goes to the next step, not "Save and exit".
+- [ ] Settings → Groups → open a group → **Delete group**: only the confirmation opens, nothing is saved first. The same for Users → **Remove**.
+- [ ] Double-click **Approve**: approved once, one notification. Approve right after someone requests a change: it refuses with "changed while you were deciding".
+- [ ] Open a sent version as approver, have the designer replace the file (Fix v1), then Approve on the old screen: it refuses and asks you to reload.
+- [ ] Comment, resolve, approve, assign: the page updates once (no flicker from a second reload).
+- [ ] Type in the thread box, then post a pinned comment: the thread box keeps what you typed.
+- [ ] "Approve and download": if the download fails, the version is still approved and a message says so.
+- [ ] Phone: Glossary search stays visible under the top bar while scrolling.
+- [ ] As an "as things happen" user, a due-date reminder arrives by email once, not twice.
+
 ### What should NOT happen
 - [ ] Nothing posted in the real Slack or Google Chat channels. If anything did, stop and check the sandbox organisation's Settings → Organizations has no webhook.
 

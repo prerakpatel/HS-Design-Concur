@@ -68,6 +68,8 @@ export function WizardFooter({ eventId, step, nextLabel = "Next" }: { eventId: s
   return (
     <div className={wizardBar}>
       <input type="hidden" name="next" value={next} />
+      {/* The first submit button is what Enter presses: it must be Next, not Save and exit. */}
+      <button type="submit" name="intent" value="next" tabIndex={-1} aria-hidden className="sr-only" />
       {prev && eventId ? <Button asChild variant="ghost" size="lg"><Link href={`/events/${eventId}/edit/${prev}`}>Back</Link></Button> : <span />}
       <div className="flex gap-2">
         <Button type="submit" name="intent" value="exit" variant="secondary" size="lg">Save and exit</Button>

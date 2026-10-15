@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { slotName } from "@/lib/project";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendEmail, appUrl, emailConfigured } from "@/lib/email";
-import { notificationText, notificationHref } from "@/lib/labels";
+import { notificationText, notificationHref, openLink } from "@/lib/labels";
 import { notify, subjectFor, approverIds, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
 import { pruneAllSlots, sweepTmpUploads } from "@/lib/uploads/prune";
@@ -175,14 +175,17 @@ export async function GET(req: Request) {
   if (emailConfigured()) {
     const { data: users } = await db.from("users").select("id,email,name").eq("status", "active").eq("email_pref", "digest");
     for (const u of users ?? []) {
-      const { data: items } = await db.from("notifications").select("id,kind,payload").eq("user_id", u.id).is("emailed_at", null).order("created_at", { ascending: false }).limit(30);
-      if (!items?.length) continue;
+      const { data: rows } = await db.from("notifications").select("id,kind,payload,organisations(slug,email_enabled)").eq("user_id", u.id).is("emailed_at", null).order("created_at", { ascending: false }).limit(30);
+      // An organisation with email switched off is left out (those rows stay unmailed; they are still in the Inbox).
+      const items = (rows ?? []).filter((n) => ((n.organisations as unknown as { email_enabled: boolean | null } | null)?.email_enabled ?? true));
+      if (!items.length) continue;
       const lines = items.map((n) => `• ${notificationText(n.kind, n.payload as Record<string, unknown>)}`).join("\n");
-      const r = await sendEmail(u.email, `Design & Concur: ${items.length} update${items.length === 1 ? "" : "s"}`, { heading: "Your daily digest", body: lines, cta: { label: "Open Inbox", href: appUrl(items.length === 1 ? notificationHref(items[0].payload as Record<string, unknown>) : "/inbox") } });
+      const r = await sendEmail(u.email, `Design & Concur: ${items.length} update${items.length === 1 ? "" : "s"}`, { heading: "Your daily digest", body: lines, cta: { label: "Open Inbox", href: appUrl(items.length === 1 ? openLink(notificationHref(items[0].payload as Record<string, unknown>), (items[0].organisations as unknown as { slug: string } | null)?.slug) : "/inbox") } });
       if ("ok" in r) { await db.from("notifications").update({ emailed_at: new Date().toISOString() }).in("id", items.map((n) => n.id)); report.digests = (report.digests as number) + 1; }
     }
-    // Instant users also get job-created notifications by email (they bypass the request-time delivery path).
-    const { data: instant } = await db.from("notifications").select("id,user_id,kind,payload,users!inner(email,email_pref,status)").in("kind", ["slot.due", "review.waiting", "reviews.waiting", "comments.pending", "draft.expiring", "draft.swept", "devices.refresh"]).is("emailed_at", null).eq("users.email_pref", "instant").eq("users.status", "active");
+    // Instant users also get, by email, the job-created notifications that do not go through notify() (which already
+    // emails them after the job responds: listing those here as well would send each one twice).
+    const { data: instant } = await db.from("notifications").select("id,user_id,kind,payload,users!inner(email,email_pref,status)").in("kind", ["draft.expiring", "draft.swept", "devices.refresh"]).is("emailed_at", null).eq("users.email_pref", "instant").eq("users.status", "active");
     for (const n of instant ?? []) {
       const u = n.users as unknown as { email: string }; const p = n.payload as Record<string, unknown>;
       const r = await sendEmail(u.email, subjectFor(n.kind as NotificationKind, p), { heading: notificationText(n.kind, p), body: String(p.title ?? ""), cta: { label: "Open Design & Concur", href: appUrl(notificationHref(p)) } });
