@@ -50,12 +50,17 @@ and `GEMINI_API_KEY` (one or both, optional). Without `ANTHROPIC_API_KEY` the sh
 
 ## The character
 
-`src/components/assistant/buddy.tsx`. It peeks in from the right edge on every page (drag it up or down; the spot
-is remembered per device). Tap opens the thread; hold and it listens straight away. It only animates for a real
-state: breathing when calm, swelling with your voice while listening, looking up and circling while thinking, an
-amber ring when a card needs you, a tick when done. His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART`, `ASSISTANT_PEEK` in the config): on the screen's
-edge he is a drawn figure leaning out (resting, leaning in to listen, beckoning when a card needs you, waving on
-arrival and when done); in the sheet, a head crop per mood, with a puzzled one when he did not catch something.
+`src/components/assistant/dock.tsx` and `buddy.tsx`. On phones his button sits in the middle of the bottom bar, a
+little bigger than the tabs: his face in a disc, a hand waving out of it now and then. Elsewhere the same button
+floats in the bottom-right corner. **Tap** and he listens: he peeks up over the bar, eyes and fingers over the
+edge, with the words so far in a bubble; tap again to stop. While he works he becomes a bigger dark orb with his
+thinking poses taking turns and a word on what he is doing; then the sheet opens with his card. **Hold** the button
+to open the thread and type. An amber dot on the button means a card is waiting for you. Inside the sheet he is a
+head crop per mood (puzzled when he did not catch something), with the full figure beside the suggestions.
+
+His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART`, `ASSISTANT_DOCK` in the config). The poses are
+stills; short looping clips (animated WebP or APNG with a transparent background, a few seconds each) can take their
+place one for one when they exist.
 
 ## Costs
 

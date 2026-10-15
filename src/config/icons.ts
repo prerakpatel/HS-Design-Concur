@@ -80,6 +80,7 @@ export const ICON_NAMES = [
   "search",
   "send",
   "settings",
+  "stop",
   "subdirectory_arrow_right",
   "swap_horiz",
   "sync",

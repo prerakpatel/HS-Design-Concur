@@ -10,8 +10,9 @@ import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/user-error";
 import { assistantTurn, assistantCreateProjects, assistantAddFormats, assistantComment, assistantUpdateProject } from "@/app/actions/assistant";
 import type { CommentDraft, Outcome, Person, Turn, Where } from "@/lib/assistant/schema";
-import { Buddy, PeekingBuddy, type BuddyArt, type Mood } from "@/components/assistant/buddy";
-import { ASSISTANT_ART, ASSISTANT_FIGURE, ASSISTANT_PEEK } from "@/config/assistant";
+import { Buddy, type BuddyArt, type Mood } from "@/components/assistant/buddy";
+import { DockButton, LedgePeek, ThinkingOrb, useNavSlot } from "@/components/assistant/dock";
+import { ASSISTANT_ART, ASSISTANT_FIGURE, ASSISTANT_DOCK } from "@/config/assistant";
 import { useRecorder } from "@/components/assistant/use-recorder";
 import { CardActions, CommentCard, DoneCard, OptionButtons, ProjectCard, ProjectUpdateCard, Say } from "@/components/assistant/cards";
 
@@ -100,8 +101,12 @@ export function Assistant(p: AssistantProps) {
     rec.start((words) => { setOpen(true); if (words.trim()) send(words); else setEntries((cur) => [...cur, { role: "error", text: "I didn't catch anything. Hold the mic and speak, or type it." }]); }, (msg) => { setOpen(true); setEntries((cur) => [...cur, { role: "error", text: msg }]); });
   }, [rec, send]);
 
-  const holdStart = () => listen();
-  const caption = open ? null : rec.state === "listening" ? (rec.live || "Listening…") : rec.state === "transcribing" ? "Working out the words…" : thinking ? "Thinking…" : null;
+  // His button: tap to talk, tap again to stop, hold to open the thread. While he listens he peeks over the bar;
+  // while he works he is the orb; the sheet opens with his card.
+  const navSlot = useNavSlot(pathname);
+  const anchor = navSlot ? "nav" : "corner";
+  const tap = () => { if (busy || thinking || rec.state === "transcribing") return; if (rec.state === "listening") rec.stop(); else if (open) setOpen(false); else listen(); };
+  const caption = open ? null : rec.state === "listening" ? (rec.live || "Listening… tap to stop") : rec.state === "transcribing" ? "Working out the words…" : thinking ? "Thinking…" : null;
 
   const act = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); } };
   const createProjects = (o: Outcome) => act(async () => {
@@ -137,7 +142,9 @@ export function Assistant(p: AssistantProps) {
 
   return (
     <>
-      <PeekingBuddy mood={mood} level={rec.level} art={art} peek={ASSISTANT_PEEK} caption={caption} hidden={open} onTap={() => setOpen(true)} onHoldStart={holdStart} onHoldEnd={() => rec.stop()} />
+      <DockButton slot={navSlot} head={ASSISTANT_DOCK.head} hand={ASSISTANT_DOCK.hand} listening={rec.state === "listening"} busy={busy || thinking || rec.state === "transcribing"} attention={!open && (mood === "needs-you" || mood === "done")} onTap={tap} onHold={() => { if (rec.state === "listening") rec.stop(); setOpen(true); }} />
+      {!open && rec.state === "listening" && <LedgePeek src={ASSISTANT_DOCK.ledge} anchor={anchor} level={rec.level} caption={caption} />}
+      {!open && (rec.state === "transcribing" || thinking) && <ThinkingOrb poses={ASSISTANT_DOCK.thinking} mood={mood} anchor={anchor} caption={caption} />}
       <Drawer open={open} onOpenChange={(o) => { setOpen(o); if (!o) { rec.cancel(); if (last?.role === "done") reset(); } }}>
         <DrawerContent className="max-h-[88dvh] data-[vaul-drawer-direction=bottom]:max-h-[88dvh] md:mx-auto md:max-w-xl md:rounded-t-3xl">
           <div className="flex items-center gap-3 px-5 pb-2 pt-1">

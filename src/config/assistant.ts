@@ -12,7 +12,7 @@ export const ASSISTANT_NAME = "Vichar";
 
 /**
  * Vichar's artwork (public/assistant/vichar): a head crop per mood for the bubble in the sheet, the full figure
- * for the sheet's welcome, and a peeking pose per mood for the screen's edge. A list means the poses alternate while
+ * for the sheet's welcome, and the dock's pieces. A list means the poses alternate while
  * that mood lasts.
  */
 export const ASSISTANT_ART = {
@@ -24,15 +24,12 @@ export const ASSISTANT_ART = {
   done: "/assistant/vichar/calm-head.webp",
 } as const;
 export const ASSISTANT_FIGURE = "/assistant/vichar/calm.webp";
-/** Peeking from the right edge: resting, leaning out to listen, beckoning when a card needs you, waving hello and when done. */
-export const ASSISTANT_PEEK = {
-  calm: "/assistant/vichar/peek-rest.webp",
-  listening: "/assistant/vichar/peek-lean.webp",
-  thinking: "/assistant/vichar/peek-lean.webp",
-  "needs-you": "/assistant/vichar/peek-beckon.webp",
-  puzzled: "/assistant/vichar/peek-rest.webp",
-  done: "/assistant/vichar/peek-wave.webp",
-  hello: "/assistant/vichar/peek-wave.webp",
+/** The dock: his face and waving hand on the button, the peek over the bottom bar while he listens, the poses in the orb while he works. */
+export const ASSISTANT_DOCK = {
+  head: "/assistant/vichar/nav-head.webp",
+  hand: "/assistant/vichar/nav-hand.webp",
+  ledge: "/assistant/vichar/ledge.webp",
+  thinking: ["/assistant/vichar/think-1-head.webp", "/assistant/vichar/writing-head.webp", "/assistant/vichar/think-2-head.webp"],
 } as const;
 
 /** The model that turns words into drafts, and how hard it thinks (low | medium | high). */

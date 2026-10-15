@@ -31,7 +31,7 @@ export function AppShell({ org, orgs, user, slots, sidebarOpen = true, changelog
       <SidebarInset className="min-h-dvh min-w-0 bg-background">
         <MobileTopBar org={org} orgs={orgs} />
         {wide ? <main className="w-full">{children}</main> : <MainFrame>{children}</MainFrame>}
-        <MobileNav user={{ initials: user.initials, avatar: user.avatar }} />
+        <MobileNav user={{ initials: user.initials, avatar: user.avatar }} assistant={!!assistant} />
       </SidebarInset>
     </SidebarProvider>
     </UnreadProvider>

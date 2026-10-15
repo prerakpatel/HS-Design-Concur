@@ -279,17 +279,21 @@
 .buddy[data-mood="done"] .buddy-body { animation: none; transform: scale(0.92); opacity: 0.35; transition: transform 0.25s, opacity 0.25s; }
 .buddy[data-mood="done"] .buddy-tick { opacity: 1; transform: scale(1); }
 .buddy[data-mood="needs-you"] .buddy-ring { opacity: 0.9; background: none; box-shadow: 0 0 0 3px var(--warning); animation: buddy-breathe 2s ease-in-out infinite; }
-.buddy-peek { filter: drop-shadow(0 6px 14px rgb(0 0 0 / 0.22)); }
-/* The drawn figure leaning out of the screen's edge: slides in, fades out at the bottom, nudges when a card needs you. */
-@keyframes buddy-figure-in { from { transform: translateX(70%); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes buddy-figure-nudge { 0%, 100% { transform: none; } 50% { transform: translateX(-6px) rotate(-2deg); } }
-.buddy-figure { filter: drop-shadow(-4px 6px 12px rgb(0 0 0 / 0.22)); }
-@keyframes buddy-caption-in { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+/* The dock (src/components/assistant/dock.tsx): his button, the peek over the bottom bar while he listens, the orb while he works. */
+@keyframes buddy-hand-wave { 0%, 70%, 100% { transform: rotate(0); } 75% { transform: rotate(-14deg); } 80% { transform: rotate(10deg); } 85% { transform: rotate(-14deg); } 90% { transform: rotate(6deg); } }
+.buddy-hand { transform-origin: 80% 100%; animation: buddy-hand-wave 7s ease-in-out 1.5s infinite; filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.25)); transition: opacity 0.2s; }
+@keyframes buddy-dock-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--brand) 45%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
+.buddy-dock-listening { animation: buddy-dock-pulse 1.2s ease-out infinite; }
+@keyframes buddy-ledge-up { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+.buddy-ledge-art { animation: buddy-ledge-up 0.45s cubic-bezier(0.34, 1.4, 0.64, 1) both; filter: drop-shadow(0 -2px 8px rgb(0 0 0 / 0.18)); transition: transform 0.1s; }
+@keyframes buddy-caption-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .buddy-caption { animation: buddy-caption-in 0.25s ease-out both; }
-.buddy-figure-art { animation: buddy-figure-in 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) both; mask-image: linear-gradient(to bottom, black 78%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 78%, transparent 100%); }
-.buddy-figure-nudge { animation: buddy-figure-in 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) both, buddy-figure-nudge 2.4s ease-in-out 0.6s infinite; }
+@keyframes buddy-orb-in { from { transform: scale(0.5); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes buddy-orb-ring { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.45); opacity: 0; } }
+.buddy-orb { animation: buddy-orb-in 0.4s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+.buddy-orb-ring { background: color-mix(in oklch, var(--brand) 40%, transparent); animation: buddy-orb-ring 1.6s ease-out infinite; }
 .buddy-pop { animation: buddy-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 @keyframes buddy-art-in { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
 .buddy-art { animation: buddy-art-in 0.35s ease-out both; }
 .buddy-dots-text::after { content: "..."; display: inline-block; width: 1.2em; text-align: left; animation: buddy-dots 1.2s steps(1) infinite; }
-@media (prefers-reduced-motion: reduce) { .buddy *, .buddy-peek, .buddy-pop, .buddy-figure, .buddy-figure-art { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .buddy *, .buddy-pop, .buddy-hand, .buddy-dock-listening, .buddy-ledge-art, .buddy-caption, .buddy-orb, .buddy-orb-ring { animation: none !important; transition: none !important; } }
