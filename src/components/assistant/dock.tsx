@@ -1,5 +1,5 @@
 "use client";
-// icons: stop mic
+// icons: mic
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSyncExternalStore } from "react";
@@ -67,7 +67,7 @@ export function NavDock({ slot, media, state, level, caption, attention, onTap, 
       className={cn("buddy-dock relative -mt-5 flex size-14 items-center justify-center rounded-full p-0.5 shadow-md ring-1 transition-[background-color,box-shadow] duration-300 active:scale-95", active ? "bg-brand ring-brand" : "bg-card ring-border")}
       style={{ touchAction: "manipulation", WebkitTouchCallout: "none" }}>
       <span className={cn("absolute inset-0.5 transition-opacity duration-200", active ? "opacity-0" : "opacity-100")}><OrbFace media={media.idle} inset /></span>
-      <span className={cn("flex size-full items-center justify-center text-brand-foreground transition-opacity duration-200", active ? "opacity-100" : "opacity-0")}><Icon name="stop" size={24} fill /></span>
+      <span className={cn("flex size-full items-center justify-center text-brand-foreground transition-opacity duration-200", active ? "opacity-100" : "opacity-0")}><span className="block size-3.5 rounded-[3px] bg-current" /></span>
       {!active && <span className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full bg-brand-soft text-brand-soft-foreground ring-2 ring-card"><Icon name="mic" size={20} className="!text-[14px]" /></span>}
       {attention && !active && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
     </button>
@@ -77,9 +77,10 @@ export function NavDock({ slot, media, state, level, caption, attention, onTap, 
       {createPortal(button, slot)}
       {active && (
         <>
-          <div className="buddy-glow pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+66px)] z-[45] h-48" />
-          <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-50 flex flex-col items-center gap-2" aria-live="polite">
-            {caption && <Caption>{caption}</Caption>}
+          <div className="buddy-glow pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+66px)] z-[45] h-52" />
+          {/* The orb sits low enough to overlap the disc it came out of; the words, or what he is doing, in one slot above it. */}
+          <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+62px)] z-50 flex flex-col items-center gap-2.5" aria-live="polite">
+            {caption && (state === "listening" ? <Caption>{caption}</Caption> : <Pill>{caption}</Pill>)}
             <Orb media={media[state]} state={state} level={level} size={96} grow />
           </div>
         </>
@@ -108,13 +109,13 @@ export function FloatingDock({ media, state, level, caption, attention, onTap, o
     <>
       {active && <div className={cn("buddy-glow pointer-events-none fixed z-[45]", corner ? "bottom-0 right-0 h-56 w-72" : "inset-x-0 bottom-0 h-56")} />}
       <div className={cn("fixed z-50 flex flex-col gap-2", corner ? "bottom-5 right-5 items-end md:bottom-7 md:right-8" : "inset-x-0 bottom-[max(env(safe-area-inset-bottom),12px)] items-center")} aria-live="polite">
-        {active && caption && <Caption>{caption}</Caption>}
+        {active && caption && (state === "listening" ? <Caption>{caption}</Caption> : <Pill>{caption}</Pill>)}
         <button type="button" aria-label={state === "listening" ? "Stop listening" : "Talk to the assistant"} aria-pressed={state === "listening"} {...press}
           onPointerEnter={wake}
           className={cn("buddy-float relative rounded-full p-0.5 shadow-md ring-1 transition-[width,height,transform,opacity,background-color] duration-300 ease-out", active ? "bg-foreground ring-foreground" : "bg-card ring-border", !active && !awake && "translate-y-[45%] opacity-80")}
           style={{ width: size, height: size, touchAction: "manipulation", WebkitTouchCallout: "none" }}>
           <Orb media={media[active ? state : "idle"]} state={state} level={level} size={size - 4} bare inset={!active} />
-          {state === "listening" && <span className="absolute -bottom-0.5 -right-0.5 flex size-7 items-center justify-center rounded-full bg-brand text-brand-foreground ring-2 ring-card"><Icon name="stop" size={20} fill className="!text-[16px]" /></span>}
+          {state === "listening" && <span className="absolute -bottom-0.5 -right-0.5 flex size-7 items-center justify-center rounded-full bg-brand text-brand-foreground ring-2 ring-card"><span className="block size-2.5 rounded-[2px] bg-current" /></span>}
           {!active && awake && <span className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full bg-brand-soft text-brand-soft-foreground ring-2 ring-card"><Icon name="mic" size={20} className="!text-[14px]" /></span>}
           {attention && !active && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
         </button>
@@ -135,4 +136,8 @@ function Orb({ media, state, level, size, bare = false, grow = false, inset = fa
 
 function Caption({ children }: { children: React.ReactNode }) {
   return <div className="buddy-caption max-w-[80vw] rounded-2xl bg-card px-3.5 py-2 text-sm leading-5 text-foreground shadow-md ring-1 ring-border md:max-w-sm">{children}</div>;
+}
+
+function Pill({ children }: { children: React.ReactNode }) {
+  return <div className="buddy-caption rounded-full bg-foreground/90 px-3 py-1 text-xs font-medium text-background shadow-md">{children}</div>;
 }
