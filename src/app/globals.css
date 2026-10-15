@@ -289,6 +289,8 @@
 .buddy-orb { animation: buddy-orb-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1) both; transition: transform 0.1s; }
 .buddy-orb-ring { background: color-mix(in oklch, var(--brand) 40%, transparent); animation: buddy-orb-ring 1.6s ease-out infinite; }
 .buddy-float:hover { opacity: 1; }
+/* His sheet takes three quarters of the screen; the page behind it dims so the conversation is the only thing lit. */
+[data-slot="drawer-overlay"]:has(+ [data-vichar]) { background: rgb(0 0 0 / 0.45); }
 .buddy-pop { animation: buddy-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 @keyframes buddy-art-in { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
 .buddy-art { animation: buddy-art-in 0.35s ease-out both; }

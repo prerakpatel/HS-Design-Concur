@@ -25,13 +25,14 @@ export const ASSISTANT_ART = {
 } as const;
 export const ASSISTANT_FIGURE = "/assistant/vichar/calm.webp";
 /**
- * The orb (his button and the disc that grows out of it): a still per state, and a short looping clip per state when
+ * The orb (his button and the disc that grows out of it): a still per state, and a short looping clip for the states after a tap when
  * one exists in public/assistant/vichar/clips (720 × 720, a few seconds, white background, mp4). Clips are off until
  * they are there, so nothing is fetched for nothing.
  */
 export const ASSISTANT_CLIPS_READY = false;
 export const ASSISTANT_ORB = {
-  idle: { image: "/assistant/vichar/nav-head.webp", video: "/assistant/vichar/clips/idle.mp4" },
+  // Idle is always a still: he only moves once you tap him.
+  idle: { image: "/assistant/vichar/nav-head.webp", video: null },
   listening: { image: "/assistant/vichar/listening-head.webp", video: "/assistant/vichar/clips/listening.mp4" },
   thinking: { image: "/assistant/vichar/writing-head.webp", video: "/assistant/vichar/clips/thinking.mp4" },
   done: { image: "/assistant/vichar/calm-head.webp", video: "/assistant/vichar/clips/done.mp4" },

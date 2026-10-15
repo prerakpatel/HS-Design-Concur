@@ -146,7 +146,7 @@ export function Assistant(p: AssistantProps) {
     <>
       {navSlot ? <NavDock slot={navSlot} {...dock} /> : !open && <FloatingDock {...dock} corner={where.page !== "asset" && where.page !== "wizard"} />}
       <Drawer open={open} onOpenChange={(o) => { setOpen(o); if (!o) { rec.cancel(); if (last?.role === "done") reset(); } }}>
-        <DrawerContent className="max-h-[88dvh] data-[vaul-drawer-direction=bottom]:max-h-[88dvh] md:mx-auto md:max-w-xl md:rounded-t-3xl">
+        <DrawerContent data-vichar className="h-[75dvh] max-h-[75dvh] data-[vaul-drawer-direction=bottom]:max-h-[75dvh] md:mx-auto md:max-w-xl md:rounded-t-3xl">
           <div className="flex items-center gap-3 px-5 pb-2 pt-1">
             <Buddy mood={mood} level={rec.level} size={48} art={art} className="buddy-pop" />
             <div className="min-w-0 flex-1">
