@@ -119,7 +119,7 @@ Do these in the **Test sandbox**. Use the designer account (member) and the Core
 - [ ] As Core Admin: delete the approved version's back; it works.
 - [ ] As approver: approve, reopen, approve again. Works; the files are untouched.
 - [ ] Upload with the approver account after the designer's version is approved: a new version (v2), as before.
-- [ ] Download the ZIP of the approved designs: files are all there.
+- [ ] Download the ZIP of the approved designs: it starts right away and every file is inside, in the order of the formats. Two formats with the same name both appear (the second as "name (2).jpg").
 
 ### Approving your own work (database guard)
 - [ ] Designer A (also an approver) uploads and sends a version. A cannot approve it: "You cannot approve a version you uploaded".
