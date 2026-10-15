@@ -37,7 +37,9 @@ export async function POST(req: Request) {
 
 async function sarvam(audio: Blob, keyterms: string[]) {
   const body = new FormData();
-  body.set("file", audio, "clip." + (audio.type.includes("mp4") ? "m4a" : audio.type.includes("ogg") ? "ogg" : audio.type.includes("wav") ? "wav" : "webm"));
+  // Browsers label a clip "audio/webm;codecs=opus"; Sarvam wants the plain type.
+  const type = (audio.type.split(";")[0] || "audio/webm").trim();
+  body.set("file", new Blob([await audio.arrayBuffer()], { type }), "clip." + (type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : type.includes("wav") ? "wav" : "webm"));
   body.set("model", "saaras:v4");
   body.set("language_code", "unknown");
   body.set("keyterms", JSON.stringify(keyterms));

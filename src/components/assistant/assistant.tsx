@@ -81,11 +81,13 @@ export function Assistant(p: AssistantProps) {
   }, [entries, where]);
 
   const listen = useCallback(() => {
-    if (!rec.supported) { toast.error("This browser can't listen. Type instead."); inputRef.current?.focus(); return; }
-    rec.start((words) => { if (words.trim()) send(words); else setEntries((cur) => [...cur, { role: "error", text: "I didn't catch anything. Hold the mic and speak, or type it." }]); }, (msg) => setEntries((cur) => [...cur, { role: "error", text: msg }]));
+    if (!rec.supported) { toast.error("This browser can't listen. Type instead."); setOpen(true); inputRef.current?.focus(); return; }
+    // Held from the edge, the sheet stays closed while he listens and opens with what he heard.
+    rec.start((words) => { setOpen(true); if (words.trim()) send(words); else setEntries((cur) => [...cur, { role: "error", text: "I didn't catch anything. Hold the mic and speak, or type it." }]); }, (msg) => { setOpen(true); setEntries((cur) => [...cur, { role: "error", text: msg }]); });
   }, [rec, send]);
 
-  const holdStart = () => { setOpen(true); listen(); };
+  const holdStart = () => listen();
+  const caption = open ? null : rec.state === "listening" ? (rec.live || "Listening…") : rec.state === "transcribing" ? "Working out the words…" : thinking ? "Thinking…" : null;
 
   const act = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); } };
   const createProjects = (o: Outcome) => act(async () => {
@@ -113,7 +115,7 @@ export function Assistant(p: AssistantProps) {
 
   return (
     <>
-      <PeekingBuddy mood={mood} level={rec.level} art={art} peek={ASSISTANT_PEEK} hidden={open} onTap={() => setOpen(true)} onHoldStart={holdStart} onHoldEnd={() => rec.stop()} />
+      <PeekingBuddy mood={mood} level={rec.level} art={art} peek={ASSISTANT_PEEK} caption={caption} hidden={open} onTap={() => setOpen(true)} onHoldStart={holdStart} onHoldEnd={() => rec.stop()} />
       <Drawer open={open} onOpenChange={(o) => { setOpen(o); if (!o) { rec.cancel(); if (last?.role === "done") reset(); } }}>
         <DrawerContent className="max-h-[88dvh] data-[vaul-drawer-direction=bottom]:max-h-[88dvh] md:mx-auto md:max-w-xl md:rounded-t-3xl">
           <div className="flex items-center gap-3 px-5 pb-2 pt-1">

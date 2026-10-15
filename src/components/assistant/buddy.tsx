@@ -64,7 +64,7 @@ const writeY = (y: number) => { try { localStorage.setItem(KEY, String(Math.roun
  * The character peeking in from the right edge of the screen, a tap away on every page. Tap opens the thread; hold
  * and it listens straight away (release to send); drag moves it up or down the edge out of the way.
  */
-export function PeekingBuddy({ mood, level, art, peek, onTap, onHoldStart, onHoldEnd, hidden }: { mood: Mood; level: number; art?: BuddyArt; peek?: PeekArt; onTap: () => void; onHoldStart: () => void; onHoldEnd: () => void; hidden: boolean }) {
+export function PeekingBuddy({ mood, level, art, peek, caption, onTap, onHoldStart, onHoldEnd, hidden }: { mood: Mood; level: number; art?: BuddyArt; peek?: PeekArt; /** A few words beside him while he listens or thinks with the sheet closed. */ caption?: string | null; onTap: () => void; onHoldStart: () => void; onHoldEnd: () => void; hidden: boolean }) {
   // Rendered only in the browser (the resting spot is per device), without a state change on mount.
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
   // He waves on arrival, then settles into the pose for the mood.
@@ -105,11 +105,17 @@ export function PeekingBuddy({ mood, level, art, peek, onTap, onHoldStart, onHol
     // The drawn poses already lean out of the edge, so the figure sits flush with it; listening swells with the voice.
     const src = (hello && peek.hello) || peek[mood] || peek.calm!;
     return (
-      <button type="button" aria-label="Assistant" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onContextMenu={(e) => e.preventDefault()}
-        className={cn("buddy-figure fixed right-0 z-50 origin-right transition-[transform,opacity] duration-300 ease-out", hidden && "pointer-events-none translate-x-full opacity-0", active && "scale-105")}
-        style={{ top: y, height: size, touchAction: "none", WebkitTouchCallout: "none", transform: mood === "listening" ? `scale(${1 + level * 0.06})` : undefined }}>
-        <img key={src} src={src} alt="" className={cn("buddy-figure-art h-full w-auto select-none", mood === "needs-you" && "buddy-figure-nudge")} draggable={false} />
-      </button>
+      <>
+        {caption && !hidden && (
+          <div className="buddy-caption fixed right-[92px] z-50 max-w-[60vw] rounded-2xl rounded-br-md bg-card px-3.5 py-2 text-sm leading-5 text-foreground shadow-md ring-1 ring-border" style={{ top: y + 24 }} aria-live="polite">{caption}</div>
+        )}
+        {/* While he is held, he stays put and on top of everything, so the hold is never cut short. */}
+        <button type="button" aria-label="Assistant" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onContextMenu={(e) => e.preventDefault()}
+          className={cn("buddy-figure fixed right-0 origin-right transition-[transform,opacity] duration-300 ease-out", active ? "z-[60]" : "z-50", hidden && !active && "pointer-events-none translate-x-full opacity-0", active && "scale-105")}
+          style={{ top: y, height: size, touchAction: "none", WebkitTouchCallout: "none", transform: mood === "listening" ? `scale(${1 + level * 0.06})` : undefined }}>
+          <img key={src} src={src} alt="" className={cn("buddy-figure-art h-full w-auto select-none", mood === "needs-you" && "buddy-figure-nudge")} draggable={false} />
+        </button>
+      </>
     );
   }
   return (
