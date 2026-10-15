@@ -20,14 +20,14 @@ export function ConfirmButton({ action, title, description, label, confirmLabel,
   const router = useRouter();
   return (
     <>
-      <Button variant={variant} size={size} className={className} onClick={() => setOpen(true)}>{label}</Button>
+      <Button type="button" variant={variant} size={size} className={className} onClick={() => setOpen(true)}>{label}</Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="rounded-2xl sm:max-w-md">
           <DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader>
           {withReason && <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder={reasonLabel ?? "Reason"} rows={3} />}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
-            <Button variant={variant === "destructive" ? "destructive" : "default"} disabled={pending || (withReason && !reason.trim())} onClick={() => start(async () => {
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
+            <Button type="button" variant={variant === "destructive" ? "destructive" : "default"} disabled={pending || (withReason && !reason.trim())} onClick={() => start(async () => {
               try { await action(reason); setOpen(false); setReason(""); onDone?.(); router.refresh(); }
               catch (e) { toast.error(errorMessage(e)); }
             })}>{pending ? "Working…" : (confirmLabel ?? label)}</Button>

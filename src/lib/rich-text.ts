@@ -28,6 +28,12 @@ export function sanitizeComment(html: string): string {
   return clean;
 }
 
+/**
+ * A stored comment body, made safe to render. Bodies are sanitised when saved through the app, but the database
+ * accepts writes that skip the app, so the page cleans every HTML body again on the way out. Plain text stays as is.
+ */
+export function safeBody(body: string): string { return isHtml(body) ? sanitizeComment(body) : body; }
+
 /** Plain words for notifications, chat excerpts and @-matching. Works for legacy plain-text bodies too. */
 export function plainText(body: string): string {
   if (!isHtml(body)) return body.trim();

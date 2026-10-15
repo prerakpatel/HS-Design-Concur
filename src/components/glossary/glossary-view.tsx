@@ -56,7 +56,7 @@ export function GlossaryView({ entries, canEdit }: { entries: GlossaryEntry[]; c
         </>
       )} />
 
-      <div className="sticky top-0 z-20 -mx-5 mb-4 bg-background/95 px-5 py-2 backdrop-blur md:static md:mx-0 md:mb-6 md:bg-transparent md:p-0 md:backdrop-blur-none">
+      <div className="sticky top-14 z-20 md:top-0 -mx-5 mb-4 bg-background/95 px-5 py-2 backdrop-blur md:static md:mx-0 md:mb-6 md:bg-transparent md:p-0 md:backdrop-blur-none">
        <div className="relative">
         <Icon name="search" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Type a word, however you spell it" aria-label="Search the glossary" autoCapitalize="none" autoCorrect="off" spellCheck={false} className="h-12 rounded-full pl-12 pr-12 text-base" />

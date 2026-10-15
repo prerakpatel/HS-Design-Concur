@@ -14,7 +14,11 @@ export async function sendPush(userIds: string[], msg: PushMessage) {
   if (!pushConfigured() || userIds.length === 0) return { sent: 0 };
   webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://hsdesign.vercel.app", process.env.VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
   const svc = createServiceClient();
-  const { data: subs } = await svc.from("push_subscriptions").select("id,user_id,endpoint,p256dh,auth").in("user_id", userIds);
+  // Only people who are still active hear anything: someone removed from the app keeps no phone buzzing with titles and excerpts.
+  const { data: active } = await svc.from("users").select("id").in("id", userIds).eq("status", "active");
+  const activeIds = (active ?? []).map((u) => u.id as string);
+  if (activeIds.length === 0) return { sent: 0 };
+  const { data: subs } = await svc.from("push_subscriptions").select("id,user_id,endpoint,p256dh,auth").in("user_id", activeIds);
   // The home-screen badge shows each person's own unread count (the new notification is already saved).
   const { data: unread } = await svc.from("notifications").select("user_id").in("user_id", userIds).is("read_at", null).limit(5000);
   const unreadOf = new Map<string, number>();

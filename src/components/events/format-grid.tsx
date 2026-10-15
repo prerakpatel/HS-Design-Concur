@@ -1,7 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { AspectIcon } from "@/components/aspect-icon";
@@ -14,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/page-header";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { approveMany } from "@/app/actions/reviews";
+import { errorMessage } from "@/lib/user-error";
 import { cn } from "@/lib/utils";
 
 // icons: download
@@ -31,16 +31,17 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta, downloada
   const naCount = cards.filter((c) => !c.requested).length;
   const visible = showNa ? cards : cards.filter((c) => c.requested);
   const [pending, start] = useTransition();
-  const router = useRouter();
   const eligible = cards.filter((c) => c.requested && c.state === "in_review" && c.versionId && !c.uploadedByMe);
   const canBulk = canApprove && eligible.length > 0;
   const chosen = eligible.filter((c) => picked.includes(c.slotId));
   const stop = () => { setPicked([]); setConfirm(false); };
   const approve = () => start(async () => {
-    const r = await approveMany(chosen.map((c) => c.versionId!));
-    if (r.approved) toast.success(`Approved ${r.approved} format${r.approved === 1 ? "" : "s"}`);
-    for (const f of r.failed) toast.error(f);
-    stop(); router.refresh();
+    try {
+      const r = await approveMany(chosen.map((c) => c.versionId!));
+      if (r.approved) toast.success(`Approved ${r.approved} format${r.approved === 1 ? "" : "s"}`);
+      for (const f of r.failed) toast.error(f);
+      stop();
+    } catch (e) { toast.error(errorMessage(e)); }
   });
 
   return (

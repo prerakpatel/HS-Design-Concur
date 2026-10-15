@@ -1,4 +1,6 @@
+import { isOnSitePath } from "@/lib/on-site-path";
 import { REMINDER_LEAD_DAYS, DRAFT_SWEEP_DAYS } from "@/config/limits";
+import { APP_TIMEZONE } from "@/config/orgs";
 import type { Format } from "@/lib/types";
 
 export function formatSize(f: Pick<Format, "width" | "height" | "unit" | "allow_custom_size">, custom?: { w: number | null; h: number | null }) {
@@ -44,7 +46,9 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
 /** Event date for chat posts: "Sat, Nov 14". Date-only strings are read at noon so the weekday never shifts. */
 export function chatDate(d: unknown) {
   if (typeof d !== "string" || !d) return "";
-  return new Date(d.length === 10 ? `${d}T12:00:00` : d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  // Date-only strings are calendar days (noon, so no shifting); a timestamp is shown in the app's own time zone, not the server's.
+  const day = d.length === 10;
+  return new Date(day ? `${d}T12:00:00` : d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", ...(day ? {} : { timeZone: APP_TIMEZONE }) });
 }
 const quote = (s: unknown) => (typeof s === "string" && s.trim() ? (s.includes("\n") ? `\n${s.trim()}` : `“${s.trim()}”`) : "");
 /**
@@ -97,7 +101,7 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
 }
 export function notificationHref(p: Record<string, unknown>): string {
   // Only an on-site path: a notification must never send someone to another website.
-  if (typeof p.href === "string" && /^\/(?!\/)/.test(p.href)) return p.href;
+  if (isOnSitePath(p.href)) return p.href;
   if (p.eventId && p.slotId) return `/events/${p.eventId}/slots/${p.slotId}`;
   if (p.eventId) return `/events/${p.eventId}`;
   return "/events";

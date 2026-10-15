@@ -13,5 +13,6 @@ export const REVIEW_WAIT_HOURS = 24;   // a sent design nobody has decided on, a
 export const UNSENT_NUDGE_HOURS = 3;   // review-mode comments left unsent this long get a nudge
 export const MAX_LOGO_BYTES = 1_000_000; // organisation logos
 export const MAX_GLOSSARY_CHARS = 1_000_000; // an imported glossary file
+export const CHAT_PREVIEW_DAYS = 7;      // a preview picture in a Slack / Google Chat post stays viewable this long (its own copy, so replacing the design never breaks it)
 export const TMP_UPLOAD_HOURS = 24;      // a half-finished upload is cleared from temporary storage after this long
 export const QUIET_RESEND_MINUTES = 10; // sending the same version again within this long, with nothing in between, does not notify approvers twice

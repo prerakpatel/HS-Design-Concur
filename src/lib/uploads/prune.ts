@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { BUCKET } from "@/lib/storage";
 import { removeFiles, listR2 } from "@/lib/files";
-import { VERSIONS_KEPT, TMP_UPLOAD_HOURS } from "@/config/limits";
-import { HOUR_MS } from "@/lib/time";
+import { VERSIONS_KEPT, TMP_UPLOAD_HOURS, CHAT_PREVIEW_DAYS } from "@/config/limits";
+import { HOUR_MS, DAY_MS } from "@/lib/time";
 
 interface Row { id: string; number: number; decision: string; purged_at: string | null; version_sides: { id: string; optimised_path: string | null; preview_path: string | null; thumb_path: string | null }[] }
 
@@ -50,6 +50,9 @@ export async function sweepTmpUploads(db: SupabaseClient): Promise<number> {
   for (let i = 0; i < old.length; i += 100) await bucket.remove(old.slice(i, i + 100));
   // The same for uploads in flight on Cloudflare R2.
   const oldR2 = (await listR2("tmp/")).filter((f) => f.modified < cutoff).map((f) => f.path);
-  await removeFiles(db, oldR2);
-  return old.length + oldR2.length;
+  // And the pictures made for chat posts, once their links have run out.
+  const chatCutoff = Date.now() - (CHAT_PREVIEW_DAYS + 1) * DAY_MS;
+  const oldChat = (await listR2("chat/")).filter((f) => f.modified < chatCutoff).map((f) => f.path);
+  await removeFiles(db, [...oldR2, ...oldChat]);
+  return old.length + oldR2.length + oldChat.length;
 }

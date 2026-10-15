@@ -17,8 +17,11 @@ const THUMB_MAX = 480;
  */
 export async function processUpload(input: Buffer, mime: string): Promise<Processed> {
   if (mime === "image/gif") {
-    const meta = await sharp(input, { pages: 1 }).metadata();
-    const thumb = await sharp(input, { pages: 1 }).resize({ width: THUMB_MAX, height: THUMB_MAX, fit: "inside", withoutEnlargement: true }).webp({ quality: 75 }).toBuffer();
+    // The file is stored as it came, so it must really be a GIF of a sensible size, whatever it was declared as.
+    const gif = { pages: 1, limitInputPixels: 80_000_000 };
+    const meta = await sharp(input, gif).metadata();
+    if (meta.format !== "gif") throw new Error("That file is not a GIF.");
+    const thumb = await sharp(input, gif).resize({ width: THUMB_MAX, height: THUMB_MAX, fit: "inside", withoutEnlargement: true }).webp({ quality: 75 }).toBuffer();
     return { optimised: { buf: input, mime: "image/gif", ext: "gif" }, preview: null, thumb: { buf: thumb, mime: "image/webp", ext: "webp" }, width: meta.width ?? 0, height: meta.height ?? 0 };
   }
   const base = sharp(input, { failOn: "none", limitInputPixels: 80_000_000 }).rotate();

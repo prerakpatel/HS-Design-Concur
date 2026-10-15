@@ -1,8 +1,10 @@
 import path from "node:path";
 import { createCanvas } from "@napi-rs/canvas";
 
+import { pdfScale, PDF_DPI } from "@/lib/pdf-scale";
+
+export { PDF_DPI };
 export const PDF_MAX_PAGES = 2;   // page 1 = front, page 2 = back (PRD §7.1)
-export const PDF_DPI = 150;       // raster resolution for print previews (PRD §7.2)
 
 /**
  * Rasterise a print PDF to one JPEG per page at 150 dpi. Runs in Node with pdf.js and a headless canvas.
@@ -20,7 +22,10 @@ export async function rasterisePdf(input: Buffer): Promise<Buffer[]> {
     const pages: Buffer[] = [];
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
-      const viewport = page.getViewport({ scale: PDF_DPI / 72 });
+      const paper = page.getViewport({ scale: 1 });
+      const scale = pdfScale(paper.width, paper.height);
+      if (scale === null) throw new Error("This PDF has a page with no readable size.");
+      const viewport = page.getViewport({ scale });
       const canvas = createCanvas(Math.round(viewport.width), Math.round(viewport.height));
       const ctx = canvas.getContext("2d");
       ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);

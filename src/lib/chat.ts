@@ -1,5 +1,6 @@
 export interface ChatImage { url: string; alt: string; href: string }
 import { UserError } from "@/lib/user-error";
+import { fitChat, CHAT_BLOCK_LIMIT, CHAT_TEXT_LIMIT } from "@/lib/chat-fit";
 
 /**
  * Post to a chat target: a Google Chat or Slack incoming webhook URL, or `slack:<channel id>` for a channel the
@@ -7,7 +8,9 @@ import { UserError } from "@/lib/user-error";
  * markup; with an `image`, Slack gets a Block Kit section + image and Google Chat a card under the text, both
  * linking to `href`. Failures are returned, never thrown.
  */
-export async function postChat(webhookUrl: string, text: string, image?: ChatImage | null) {
+export async function postChat(webhookUrl: string, rawText: string, image?: ChatImage | null) {
+  // A long comment must not make the whole post fail (Slack refuses a text block over 3000 characters).
+  const text = fitChat(rawText, image && platformOf(webhookUrl) === "slack" ? CHAT_BLOCK_LIMIT : CHAT_TEXT_LIMIT);
   const body: Record<string, unknown> = { text };
   if (image) {
     if (platformOf(webhookUrl) === "slack") body.blocks = [{ type: "section", text: { type: "mrkdwn", text } }, { type: "image", image_url: image.url, alt_text: image.alt.slice(0, 2000) }];

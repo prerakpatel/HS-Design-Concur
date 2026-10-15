@@ -12,6 +12,7 @@ import { removeFiles } from "@/lib/files";
 import { assetFilename } from "@/lib/labels";
 import { recomputeSlotState } from "@/lib/slot-state";
 import { sanitizeComment, plainText, mentionIds, groupMentionIds } from "@/lib/rich-text";
+import { mentionsToken } from "@/lib/mention-match";
 import { UserError } from "@/lib/user-error";
 
 /** The version and its project, for a member of the project's organization or a guest on the project. */
@@ -44,6 +45,8 @@ export async function sendForReview(versionId: string) {
   if (version.uploaded_by !== user.id && slot.assignee_id !== user.id && user.role !== "core_admin") throw new UserError("Only the uploader, the assigned designer or a Core Admin can send this for review");
   if (version.sent_at) throw new UserError("This version is already with the approvers");
   if (version.decision !== "pending") throw new UserError("Only a pending version can be sent");
+  const { data: newest } = await supabase.from("versions").select("number").eq("slot_id", slot.id).order("number", { ascending: false }).limit(1).maybeSingle();
+  if (newest && newest.number !== version.number) throw new UserError(`A newer version (v${newest.number}) exists. Send that one instead.`);
   const now = new Date().toISOString();
   // Replacing a sent version's file makes it private again, so the designer sends it a second time. If the
   // approvers were told about this version in the last 10 minutes and have not acted since (no decision, no
@@ -73,18 +76,25 @@ export async function sendForReview(versionId: string) {
 }
 
 /** The database side of an approval; notifications are the caller's job so bulk approvals can post once. */
-async function approveOne(versionId: string): Promise<Loaded> {
+async function approveOne(versionId: string, seenStamp?: string): Promise<Loaded> {
   const ctx = await loadVersion(versionId);
   const { supabase, user, org, version, slot, event, formatName, isApprover } = ctx;
   if (!isApprover) throw new UserError("Only approvers of this organization can approve");
   if (version.uploaded_by === user.id) throw new UserError("You cannot approve a version you uploaded");
   if (!version.sent_at) throw new UserError("The designer has not sent this version for review yet");
+  // The approver decides on what is on their screen: a file swapped in since they opened the page is not approved unseen.
+  if (seenStamp && version.created_at !== seenStamp) throw new UserError("The file was replaced after you opened this page. Reload to see the new one, then approve.");
   // A version with changes requested can still be approved as it is (for example one reopened by accident).
   await assertDecidable(ctx, "approved", ["pending", "changes_requested"]);
   const now = new Date().toISOString();
+  // The decision goes first and only applies while the version is still waiting: a double click, or a change request
+  // that landed a moment earlier, makes this a refusal instead of overwriting it.
+  const { data: won, error } = await supabase.from("versions").update({ decision: "approved", decided_by: user.id, decided_at: now }).eq("id", versionId).in("decision", ["pending", "changes_requested"]).select("id");
+  if (error) throw new UserError(error.message);
+  if (!won?.length) throw new UserError("This version changed while you were deciding. Reload the page to see where it stands.");
   await supabase.from("versions").update({ decision: "superseded" }).eq("slot_id", slot.id).neq("id", versionId).eq("decision", "approved");
-  await supabase.from("versions").update({ decision: "approved", decided_by: user.id, decided_at: now }).eq("id", versionId);
-  await supabase.from("slots").update({ state: "approved", updated_at: now }).eq("id", slot.id);
+  const { error: slotError } = await supabase.from("slots").update({ state: "approved", updated_at: now }).eq("id", slot.id);
+  if (slotError) throw new UserError(slotError.message);
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.approved", payload: { format: formatName, number: version.number } });
   revalidatePath(`/events/${event.id}`); revalidatePath(`/events/${event.id}/slots/${slot.id}`);
   return ctx;
@@ -116,8 +126,8 @@ async function announceApproval(ctx: Loaded) {
 }
 
 /** Approve (PRD §6.2). `download` only changes what the client does afterwards. */
-export async function approveVersion(versionId: string) {
-  const ctx = await approveOne(versionId);
+export async function approveVersion(versionId: string, seenStamp?: string) {
+  const ctx = await approveOne(versionId, seenStamp);
   await announceApproval(ctx);
   await announceIfAllApproved(ctx);
   return { ok: true };
@@ -126,11 +136,15 @@ export async function approveVersion(versionId: string) {
 
 /** Pull an approved asset back to work-in-progress (PRD §6.2 Reopen). */
 export async function reopenVersion(versionId: string, reason: string) {
-  const { supabase, user, org, version, slot, event, formatName, isApprover } = await loadVersion(versionId);
+  const ctx = await loadVersion(versionId);
+  const { supabase, user, org, version, slot, event, formatName, isApprover } = ctx;
   if (!isApprover) throw new UserError("Only approvers of this organization can reopen");
   if (version.decision !== "approved") throw new UserError("Only an approved version can be reopened");
+  await assertDecidable(ctx, "reopened", ["approved"]);
   const now = new Date().toISOString();
-  await supabase.from("versions").update({ decision: "changes_requested", reopen_reason: reason.trim() || null, decided_by: user.id, decided_at: now }).eq("id", versionId);
+  const { data: reopened, error } = await supabase.from("versions").update({ decision: "changes_requested", reopen_reason: reason.trim() || null, decided_by: user.id, decided_at: now }).eq("id", versionId).eq("decision", "approved").select("id");
+  if (error) throw new UserError(error.message);
+  if (!reopened?.length) throw new UserError("This version changed while you were deciding. Reload the page to see where it stands.");
   await supabase.from("slots").update({ state: "changes_requested", updated_at: now }).eq("id", slot.id);
   if (reason.trim()) await supabase.from("comments").insert({ version_id: versionId, author_id: user.id, body: `Reopened: ${reason.trim()}` });
   await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slot.id, version_id: versionId, actor_id: user.id, kind: "version.reopened", payload: { format: formatName, number: version.number, reason } });
@@ -158,8 +172,7 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
   if (groupIds.length) { const { data: gm } = await supabase.from("group_members").select("user_id,groups!inner(org_id)").in("group_id", groupIds).eq("groups.org_id", org.id); for (const row of gm ?? []) mentions.add(row.user_id as string); }
   for (const m of members ?? []) {
     const name = (m.name ?? "").toLowerCase(); const first = name.split(" ")[0]; const handle = m.email.split("@")[0].toLowerCase();
-    const lower = text.toLowerCase();
-    if ((name && lower.includes("@" + name)) || (first && new RegExp(`@${first.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\b|$)`).test(lower)) || lower.includes("@" + handle)) mentions.add(m.id);
+    if (mentionsToken(text, name) || mentionsToken(text, first) || mentionsToken(text, handle)) mentions.add(m.id);
   }
   // A comment is conversation. Anyone can turn theirs into a change request: work for one person (whoever is @mentioned,
   // else whoever uploaded this version, else the format's designer) that sends the version back. On an approved version
@@ -246,7 +259,16 @@ export async function sendCommentBatch(versionId: string) {
   const changes = drafts.filter((d) => d.needs_change);
   const plain = drafts.filter((d) => !d.needs_change);
   if (changes.length) await announceChanges(ctx, changes.map((d) => ({ html: d.body as string, assignee: (d.assignee_id as string | null) ?? null })));
-  if (plain.length) await announceComments(ctx, plain.map((d) => ({ html: d.body as string, mentions: [...new Set([...((d.mentions as string[]) ?? []), ...mentionIds(d.body as string)])] })));
+  if (plain.length) {
+    // Only people who can be mentioned on this project (the organization's active members and the project's guests)
+    // are told: a draft can carry any id, since it was saved before this check ran.
+    const [{ data: orgMembers }, people0] = await Promise.all([
+      supabase.from("users").select("id,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", ctx.org.id),
+      loadProjectPeople(supabase, ctx.event),
+    ]);
+    const allowed = new Set([...(orgMembers ?? []).map((m) => m.id as string), ...people0.filter((p) => p.guest && p.userId).map((p) => p.userId!)]);
+    await announceComments(ctx, plain.map((d) => ({ html: d.body as string, mentions: [...new Set([...((d.mentions as string[]) ?? []), ...mentionIds(d.body as string)])].filter((id) => allowed.has(id)) })));
+  }
   revalidatePath(`/events/${event.id}/slots/${slot.id}`);
   return { ok: true, count: drafts.length };
 }

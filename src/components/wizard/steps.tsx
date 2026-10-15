@@ -11,10 +11,11 @@ import { UserAvatar } from "@/components/user-avatar";
 import { DateField } from "@/components/ui/date-field";
 import { WizardFooter, STEPS, wizardBar } from "@/components/wizard/wizard-shell";
 import type { WizardIssue } from "@/lib/wizard-status";
+import { GuardedForm } from "@/components/wizard/guarded-form";
 import { ConfirmButton } from "@/components/confirm-button";
 import { FormatsPicker } from "@/components/wizard/formats-picker";
 import { AssetItems, type AssetItem, type AssetFormatOption } from "@/components/wizard/asset-items";
-import { ASSET_MAX_DAYS } from "@/config/limits";
+import { ASSET_MAX_DAYS, MONTHS_AHEAD } from "@/config/limits";
 
 type Action = (formData: FormData) => Promise<void>;
 export const field = "space-y-2";
@@ -28,14 +29,14 @@ export function EventForm({ eventId, orgName, values, action, notice, locked }: 
   const group = "space-y-5 rounded-2xl border border-border p-5";
   const legend = "text-xs font-medium uppercase tracking-wide text-muted-foreground";
   return (
-    <form action={action} className="space-y-6">
+    <GuardedForm action={action} className="space-y-6">
       {!eventId && <p className="text-center text-sm text-muted-foreground">Creating for <span className="font-medium text-foreground">{orgName}</span></p>}
       {notice}
       {locked && <p className="rounded-xl bg-subtle px-4 py-3 text-sm text-muted-foreground">A design has been uploaded, so the words on it are locked. Title, date and venue name can still change; anything else goes through comments.</p>}
       <section className={group}>
         <p className={legend}>Event</p>
         <div className={field}><Label htmlFor="title">Event title</Label><Input id="title" name="title" required defaultValue={values.title} placeholder="e.g. Sharad Purnima" /></div>
-        <div className={field}><Label htmlFor="event_date">Date</Label><DateField id="event_date" name="event_date" defaultValue={values.event_date} /><p className="text-sm text-muted-foreground">Multi-day festivals use the last day.</p></div>
+        <div className={field}><Label htmlFor="event_date">Date</Label><DateField id="event_date" name="event_date" defaultValue={values.event_date} max={format(new Date(new Date().setMonth(new Date().getMonth() + MONTHS_AHEAD)), "yyyy-MM-dd")} /><p className="text-sm text-muted-foreground">Multi-day festivals use the last day.</p></div>
         <div className={field}><Label htmlFor="time_text">Timings</Label><Textarea id="time_text" name="time_text" rows={3} defaultValue={values.time_text} disabled={locked} placeholder={"e.g. 10:30 AM EST onwards\nFollowed by Aarti and Mahaprasad"} /><p className="text-sm text-muted-foreground">Written as they should appear on the design, one line each.</p></div>
       </section>
       <section className={group}>
@@ -49,7 +50,7 @@ export function EventForm({ eventId, orgName, values, action, notice, locked }: 
       </section>
       <div className={field}><Label htmlFor="notes">Anything else for the designers <span className="font-normal text-muted-foreground">(optional)</span></Label><Textarea id="notes" name="notes" rows={2} defaultValue={values.notes} disabled={locked} placeholder="e.g. Sponsor line, language, colours to avoid…" /></div>
       <WizardFooter eventId={eventId} step="event" />
-    </form>
+    </GuardedForm>
   );
 }
 
@@ -57,7 +58,7 @@ export interface AssetsValues { title: string; event_date: string; description: 
 /** Brief of an assets-only request: what is needed and when the project ends (at most 30 days out; files go after that). */
 export function AssetsBriefForm({ eventId, orgName, values, action, notice, locked, minDate, maxDate }: { eventId: string | null; orgName: string; values: AssetsValues; action: Action; notice?: React.ReactNode; locked?: boolean; minDate: string; maxDate: string }) {
   return (
-    <form action={action} className="space-y-6">
+    <GuardedForm action={action} className="space-y-6">
       {!eventId && <p className="text-center text-sm text-muted-foreground">Requesting for <span className="font-medium text-foreground">{orgName}</span></p>}
       {notice}
       {locked && <p className="rounded-xl bg-subtle px-4 py-3 text-sm text-muted-foreground">A design has been uploaded, so the description is locked. Title and end date can still change; anything else goes through comments.</p>}
@@ -68,28 +69,28 @@ export function AssetsBriefForm({ eventId, orgName, values, action, notice, lock
       </section>
       <div className={field}><Label htmlFor="notes">Anything else for the designers <span className="font-normal text-muted-foreground">(optional)</span></Label><Textarea id="notes" name="notes" rows={2} defaultValue={values.notes} disabled={locked} placeholder="e.g. Where it will be used, references, colours to avoid…" /></div>
       <WizardFooter eventId={eventId} step="event" />
-    </form>
+    </GuardedForm>
   );
 }
 
 /** Assets step of an assets-only request: the list of items to design. */
 export function AssetItemsForm({ eventId, formats, items, action }: { eventId: string; formats: AssetFormatOption[]; items: AssetItem[]; action: Action }) {
   return (
-    <form action={action}>
+    <GuardedForm action={action}>
       <AssetItems formats={formats} initial={items} />
       <WizardFooter eventId={eventId} step="formats" />
-    </form>
+    </GuardedForm>
   );
 }
 
 export interface FormatRow { slotId: string; name: string; size: string; kind: string; requested: boolean; isPrimary: boolean; notes: string; customSize: boolean; w: number | null; h: number | null; hasVersions?: boolean }
 export function FormatsForm({ eventId, rows, action }: { eventId: string; rows: FormatRow[]; action: Action }) {
   return (
-    <form action={action}>
+    <GuardedForm action={action}>
       <p className="mb-4 rounded-xl bg-subtle px-4 py-3 text-sm text-muted-foreground">Everything starts off. Choose what this event needs and make one format <span className="font-medium text-foreground">Primary</span>: the design the others are derived from. It shows first everywhere and is the one kept after the event.</p>
       <FormatsPicker rows={rows} />
       <WizardFooter eventId={eventId} step="formats" />
-    </form>
+    </GuardedForm>
   );
 }
 
@@ -97,7 +98,7 @@ export interface AssignRow { slotId: string; name: string; assignee: string; due
 export interface Person { id: string; label: string }
 export function AssignForm({ eventId, rows, people, action }: { eventId: string; rows: AssignRow[]; people: Person[]; action: Action }) {
   return (
-    <form action={action}>
+    <GuardedForm action={action}>
       {rows.length === 0 ? <p className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">Nothing is listed yet. Go back a step and add what is needed.</p> : (
         <ul className="divide-y divide-border">
           <li className="hidden grid-cols-[1fr_240px_180px] gap-4 pb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground md:grid"><span>Format</span><span>Designer</span><span>Due</span></li>
@@ -111,7 +112,7 @@ export function AssignForm({ eventId, rows, people, action }: { eventId: string;
         </ul>
       )}
       <WizardFooter eventId={eventId} step="assign" />
-    </form>
+    </GuardedForm>
   );
 }
 
@@ -149,7 +150,7 @@ export function ReviewPanel({ eventId, summary, slots, issues, isDraft, canDelet
         {canDelete ? <ConfirmButton variant="ghost" action={remove} label={isDraft ? "Delete draft" : assets ? "Delete request" : "Delete event"} title={`Delete “${summary.title}”?`} description={`Core Admins can restore it for ${DELETE_RESTORE_DAYS} days. Its files are removed after that.`} confirmLabel="Delete" /> : <span />}
         <div className="flex gap-2">
           <Button asChild variant="secondary" size="lg"><Link href={`/events/${eventId}`}>Save and exit</Link></Button>
-          {isDraft ? <form action={publish}><Button type="submit" size="lg" disabled={blocking.length > 0}>{assets ? "Publish request" : "Publish event"}</Button></form> : <StateBadge state="approved" label="Live" className="h-9 px-3 text-sm" />}
+          {isDraft ? <GuardedForm action={publish}><Button type="submit" size="lg" disabled={blocking.length > 0}>{assets ? "Publish request" : "Publish event"}</Button></GuardedForm> : <StateBadge state="approved" label="Live" className="h-9 px-3 text-sm" />}
         </div>
       </div>
     </div>

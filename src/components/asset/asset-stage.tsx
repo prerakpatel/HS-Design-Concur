@@ -123,23 +123,23 @@ export function AssetStage({ canRequestChanges = false, versionApproved = false,
   const post = (body: string, pin: { side: Side; x: number; y: number } | null) => start(async () => {
     // In review mode every comment is a targeted change; in the thread box it is one only when the toggle is on.
     const change = canRequestChanges && (review ? !versionApproved : (!pin && changeOn));
-    try { await addComment(versionId!, body, pin, { draft: review, change, reopen: change && versionApproved }); textHtml.current = ""; setTextEmpty(true); setComposerKey((k) => k + 1); setChangeOn(false); setMentioned(null); stop(); if (!review) toast.success(change ? (versionApproved ? "Reopened with a change" : "Change requested") : pin ? "Comment pinned" : "Comment posted"); router.refresh(); }
+    try { await addComment(versionId!, body, pin, { draft: review, change, reopen: change && versionApproved }); if (pin == null) { textHtml.current = ""; setTextEmpty(true); setComposerKey((k) => k + 1); setChangeOn(false); setMentioned(null); } stop(); if (!review) toast.success(change ? (versionApproved ? "Reopened with a change" : "Change requested") : pin ? "Comment pinned" : "Comment posted"); }
     catch (e) { toast.error(errorMessage(e)); }
   });
   const sendReview = () => start(async () => {
     setSending(true);
-    try { const r = await sendCommentBatch(versionId!); setReview(false); stop(); toast.success(reviewChanges ? (r.count === 1 ? "Change sent" : `${r.count} changes sent`) : r.count === 1 ? "Comment sent" : `${r.count} comments sent`); router.refresh(); }
+    try { const r = await sendCommentBatch(versionId!); setReview(false); stop(); toast.success(reviewChanges ? (r.count === 1 ? "Change sent" : `${r.count} changes sent`) : r.count === 1 ? "Comment sent" : `${r.count} comments sent`); }
     catch (e) { toast.error(errorMessage(e)); }
     finally { setSending(false); }
   });
   const leaveReview = () => start(async () => {
     if (unsent > 0 && !confirm(`Discard ${unsent === 1 ? "your unsent comment" : `your ${unsent} unsent comments`}?`)) return;
-    try { if (unsent > 0) await discardCommentBatch(versionId!); setReview(false); stop(); router.refresh(); }
+    try { if (unsent > 0) await discardCommentBatch(versionId!); setReview(false); stop(); }
     catch (e) { toast.error(errorMessage(e)); }
   });
-  const reassign = (userId: string) => start(async () => { try { await assignSlot(slotId, userId || null); toast.success(userId ? "Designer changed" : "Unassigned"); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } });
+  const reassign = (userId: string) => start(async () => { try { await assignSlot(slotId, userId || null); toast.success(userId ? "Designer changed" : "Unassigned"); } catch (e) { toast.error(errorMessage(e)); } });
   const flag = (id: string, f: "addressed" | "unaddress" | "reopen") => start(async () => {
-    try { await setCommentFlag(id, f); router.refresh(); if (f === "addressed") toast.success("Marked as done", { action: { label: "Undo", onClick: () => flag(id, "unaddress") }, duration: 8000 }); }
+    try { await setCommentFlag(id, f); if (f === "addressed") toast.success("Marked as done", { action: { label: "Undo", onClick: () => flag(id, "unaddress") }, duration: 8000 }); }
     catch (e) { toast.error(errorMessage(e)); }
   });
   const [confirmDelete, setConfirmDelete] = useState<Side | null>(null);
@@ -347,7 +347,7 @@ export function AssetStage({ canRequestChanges = false, versionApproved = false,
                             {(c.mine || canModerate) && <>
                               {c.mine && <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => { editHtml.current = c.body; setEditing({ id: c.id, text: c.body }); }}><Icon name="edit" />Edit</DropdownMenuItem>}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm text-destructive-text" onSelect={() => start(async () => { if (!confirm("Delete this comment?")) return; try { await deleteComment(c.id); toast.success("Comment deleted"); router.refresh(); } catch (err) { toast.error(errorMessage(err)); } })}><Icon name="delete" />Delete</DropdownMenuItem>
+                              <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm text-destructive-text" onSelect={() => start(async () => { if (!confirm("Delete this comment?")) return; try { await deleteComment(c.id); toast.success("Comment deleted"); } catch (err) { toast.error(errorMessage(err)); } })}><Icon name="delete" />Delete</DropdownMenuItem>
                             </>}
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -356,7 +356,7 @@ export function AssetStage({ canRequestChanges = false, versionApproved = false,
                     {editing?.id === c.id ? (
                       <div className="space-y-2">
                         <CommentEditor value={editing.text} onChange={(h) => { editHtml.current = h; }} members={members} autoFocus compact />
-                        <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending} onClick={() => start(async () => { try { await editComment(c.id, editHtml.current); setEditing(null); toast.success("Saved"); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } })}>Save</Button></div>
+                        <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending} onClick={() => start(async () => { try { await editComment(c.id, editHtml.current); setEditing(null); toast.success("Saved"); } catch (e) { toast.error(errorMessage(e)); } })}>Save</Button></div>
                       </div>
                     ) : <RichBody body={c.body} />}
                     {!done && !c.draft && c.needs_change && canComment && <button className="text-[13px] font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "addressed"); }} disabled={pending}>Mark as done</button>}
