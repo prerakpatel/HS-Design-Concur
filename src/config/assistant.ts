@@ -8,7 +8,20 @@
 export const ASSISTANT_OWNER = "pushkar.patel@hariss.org";
 
 /** What the character is called in the app. */
-export const ASSISTANT_NAME = "Mitra";
+export const ASSISTANT_NAME = "Tej";
+
+/**
+ * Tej's artwork (public/assistant/tej): a head crop per mood for the bubble, and the full figure for the sheet.
+ * A list means the poses alternate while that mood lasts.
+ */
+export const ASSISTANT_ART = {
+  calm: "/assistant/tej/calm-head.webp",
+  listening: "/assistant/tej/listening-head.webp",
+  thinking: ["/assistant/tej/think-1-head.webp", "/assistant/tej/writing-head.webp", "/assistant/tej/think-2-head.webp"],
+  "needs-you": "/assistant/tej/think-2-head.webp",
+  done: "/assistant/tej/calm-head.webp",
+} as const;
+export const ASSISTANT_FIGURE = "/assistant/tej/calm.webp";
 
 /** The model that turns words into drafts, and how hard it thinks (low | medium | high). */
 export const ASSISTANT_MODEL = "claude-opus-5-5";

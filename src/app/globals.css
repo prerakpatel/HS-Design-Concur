@@ -281,5 +281,7 @@
 .buddy[data-mood="needs-you"] .buddy-ring { opacity: 0.9; background: none; box-shadow: 0 0 0 3px var(--warning); animation: buddy-breathe 2s ease-in-out infinite; }
 .buddy-peek { filter: drop-shadow(0 6px 14px rgb(0 0 0 / 0.22)); }
 .buddy-pop { animation: buddy-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes buddy-art-in { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
+.buddy-art { animation: buddy-art-in 0.35s ease-out both; }
 .buddy-dots-text::after { content: "..."; display: inline-block; width: 1.2em; text-align: left; animation: buddy-dots 1.2s steps(1) infinite; }
 @media (prefers-reduced-motion: reduce) { .buddy *, .buddy-peek, .buddy-pop { animation: none !important; transition: none !important; } }

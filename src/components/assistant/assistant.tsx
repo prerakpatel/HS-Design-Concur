@@ -11,6 +11,7 @@ import { errorMessage } from "@/lib/user-error";
 import { assistantTurn, assistantCreateProjects, assistantAddFormats, assistantComment } from "@/app/actions/assistant";
 import type { CommentDraft, Outcome, Person, Turn, Where } from "@/lib/assistant/schema";
 import { Buddy, PeekingBuddy, type BuddyArt, type Mood } from "@/components/assistant/buddy";
+import { ASSISTANT_ART, ASSISTANT_FIGURE } from "@/config/assistant";
 import { useRecorder } from "@/components/assistant/use-recorder";
 import { CardActions, CommentCard, DoneCard, OptionButtons, ProjectCard, Say } from "@/components/assistant/cards";
 
@@ -55,6 +56,7 @@ export function Assistant(p: AssistantProps) {
   const rec = useRecorder(!!p.ears, p.keyterms);
   const formatNames = useMemo(() => new Map(p.formats.map((f) => [f.key, f.name])), [p.formats]);
   const where = useMemo(() => whereOf(pathname), [pathname]);
+  const art: BuddyArt = p.art ?? ASSISTANT_ART;
 
   const last = entries[entries.length - 1];
   const lastOutcome = last?.role === "assistant" ? last.outcome : null;
@@ -111,11 +113,11 @@ export function Assistant(p: AssistantProps) {
 
   return (
     <>
-      <PeekingBuddy mood={mood} level={rec.level} art={p.art} hidden={open} onTap={() => setOpen(true)} onHoldStart={holdStart} onHoldEnd={() => rec.stop()} />
+      <PeekingBuddy mood={mood} level={rec.level} art={art} hidden={open} onTap={() => setOpen(true)} onHoldStart={holdStart} onHoldEnd={() => rec.stop()} />
       <Drawer open={open} onOpenChange={(o) => { setOpen(o); if (!o) { rec.cancel(); if (last?.role === "done") reset(); } }}>
         <DrawerContent className="max-h-[88dvh] data-[vaul-drawer-direction=bottom]:max-h-[88dvh] md:mx-auto md:max-w-xl md:rounded-t-3xl">
           <div className="flex items-center gap-3 px-5 pb-2 pt-1">
-            <Buddy mood={mood} level={rec.level} size={48} art={p.art} className="buddy-pop" />
+            <Buddy mood={mood} level={rec.level} size={48} art={art} className="buddy-pop" />
             <div className="min-w-0 flex-1">
               <DrawerTitle className="text-base">{p.name}</DrawerTitle>
               <DrawerDescription className="truncate">{rec.state === "listening" ? "Listening… release to send" : rec.state === "transcribing" ? "Working out the words…" : thinking ? "Thinking…" : entries.length ? "Say more to change the draft, or tap a button." : "Hold the mic and say what you need. Projects, formats, comments."}</DrawerDescription>
@@ -125,10 +127,13 @@ export function Assistant(p: AssistantProps) {
 
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-3">
             {entries.length === 0 && rec.state === "idle" && !thinking && (
-              <div className="space-y-2 rounded-2xl bg-subtle p-4 text-sm text-muted-foreground">
-                <p>Try:</p>
-                <p className="text-foreground">“New project for Sharad Purnima and Annakut with a print card 8.5 by 5.5, WhatsApp, Instagram, LED and website hero.”</p>
-                <p className="text-foreground">“Tell Chirantan the text is cut off at the sides and to check the spelling of mahaprasad.”</p>
+              <div className="flex items-end gap-3 rounded-2xl bg-subtle p-4 text-sm text-muted-foreground">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <p>Try:</p>
+                  <p className="text-foreground">“New project for Sharad Purnima and Annakut with a print card 8.5 by 5.5, WhatsApp, Instagram, LED and website hero.”</p>
+                  <p className="text-foreground">“Tell Chirantan the text is cut off at the sides and to check the spelling of mahaprasad.”</p>
+                </div>
+                <img src={ASSISTANT_FIGURE} alt="" className="buddy-pop h-36 w-auto shrink-0 select-none" draggable={false} aria-hidden />
               </div>
             )}
             {entries.map((e, i) => {
