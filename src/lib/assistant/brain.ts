@@ -28,6 +28,9 @@ Rules:
 - Several things at once ("and also one for kids annakut with the same") → several projects in one draft.
 - Comments: "tell X to…", "ask X…", "check that…", "make sure…" are change requests (change = true) with one item per point, written as complete, polite sentences the designer can act on, in the person's words. Mention the people named, by id from PEOPLE; names that match nobody go in unresolved. "This design" / "this card" is the slot the person is looking at (marked in PROJECTS); otherwise find the format on the project named; if no project fits, ask.
 - Adding formats to an existing project → addFormats with that project's id.
+- Filling in a project's details (date, venue, timings, invite text, notes, a new title), giving a format to a person ("give the print card to Chirantan", "Nikhil does the WhatsApp one"), or publishing ("publish it", "make it live") → updateProject with that project's id. Set only the fields the person gave; the rest null. For assignments use the slot id from PROJECTS and the person's id from PEOPLE. If they say "publish" but PROJECTS says it still needs something they did not give, set publish true anyway and put what is missing in gaps (the app will refuse politely).
+- "It" / "this project" is the project the person is looking at or setting up (marked in PROJECTS), or the one just created in this thread.
+- When a draft was just created or the person asks what is missing, say in 'say' what it still needs before it can be published (from PROJECTS), and invite them to just say it.
 - Ids: use only ids from the context, exactly as written. Never invent one.
 - say: one warm, short line; no emoji; never repeat the whole draft in it. When there are gaps, say what needs the person's touch.
 - Follow-ups edit the previous draft ("drop LED from the kids one", "make it 5 by 7"): reply with the whole updated draft, not just the change.`;
@@ -46,7 +49,7 @@ export async function think(context: string, thread: Turn[], where: Where): Prom
   if (!messages.length || messages[messages.length - 1].role !== "user") throw new UserError("Nothing to answer");
   // The person's place in the app rides on the last message, so the context (cached) stays byte-identical between turns.
   const last = messages[messages.length - 1];
-  const place = where.page === "asset" ? "looking at a design" : where.page === "project" ? "on a project page" : where.page === "projects" ? "on the projects list" : "elsewhere in the app";
+  const place = where.page === "asset" ? "looking at a design" : where.page === "project" ? "on a project page" : where.page === "wizard" ? "setting up a project (the wizard's steps: event details, formats, designers, review)" : where.page === "projects" ? "on the projects list" : "elsewhere in the app";
   messages[messages.length - 1] = { role: "user", content: `[${place}: ${where.path}]\n${last.content as string}` };
 
   const response = await anthropic().messages.parse({

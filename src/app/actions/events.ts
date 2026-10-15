@@ -203,8 +203,16 @@ export async function saveAssign(eventId: string, formData: FormData) {
 
 /** Step 5. Draft → active. Enforces the event cap and horizon (PRD §8). */
 export async function publishEvent(eventId: string) {
-  const { supabase, user, org, event } = await ownEvent(eventId);
+  const { event } = await ownEvent(eventId);
   if (event.status !== "draft") redirect(`/events/${event.id}`);
+  await publishDraft(eventId);
+  redirect(`/events/${event.id}`);
+}
+
+/** Publishing itself, shared with the assistant (which stays on its page afterwards). The event must be a draft. */
+export async function publishDraft(eventId: string) {
+  const { supabase, user, org, event } = await ownEvent(eventId);
+  if (event.status !== "draft") throw new UserError("This project is already published");
   const assets = isAssets(event);
   if (!event.event_date) throw new UserError(assets ? "Set the end date before publishing" : "Set the event date before publishing");
   if (assets && (event.event_date < todayIso() || event.event_date > assetEndMax())) throw new UserError(`Pick an end date within the next ${ASSET_MAX_DAYS} days`);
@@ -223,8 +231,7 @@ export async function publishEvent(eventId: string) {
   const assignments = [...(slots ?? [])].sort((a, b) => ((a.formats as unknown as { sort: number })?.sort ?? 0) - ((b.formats as unknown as { sort: number })?.sort ?? 0))
     .map((s) => ({ format: slotName((s.formats as unknown as { name: string })?.name, s.label as string | null), userId: s.assignee_id as string | null, due: s.due_on as string | null }));
   await notify(supabase, assignments.map((a) => a.userId), "event.published", { eventId: event.id, kind: assets ? "assets" : "event", title: event.title, by: user.name ?? user.email, date: event.event_date, venue: event.venue, assignments }, user.id, { orgId: org.id });
-  revalidatePath("/events");
-  redirect(`/events/${event.id}`);
+  revalidatePath("/events"); revalidatePath(`/events/${event.id}`);
 }
 
 /** Creator may delete while nothing has been sent for review; Core Admins always (soft delete, PRD §8). */

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
-import type { CommentDraft, Outcome, Person, ProjectDraft } from "@/lib/assistant/schema";
+import type { CommentDraft, Outcome, Person, ProjectDraft, ProjectUpdate } from "@/lib/assistant/schema";
 
 /** A line that needs the person: shown in amber inside the card. */
 export function Gap({ children }: { children: React.ReactNode }) {
@@ -67,11 +67,37 @@ export function OptionButtons({ options, onPick, disabled }: { options: string[]
   return <div className="flex flex-wrap gap-2">{options.map((o) => <Button key={o} variant="secondary" size="sm" disabled={disabled} onClick={() => onPick(o)}>{o}</Button>)}</div>;
 }
 
-export function DoneCard({ title, links }: { title: string; links: { href: string; label: string }[] }) {
+export function DoneCard({ title, links, needs = [] }: { title: string; links: { href: string; label: string }[]; /** What still stands between the project and publishing. */ needs?: string[] }) {
   return (
     <div className="space-y-2 rounded-2xl bg-success-soft p-4 text-success-text">
       <p className="flex items-center gap-2 font-medium"><Icon name="check" className="!text-[20px]" />{title}</p>
       <div className="flex flex-wrap gap-2">{links.map((l) => <Button key={l.href} asChild variant="secondary" size="sm"><Link href={l.href}>{l.label}<Icon name="open_in_new" className="!text-[16px]" /></Link></Button>)}</div>
+      {needs.length > 0 && (
+        <div className="space-y-1.5 pt-1">
+          <p className="text-[13px] font-medium">Before it can be published:</p>
+          {needs.map((n) => <Gap key={n}>{n}</Gap>)}
+          <p className="text-[13px] text-success-text/80">Just say it: “the invite text is…”, “it’s at 6:30 pm”, “give the print card to Chirantan”, then “publish it”.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ProjectUpdateCard({ u }: { u: ProjectUpdate }) {
+  const rows: [string, string][] = [];
+  if (u.title) rows.push(["Title", u.title]);
+  if (u.eventDate) rows.push(["Date", u.eventDate]);
+  if (u.venueName) rows.push(["Venue", u.venueName + (u.venueAddress ? `, ${u.venueAddress}` : "")]);
+  if (u.timeText) rows.push(["Timings", u.timeText]);
+  if (u.description) rows.push(["Invite text", u.description]);
+  if (u.notes) rows.push(["Notes", u.notes]);
+  for (const a of u.assignments) rows.push([a.slotName, `→ ${a.userName}`]);
+  return (
+    <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+      <p className="font-medium leading-5">{u.eventTitle}{u.publish && <span className="ml-2 rounded-full bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand-soft-foreground">Publish</span>}</p>
+      {rows.length > 0 && <dl className="space-y-1 text-sm">{rows.map(([k, v]) => <div key={k + v} className="flex gap-2"><dt className="w-24 shrink-0 text-muted-foreground">{k}</dt><dd className="min-w-0">{v}</dd></div>)}</dl>}
+      {!rows.length && !u.publish && <p className="text-sm text-muted-foreground">Nothing to change</p>}
+      {u.gaps.map((g, i) => <Gap key={i}>{g}</Gap>)}
     </div>
   );
 }

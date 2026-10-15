@@ -149,7 +149,10 @@ Only its owner and the people the owner switches on see it. Test in the sandbox 
       WhatsApp, Instagram, LED and website hero, and one for Kids Annakut with the same". Two project cards appear;
       sizes only on formats that allow one; unknowns show in amber.
 - [ ] Say "drop LED from the kids one": the second card loses LED, the rest stays.
-- [ ] Create: both exist as drafts; you land on the first one's review step; the Formats step shows them ticked.
+- [ ] Create: both exist as drafts; you land on the first one's review step with Vichar still there, and his card
+      lists what the project still needs (date, invite text, venue…).
+- [ ] Say "the invite text is Join us for Annakut darshan, it's at 6:30 pm, give the print card to <a member>", Save:
+      the review step updates. Say "publish it": the project goes live and you land on it.
 - [ ] On a design that was sent for review, hold the character, say "tell <a member's first name> the text is cut
       off at the sides and check the spelling of mahaprasad", release. The card names the person and lists two
       points; Send posts two change requests, @mentioning them.

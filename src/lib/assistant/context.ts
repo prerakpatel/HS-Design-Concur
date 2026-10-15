@@ -3,6 +3,7 @@ import type { ActiveContext } from "@/lib/auth";
 import { loadProjectPeople } from "@/lib/project-people";
 import { slotName } from "@/lib/project";
 import { todayIso } from "@/lib/time";
+import { wizardStatus } from "@/lib/wizard-status";
 import type { Where } from "@/lib/assistant/schema";
 
 /**
@@ -30,7 +31,7 @@ export async function loadAssistantContext(ctx: ActiveContext, where: Where): Pr
 
   const [{ data: formats }, { data: events }, { data: members }, { data: glossary }] = await Promise.all([
     supabase.from("formats").select("key,name,width,height,unit,class,allow_custom_size,notes").eq("active", true).order("sort"),
-    supabase.from("events").select("id,title,event_date,status,kind,venue,slots(id,format_id,requested,custom_w,custom_h,label,state,is_primary,assignee_id,versions(id,number,sent_at,decision))").eq("org_id", org.id).is("deleted_at", null).gte("created_at", since.toISOString()).order("event_date", { ascending: false, nullsFirst: false }).limit(40),
+    supabase.from("events").select("id,title,event_date,status,kind,venue,briefs(description,time_text,venue_name),slots(id,format_id,requested,custom_w,custom_h,label,state,is_primary,assignee_id,versions(id,number,sent_at,decision))").eq("org_id", org.id).is("deleted_at", null).gte("created_at", since.toISOString()).order("event_date", { ascending: false, nullsFirst: false }).limit(40),
     supabase.from("users").select("id,name,email,function_tags,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id),
     supabase.from("glossary_entries").select("term").order("term").limit(400),
   ]);
@@ -45,20 +46,30 @@ export async function loadAssistantContext(ctx: ActiveContext, where: Where): Pr
     lines.push(`- ${f.key} | ${f.name} | ${f.class} | ${size}${f.notes ? ` | ${f.notes}` : ""}`);
   }
 
-  lines.push("", "PROJECTS (id | title | date | status). Under each: slot id | format | size | state | latest design.");
+  lines.push("", "PROJECTS (id | title | date | status | venue). Under each: the brief, what a draft still needs before it can be published, then one line per format: slot id | format | size | state | designer | latest design.");
   type Ver = { id: string; number: number; sent_at: string | null; decision: string };
   type SlotRow = { id: string; format_id: string; requested: boolean; custom_w: number | null; custom_h: number | null; label: string | null; state: string; is_primary: boolean; assignee_id: string | null; versions: Ver[] };
-  type Ev = { id: string; title: string; event_date: string | null; status: string; kind: string | null; venue: string | null; slots: SlotRow[] };
+  type BriefRow = { description: string | null; time_text: string | null; venue_name: string | null };
+  type Ev = { id: string; title: string; event_date: string | null; status: string; kind: string | null; venue: string | null; briefs: BriefRow | BriefRow[] | null; slots: SlotRow[] };
+  const nameOf = new Map(((members ?? []) as { id: string; name: string | null; email: string }[]).map((m) => [m.id, m.name ?? m.email.split("@")[0]]));
   for (const e of (events ?? []) as unknown as Ev[]) {
     const mark = where.eventId === e.id ? " ← the person is looking at this project" : "";
-    lines.push(`- ${remember(e.id)} | ${e.title} | ${e.event_date ?? "no date"} | ${e.status}${e.kind === "assets" ? " (assets request)" : ""}${mark}`);
-    for (const s of e.slots.filter((x) => x.requested)) {
+    lines.push(`- ${remember(e.id)} | ${e.title} | ${e.event_date ?? "no date"} | ${e.status}${e.kind === "assets" ? " (assets request)" : ""} | ${e.venue ?? "no venue"}${mark}`);
+    const brief = Array.isArray(e.briefs) ? e.briefs[0] ?? null : e.briefs;
+    const requested = e.slots.filter((x) => x.requested);
+    lines.push(`    brief: invite text ${brief?.description ? `"${brief.description.slice(0, 160)}${brief.description.length > 160 ? "…" : ""}"` : "missing"}; timings ${brief?.time_text ? `"${brief.time_text}"` : "missing"}`);
+    if (e.status === "draft") {
+      const { issues } = wizardStatus({ title: e.title, eventDate: e.event_date, brief, requestedSlots: requested, assets: e.kind === "assets" });
+      const blocking = issues.filter((i) => i.blocking).map((i) => i.text); const hints = issues.filter((i) => !i.blocking).map((i) => i.text);
+      lines.push(`    to publish it still needs: ${blocking.length ? blocking.join(" ") : "nothing, it can be published"}${hints.length ? ` (worth a look: ${hints.join(" ")})` : ""}`);
+    }
+    for (const s of requested) {
       const f = formatById.get(s.format_id);
       const latest = [...(s.versions ?? [])].sort((a, b) => b.number - a.number)[0];
       const design = latest ? `v${latest.number} ${latest.decision === "approved" ? "approved" : latest.sent_at ? "in review" : "not sent yet"}` : "nothing uploaded";
       const size = s.custom_w && s.custom_h ? `${s.custom_w} × ${s.custom_h}` : "default size";
       const here = where.slotId === s.id ? " ← the person is looking at this design" : "";
-      lines.push(`    ${remember(s.id)} | ${slotName(f?.name, s.label)} (${f?.key ?? "?"}) | ${size} | ${s.state}${s.is_primary ? ", primary" : ""} | ${design}${here}`);
+      lines.push(`    ${remember(s.id)} | ${slotName(f?.name, s.label)} (${f?.key ?? "?"}) | ${size} | ${s.state}${s.is_primary ? ", primary" : ""} | ${s.assignee_id ? `designer ${nameOf.get(s.assignee_id) ?? "someone"}` : "no designer"} | ${design}${here}`);
     }
   }
 

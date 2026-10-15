@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/user-error";
-import { assistantTurn, assistantCreateProjects, assistantAddFormats, assistantComment } from "@/app/actions/assistant";
+import { assistantTurn, assistantCreateProjects, assistantAddFormats, assistantComment, assistantUpdateProject } from "@/app/actions/assistant";
 import type { CommentDraft, Outcome, Person, Turn, Where } from "@/lib/assistant/schema";
 import { Buddy, PeekingBuddy, type BuddyArt, type Mood } from "@/components/assistant/buddy";
 import { ASSISTANT_ART, ASSISTANT_FIGURE, ASSISTANT_PEEK } from "@/config/assistant";
 import { useRecorder } from "@/components/assistant/use-recorder";
-import { CardActions, CommentCard, DoneCard, OptionButtons, ProjectCard, Say } from "@/components/assistant/cards";
+import { CardActions, CommentCard, DoneCard, OptionButtons, ProjectCard, ProjectUpdateCard, Say } from "@/components/assistant/cards";
 
 export interface AssistantProps {
   name: string;
@@ -25,13 +25,25 @@ export interface AssistantProps {
   art?: BuddyArt;
 }
 
-type Entry = Turn | { role: "done"; title: string; links: { href: string; label: string }[] } | { role: "error"; text: string };
+type Entry = Turn | { role: "done"; title: string; links: { href: string; label: string }[]; needs?: string[] } | { role: "error"; text: string };
+
+/**
+ * The thread outlives a page change (creating a project lands on its review step, which has its own frame), kept in
+ * this tab for a short while. Nothing is written anywhere else.
+ */
+const THREAD_KEY = "dc.vichar.thread";
+const THREAD_TTL_MS = 20 * 60_000;
+type Saved = { entries: Entry[]; people: Person[]; open: boolean; at: number };
+const restore = (): Saved | null => { try { const s = JSON.parse(sessionStorage.getItem(THREAD_KEY) ?? "null") as Saved | null; return s && Date.now() - s.at < THREAD_TTL_MS ? s : null; } catch { return null; } };
+const persist = (s: Omit<Saved, "at"> | null) => { try { if (s && s.entries.length) sessionStorage.setItem(THREAD_KEY, JSON.stringify({ ...s, at: Date.now() })); else sessionStorage.removeItem(THREAD_KEY); } catch { /* private mode */ } };
 
 const whereOf = (path: string): Where => {
   const asset = path.match(/^\/events\/([^/]+)\/slots\/([^/]+)/);
   if (asset) return { page: "asset", eventId: asset[1], slotId: asset[2], path };
   const project = path.match(/^\/events\/([^/]+)$/);
   if (project) return { page: "project", eventId: project[1], slotId: null, path };
+  const wizard = path.match(/^\/events\/([^/]+)\/edit\//);
+  if (wizard) return { page: "wizard", eventId: wizard[1], slotId: null, path };
   return { page: path === "/events" || path === "/" ? "projects" : "other", eventId: null, slotId: null, path };
 };
 
@@ -42,9 +54,11 @@ const whereOf = (path: string): Where => {
 export function Assistant(p: AssistantProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [people, setPeople] = useState<Person[]>([]);
+  const [saved] = useState(() => restore());
+  const [open, setOpen] = useState(saved?.open ?? false);
+  const [entries, setEntries] = useState<Entry[]>(saved?.entries ?? []);
+  const [people, setPeople] = useState<Person[]>(saved?.people ?? []);
+  useEffect(() => { persist({ entries, people, open }); }, [entries, people, open]);
   const [text, setText] = useState("");
   const [thinking, setThinking] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -64,7 +78,7 @@ export function Assistant(p: AssistantProps) {
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" }); }, [entries, thinking, rec.state]);
   useEffect(() => { if (rec.state === "listening") setMood("listening"); else if (rec.state === "transcribing" || thinking) setMood("thinking"); else if (last?.role === "error" || lastOutcome?.kind === "unclear") setMood("puzzled"); else if (lastOutcome && (lastOutcome.kind === "question" || lastOutcome.projects.some((x) => x.gaps.length) || lastOutcome.comments.some((c) => c.unresolved.length))) setMood("needs-you"); else setMood("calm"); }, [rec.state, thinking, lastOutcome, last]);
 
-  const reset = () => { setEntries([]); setPeople([]); setText(""); setEditing(null); setMood("calm"); };
+  const reset = () => { setEntries([]); setPeople([]); setText(""); setEditing(null); setMood("calm"); persist(null); };
 
   /** Send words to the brain: from the mic, the keyboard, or an edited earlier line (which replays from there). */
   const send = useCallback(async (words: string, replaceAt: number | null = null) => {
@@ -94,7 +108,7 @@ export function Assistant(p: AssistantProps) {
     const r = await assistantCreateProjects(o.projects);
     for (const n of r.notes) toast.message(n);
     setMood("done");
-    setEntries((cur) => [...cur, { role: "done", title: r.ids.length === 1 ? "Draft project created" : `${r.ids.length} draft projects created`, links: r.ids.map((id, i) => ({ href: `/events/${id}/edit/review`, label: `Open ${o.projects[i]?.title ?? "project"}` })) }]);
+    setEntries((cur) => [...cur, { role: "done", title: r.ids.length === 1 ? "Draft project created" : `${r.ids.length} draft projects created`, links: r.ids.map((id, i) => ({ href: `/events/${id}/edit/review`, label: `Open ${o.projects[i]?.title ?? "project"}` })), needs: r.needs[0] }]);
     router.push(`/events/${r.ids[0]}/edit/review`); router.refresh();
   });
   const addFormats = (o: Outcome) => act(async () => {
@@ -102,6 +116,14 @@ export function Assistant(p: AssistantProps) {
     for (const s of r.skipped) toast.message(s);
     setMood("done");
     setEntries((cur) => [...cur, { role: "done", title: r.added.length ? `Added ${r.added.join(", ")}` : "Nothing new to add", links: [{ href: `/events/${a.eventId}`, label: `Open ${a.eventTitle}` }] }]);
+    router.refresh();
+  });
+  const updateProject = (o: Outcome) => act(async () => {
+    const u = o.updateProject!; const r = await assistantUpdateProject(u);
+    setMood("done");
+    const what = r.changed.length ? `Saved ${r.changed.join(", ")}` : "Nothing new to save";
+    setEntries((cur) => [...cur, { role: "done", title: r.published ? `${what}. Published!` : what, links: [{ href: r.published ? `/events/${u.eventId}` : `/events/${u.eventId}/edit/review`, label: `Open ${u.eventTitle}` }], needs: r.needs }]);
+    if (r.published) router.push(`/events/${u.eventId}`);
     router.refresh();
   });
   const postComments = (c: CommentDraft) => act(async () => {
@@ -154,7 +176,7 @@ export function Assistant(p: AssistantProps) {
                 </div>
               );
               if (e.role === "error") return <div key={i} className="space-y-2"><Say tone="muted">{e.text}</Say><div className="flex gap-2"><Button size="sm" variant="secondary" onClick={listen} disabled={busy || thinking}><Icon name="mic" className="!text-[16px]" />Try again</Button><Button size="sm" variant="ghost" onClick={() => inputRef.current?.focus()}><Icon name="keyboard" className="!text-[16px]" />Type it</Button></div></div>;
-              if (e.role === "done") return <DoneCard key={i} title={e.title} links={e.links} />;
+              if (e.role === "done") return <DoneCard key={i} title={e.title} links={e.links} needs={i === entries.length - 1 ? e.needs : []} />;
               const o = e.outcome; const current = i === entries.length - 1;
               return (
                 <div key={i} className={cn("space-y-2", !current && "opacity-60")}>
@@ -169,9 +191,11 @@ export function Assistant(p: AssistantProps) {
                       <ul className="space-y-1">{o.addFormats.formats.map((f, j) => <li key={j}>{formatNames.get(f.formatKey) ?? f.formatKey}{f.label ? ` · ${f.label}` : ""}{f.size ? ` · ${f.size.w} × ${f.size.h}` : ""}</li>)}</ul>
                     </div>
                   )}
+                  {o.updateProject && <ProjectUpdateCard u={o.updateProject} />}
                   {o.comments.map((c, j) => <CommentCard key={j} c={c} people={people} onChange={(next) => updateComment(i, next)} />)}
                   {current && o.kind === "draft" && o.projects.length > 0 && <CardActions primary={o.projects.length === 1 ? "Create draft project" : `Create ${o.projects.length} draft projects`} onPrimary={() => createProjects(o)} pending={busy} onCancel={reset} alt={{ href: "/events/new", label: "Use the form" }} />}
                   {current && o.kind === "draft" && o.addFormats && <CardActions primary="Add formats" onPrimary={() => addFormats(o)} pending={busy} onCancel={reset} alt={{ href: `/events/${o.addFormats.eventId}/edit/formats`, label: "Use the form" }} />}
+                  {current && o.kind === "draft" && o.updateProject && <CardActions primary={o.updateProject.publish ? "Save and publish" : "Save"} onPrimary={() => updateProject(o)} pending={busy} onCancel={reset} alt={{ href: `/events/${o.updateProject.eventId}/edit/event`, label: "Use the form" }} />}
                   {current && o.kind === "draft" && o.comments.map((c, j) => <CardActions key={j} primary={c.change ? "Send change request" + (c.items.length > 1 ? "s" : "") : "Post comment" + (c.items.length > 1 ? "s" : "")} onPrimary={() => postComments(c)} pending={busy} onCancel={reset} alt={{ href: `/events/${c.eventId}/slots/${c.slotId}`, label: "Open the design" }} />)}
                 </div>
               );

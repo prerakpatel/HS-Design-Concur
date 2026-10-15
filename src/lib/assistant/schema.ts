@@ -43,11 +43,27 @@ export const CommentDraftSchema = z.object({
   items: z.array(z.string()).describe("One entry per point the person made, each a complete sentence in the person's words (cleaned up). Each becomes its own comment."),
 });
 
+export const ProjectUpdateSchema = z.object({
+  eventId: z.string(),
+  eventTitle: z.string(),
+  title: z.string().nullable().describe("A new title, only if the person asked to rename it."),
+  eventDate: z.string().nullable().describe("YYYY-MM-DD, only if the person gave a date."),
+  venueName: z.string().nullable(),
+  venueAddress: z.string().nullable(),
+  timeText: z.string().nullable().describe("The timings as they should appear on the design, e.g. '6:30 pm Sabha, 7:30 pm Annakut darshan'."),
+  description: z.string().nullable().describe("The invite text: what the event is, as the invite would say it, in the person's words tidied up."),
+  notes: z.string().nullable().describe("Notes for the designers."),
+  assignments: z.array(z.object({ slotId: z.string(), slotName: z.string(), userId: z.string(), userName: z.string() })).describe("Formats to give to people: slot ids from PROJECTS, person ids from PEOPLE."),
+  publish: z.boolean().describe("true when the person asked to publish the project."),
+  gaps: z.array(z.string()).describe("Things the person must still give before it can be published, in short lines."),
+});
+
 export const OutcomeSchema = z.object({
-  kind: z.enum(["draft", "question", "unclear", "unsupported", "answer"]).describe("draft: something to create (projects, addFormats or comments). question: one question that blocks everything. unclear: you could not make out what was wanted. unsupported: the app can do it but not through you. answer: a plain answer to a question about the projects."),
+  kind: z.enum(["draft", "question", "unclear", "unsupported", "answer"]).describe("draft: something to create or change (projects, addFormats, updateProject or comments). question: one question that blocks everything. unclear: you could not make out what was wanted. unsupported: the app can do it but not through you. answer: a plain answer to a question about the projects."),
   say: z.string().describe("One short, warm line for the person, at most 20 words. For 'answer', the answer itself (longer is fine)."),
   projects: z.array(ProjectDraftSchema).describe("New projects to create. Empty unless kind is draft."),
   addFormats: AddFormatsSchema.nullable().describe("Formats to add to an existing project. Null unless kind is draft."),
+  updateProject: ProjectUpdateSchema.nullable().describe("Details, designers or publishing for an existing project. Null unless kind is draft."),
   comments: z.array(CommentDraftSchema).describe("Comments to post. Empty unless kind is draft."),
   question: z.object({ text: z.string(), options: z.array(z.string()).describe("2 to 4 short answers to tap, when the question has obvious answers; otherwise empty.") }).nullable(),
   link: z.object({ href: z.string(), label: z.string() }).nullable().describe("For unsupported: where in the app to do it (a path like /events/<id>/edit/event)."),
@@ -56,11 +72,12 @@ export const OutcomeSchema = z.object({
 export type FormatPick = z.infer<typeof FormatPickSchema>;
 export type ProjectDraft = z.infer<typeof ProjectDraftSchema>;
 export type AddFormats = z.infer<typeof AddFormatsSchema>;
+export type ProjectUpdate = z.infer<typeof ProjectUpdateSchema>;
 export type CommentDraft = z.infer<typeof CommentDraftSchema>;
 export type Outcome = z.infer<typeof OutcomeSchema>;
 
 /** Where the person is in the app when they speak; the assistant reads "this project" and "this format" from it. */
-export interface Where { page: "projects" | "project" | "asset" | "other"; eventId: string | null; slotId: string | null; path: string }
+export interface Where { page: "projects" | "project" | "asset" | "wizard" | "other"; eventId: string | null; slotId: string | null; path: string }
 
 /** One exchange in the thread, as the browser keeps it. `raw` is the reply exactly as the model wrote it, sent back as history. */
 export type Turn = { role: "user"; text: string } | { role: "assistant"; outcome: Outcome; raw: string };

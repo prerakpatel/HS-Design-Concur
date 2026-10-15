@@ -11,12 +11,16 @@ Say or type what you need; the assistant drafts it as a card; you tap. Nothing i
 - **Comments and change requests**: "tell Chirantan the text is cut off at the sides and to check the spelling of
   mahaprasad" → one change request per point on the newest design, @mentioning the person. On a design page "this
   card" means the one on screen.
+- **Finishing a project by voice**: after creating one (or on its setup pages) he says what it still needs before it
+  can be published and you just say it: "the invite text is…", "it's at 6:30 pm", "give the print card to
+  Chirantan", "publish it". Details, designers and publishing follow the wizard's own rules (the brief locks after the
+  first upload; assigning is for Core Admins and approvers; publishing needs the date and the invite text).
 - **Follow-ups edit the draft**: "make it 5 by 7", "drop LED from the kids one".
 - **Questions about the projects**: "what is pending on Annakut?"
 
 It answers with one of five cards, each with buttons: a draft, one question (with answers to tap), "didn't catch
 that" (Try again · Type it), "can't do that here" (a link to the right page), or a plain answer. Your own words show
-as a bubble you can tap to fix what it heard. "Use the form" is always there as the way out.
+as a bubble you can tap to fix what it heard. The thread survives a page change (for twenty minutes, in this tab). "Use the form" is always there as the way out.
 
 ## Who has it
 
