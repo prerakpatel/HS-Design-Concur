@@ -86,7 +86,10 @@ export async function notify(supabase: SupabaseClient, userIds: Iterable<string 
   if (ids.length === 0 && !toChat) return;
   if (ids.length) {
     const org_id = await notificationOrg(supabase, payload, opts?.orgId);
-    await supabase.from("notifications").insert(ids.map((user_id) => ({ user_id, kind, payload, org_id })));
+    // Written with the server key: a signed-in person may not create notifications for others (it would let anyone
+    // put their own words in someone's Inbox, and in the emails sent from them).
+    const { error } = await serviceOr(supabase).from("notifications").insert(ids.map((user_id) => ({ user_id, kind, payload, org_id })));
+    if (error) console.error("[notify] could not save notifications:", error.message);
   }
   const mentions = toChat ? [...new Set(opts?.mention ? [...opts.mention] : CHAT[kind] === "mention" ? ids : [])].filter((id): id is string => !!id && id !== exclude) : [];
   after(() => deliver(supabase, ids, kind, payload, opts?.orgId, mentions));
