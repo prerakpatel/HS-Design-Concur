@@ -2,10 +2,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 
-export type Mood = "calm" | "listening" | "thinking" | "done" | "needs-you";
+export type Mood = "calm" | "listening" | "thinking" | "done" | "needs-you" | "puzzled";
 
 /** Optional artwork per mood (public/ paths); a list alternates while the mood lasts. Without it the character is the drawn orb below. */
 export type BuddyArt = Partial<Record<Mood, string | readonly string[]>>;
+/** Peeking poses for the screen's edge, one per mood plus a hello wave on arrival. */
+export type PeekArt = Partial<Record<Mood | "hello", string>>;
 
 const POSE_MS = 2400;
 
@@ -62,15 +64,19 @@ const writeY = (y: number) => { try { localStorage.setItem(KEY, String(Math.roun
  * The character peeking in from the right edge of the screen, a tap away on every page. Tap opens the thread; hold
  * and it listens straight away (release to send); drag moves it up or down the edge out of the way.
  */
-export function PeekingBuddy({ mood, level, art, onTap, onHoldStart, onHoldEnd, hidden }: { mood: Mood; level: number; art?: BuddyArt; onTap: () => void; onHoldStart: () => void; onHoldEnd: () => void; hidden: boolean }) {
+export function PeekingBuddy({ mood, level, art, peek, onTap, onHoldStart, onHoldEnd, hidden }: { mood: Mood; level: number; art?: BuddyArt; peek?: PeekArt; onTap: () => void; onHoldStart: () => void; onHoldEnd: () => void; hidden: boolean }) {
   // Rendered only in the browser (the resting spot is per device), without a state change on mount.
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
+  // He waves on arrival, then settles into the pose for the mood.
+  const [hello, setHello] = useState(true);
+  useEffect(() => { const t = setTimeout(() => setHello(false), 2600); return () => clearTimeout(t); }, []);
   const [dragY, setDragY] = useState<number | null>(null);
   const y = dragY ?? (mounted ? readY() ?? Math.round(window.innerHeight * 0.62) : null);
   const setY = setDragY;
   const [active, setActive] = useState(false);
   const gesture = useRef<{ x: number; y: number; startY: number; moved: boolean; holding: boolean; timer: ReturnType<typeof setTimeout> | null } | null>(null);
-  const size = 68;
+  const figure = !!peek?.calm;
+  const size = figure ? 150 : 68;
   const clamp = (v: number) => Math.min(window.innerHeight - size - 90, Math.max(70, v));
 
   const down = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -95,6 +101,17 @@ export function PeekingBuddy({ mood, level, art, onTap, onHoldStart, onHoldEnd, 
   };
 
   if (y == null) return null;
+  if (figure) {
+    // The drawn poses already lean out of the edge, so the figure sits flush with it; listening swells with the voice.
+    const src = (hello && peek.hello) || peek[mood] || peek.calm!;
+    return (
+      <button type="button" aria-label="Assistant" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onContextMenu={(e) => e.preventDefault()}
+        className={cn("buddy-figure fixed right-0 z-50 origin-right transition-[transform,opacity] duration-300 ease-out", hidden && "pointer-events-none translate-x-full opacity-0", active && "scale-105")}
+        style={{ top: y, height: size, touchAction: "none", WebkitTouchCallout: "none", transform: mood === "listening" ? `scale(${1 + level * 0.06})` : undefined }}>
+        <img key={src} src={src} alt="" className={cn("buddy-figure-art h-full w-auto select-none", mood === "needs-you" && "buddy-figure-nudge")} draggable={false} />
+      </button>
+    );
+  }
   return (
     <button type="button" aria-label="Assistant" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onContextMenu={(e) => e.preventDefault()}
       className={cn("buddy-peek fixed right-0 z-50 flex items-center justify-center rounded-l-full transition-[transform,opacity] duration-300 ease-out", active || mood !== "calm" ? "translate-x-0" : "translate-x-[38%] hover:translate-x-0 focus-visible:translate-x-0", hidden && "pointer-events-none translate-x-full opacity-0")}

@@ -11,7 +11,7 @@ import { errorMessage } from "@/lib/user-error";
 import { assistantTurn, assistantCreateProjects, assistantAddFormats, assistantComment } from "@/app/actions/assistant";
 import type { CommentDraft, Outcome, Person, Turn, Where } from "@/lib/assistant/schema";
 import { Buddy, PeekingBuddy, type BuddyArt, type Mood } from "@/components/assistant/buddy";
-import { ASSISTANT_ART, ASSISTANT_FIGURE } from "@/config/assistant";
+import { ASSISTANT_ART, ASSISTANT_FIGURE, ASSISTANT_PEEK } from "@/config/assistant";
 import { useRecorder } from "@/components/assistant/use-recorder";
 import { CardActions, CommentCard, DoneCard, OptionButtons, ProjectCard, Say } from "@/components/assistant/cards";
 
@@ -62,7 +62,7 @@ export function Assistant(p: AssistantProps) {
   const lastOutcome = last?.role === "assistant" ? last.outcome : null;
 
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" }); }, [entries, thinking, rec.state]);
-  useEffect(() => { if (rec.state === "listening") setMood("listening"); else if (rec.state === "transcribing" || thinking) setMood("thinking"); else if (lastOutcome && (lastOutcome.kind === "question" || lastOutcome.projects.some((x) => x.gaps.length) || lastOutcome.comments.some((c) => c.unresolved.length))) setMood("needs-you"); else setMood("calm"); }, [rec.state, thinking, lastOutcome]);
+  useEffect(() => { if (rec.state === "listening") setMood("listening"); else if (rec.state === "transcribing" || thinking) setMood("thinking"); else if (last?.role === "error" || lastOutcome?.kind === "unclear") setMood("puzzled"); else if (lastOutcome && (lastOutcome.kind === "question" || lastOutcome.projects.some((x) => x.gaps.length) || lastOutcome.comments.some((c) => c.unresolved.length))) setMood("needs-you"); else setMood("calm"); }, [rec.state, thinking, lastOutcome, last]);
 
   const reset = () => { setEntries([]); setPeople([]); setText(""); setEditing(null); setMood("calm"); };
 
@@ -113,7 +113,7 @@ export function Assistant(p: AssistantProps) {
 
   return (
     <>
-      <PeekingBuddy mood={mood} level={rec.level} art={art} hidden={open} onTap={() => setOpen(true)} onHoldStart={holdStart} onHoldEnd={() => rec.stop()} />
+      <PeekingBuddy mood={mood} level={rec.level} art={art} peek={ASSISTANT_PEEK} hidden={open} onTap={() => setOpen(true)} onHoldStart={holdStart} onHoldEnd={() => rec.stop()} />
       <Drawer open={open} onOpenChange={(o) => { setOpen(o); if (!o) { rec.cancel(); if (last?.role === "done") reset(); } }}>
         <DrawerContent className="max-h-[88dvh] data-[vaul-drawer-direction=bottom]:max-h-[88dvh] md:mx-auto md:max-w-xl md:rounded-t-3xl">
           <div className="flex items-center gap-3 px-5 pb-2 pt-1">

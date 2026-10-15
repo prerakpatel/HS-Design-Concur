@@ -49,8 +49,9 @@ and `GEMINI_API_KEY` (one or both, optional). Without `ANTHROPIC_API_KEY` the sh
 `src/components/assistant/buddy.tsx`. It peeks in from the right edge on every page (drag it up or down; the spot
 is remembered per device). Tap opens the thread; hold and it listens straight away. It only animates for a real
 state: breathing when calm, swelling with your voice while listening, looking up and circling while thinking, an
-amber ring when a card needs you, a tick when done. Artwork per mood can replace the drawn orb: put PNGs in
-`public/assistant/` and pass `art` from the layout.
+amber ring when a card needs you, a tick when done. His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART`, `ASSISTANT_PEEK` in the config): on the screen's
+edge he is a drawn figure leaning out (resting, leaning in to listen, beckoning when a card needs you, waving on
+arrival and when done); in the sheet, a head crop per mood, with a puzzled one when he did not catch something.
 
 ## Costs
 
