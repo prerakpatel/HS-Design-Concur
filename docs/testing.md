@@ -111,6 +111,16 @@ Google Chat space for this test (not a real team channel).
 - [ ] Phone: Glossary search stays visible under the top bar while scrolling.
 - [ ] As an "as things happen" user, a due-date reminder arrives by email once, not twice.
 
+### Design files are protected (database guard)
+Do these in the **Test sandbox**. Use the designer account (member) and the Core Admin account.
+- [ ] As designer: upload a PNG to a format, upload another over it (v1 updated), send for review. All work as before.
+- [ ] As designer: on a print format add a front, then a back; replace only the back. Works.
+- [ ] As designer: after the version is **approved**, try Delete on its file or Replace: the app already says only a Core Admin can. Nothing changes.
+- [ ] As Core Admin: delete the approved version's back; it works.
+- [ ] As approver: approve, reopen, approve again. Works; the files are untouched.
+- [ ] Upload with the approver account after the designer's version is approved: a new version (v2), as before.
+- [ ] Download the ZIP of the approved designs: files are all there.
+
 ### What should NOT happen
 - [ ] Nothing posted in the real Slack or Google Chat channels. If anything did, stop and check the sandbox organisation's Settings → Organizations has no webhook.
 
