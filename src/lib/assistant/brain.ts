@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { z } from "zod";
 import { ASSISTANT_EFFORT, ASSISTANT_MODEL, ASSISTANT_NAME } from "@/config/assistant";
 import { OutcomeSchema, type Outcome, type Turn, type Where } from "@/lib/assistant/schema";
 import { unclear } from "@/lib/assistant/outcome";
@@ -52,20 +52,40 @@ export async function think(context: string, thread: Turn[], where: Where): Prom
   const place = where.page === "asset" ? "looking at a design" : where.page === "project" ? "on a project page" : where.page === "wizard" ? "setting up a project (the wizard's steps: event details, formats, designers, review)" : where.page === "projects" ? "on the projects list" : "elsewhere in the app";
   messages[messages.length - 1] = { role: "user", content: `[${place}: ${where.path}]\n${last.content as string}` };
 
-  const response = await anthropic().messages.parse({
-    model: ASSISTANT_MODEL,
-    max_tokens: 4000,
-    output_config: { effort: ASSISTANT_EFFORT, format: zodOutputFormat(OutcomeSchema) },
-    system: [
-      { type: "text", text: INSTRUCTIONS, cache_control: { type: "ephemeral" } },
-      { type: "text", text: "CONTEXT\n" + context, cache_control: { type: "ephemeral" } },
-    ],
-    messages,
-  });
-  if (response.stop_reason === "refusal") return { outcome: unclear("I can't help with that one."), raw: "" };
-  const outcome = response.parsed_output;
-  if (!outcome) return { outcome: unclear("I lost the thread there. Say it once more?"), raw: "" };
-  const raw = response.content.find((b) => b.type === "text")?.text ?? JSON.stringify(outcome);
-  return { outcome, raw };
+  // The answer's shape is described in the prompt and checked here, rather than enforced by the API's strict output
+  // format: that format has a size limit the card schema outgrew. The model is reliable at this; a bad answer is
+  // sent back once with what was wrong.
+  const system: Anthropic.TextBlockParam[] = [
+    { type: "text", text: INSTRUCTIONS + "\n\nReply with one JSON object only, matching this JSON Schema exactly (every property present, null where it does not apply), with no prose and no code fences:\n" + SCHEMA_JSON, cache_control: { type: "ephemeral" } },
+    { type: "text", text: "CONTEXT\n" + context, cache_control: { type: "ephemeral" } },
+  ];
+  const ask = async (msgs: Anthropic.MessageParam[]) => {
+    const response = await anthropic().messages.create({ model: ASSISTANT_MODEL, max_tokens: 4000, output_config: { effort: ASSISTANT_EFFORT }, system, messages: msgs });
+    if (response.stop_reason === "refusal") return { refusal: true as const, text: "" };
+    return { refusal: false as const, text: response.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("").trim() };
+  };
+  const first = await ask(messages);
+  if (first.refusal) return { outcome: unclear("I can't help with that one."), raw: "" };
+  let parsed = parseOutcome(first.text);
+  if (!parsed.ok) {
+    const again = await ask([...messages, { role: "assistant", content: first.text || "{}" }, { role: "user", content: `That was not valid: ${parsed.error}. Reply again with only the JSON object.` }]);
+    parsed = again.refusal ? { ok: false, error: "refused" } : parseOutcome(again.text);
+    if (!parsed.ok) return { outcome: unclear("I lost the thread there. Say it once more?"), raw: "" };
+  }
+  return { outcome: parsed.outcome, raw: parsed.raw };
+}
+
+const SCHEMA_JSON = JSON.stringify(z.toJSONSchema(OutcomeSchema));
+
+/** The model's text as an Outcome: the first {...} in it, checked against the schema. */
+function parseOutcome(text: string): { ok: true; outcome: Outcome; raw: string } | { ok: false; error: string } {
+  const start = text.indexOf("{"); const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return { ok: false, error: "no JSON object in the reply" };
+  const raw = text.slice(start, end + 1);
+  let data: unknown;
+  try { data = JSON.parse(raw); } catch (e) { return { ok: false, error: `JSON could not be parsed (${e instanceof Error ? e.message : "syntax"})` }; }
+  const r = OutcomeSchema.safeParse(data);
+  if (!r.success) return { ok: false, error: r.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
+  return { ok: true, outcome: r.data, raw };
 }
 
