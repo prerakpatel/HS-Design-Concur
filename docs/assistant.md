@@ -50,17 +50,18 @@ and `GEMINI_API_KEY` (one or both, optional). Without `ANTHROPIC_API_KEY` the sh
 
 ## The character
 
-`src/components/assistant/dock.tsx` and `buddy.tsx`. On phones his button sits in the middle of the bottom bar, a
-little bigger than the tabs: his face in a disc, a hand waving out of it now and then. Elsewhere the same button
-floats in the bottom-right corner. **Tap** and he listens: he peeks up over the bar, eyes and fingers over the
-edge, with the words so far in a bubble; tap again to stop. While he works he becomes a bigger dark orb with his
-thinking poses taking turns and a word on what he is doing; then the sheet opens with his card. **Hold** the button
-to open the thread and type. An amber dot on the button means a card is waiting for you. Inside the sheet he is a
-head crop per mood (puzzled when he did not catch something), with the full figure beside the suggestions.
+`src/components/assistant/dock.tsx` and `buddy.tsx`. He is an orb. On phones it sits in the middle of the bottom bar,
+a little bigger than the tabs: his face in a disc. **Tap** and the orb grows out of it above the bar while he
+listens, swelling with your voice, the words so far in a bubble; tap again to stop. While he works the orb shows him
+thinking with a soft ring; then the sheet opens with his card. **Hold** for the thread, to type. On pages without
+the bar (a design, project setup) the orb floats at the bottom, and on desktop in the corner; left alone it settles
+into a small droplet tucked into the edge and grows back when touched. An amber dot means a card is waiting. Inside
+the sheet he is a head crop per mood (puzzled when he did not catch something), with the full figure beside the
+suggestions.
 
-His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART`, `ASSISTANT_DOCK` in the config). The poses are
-stills; short looping clips (animated WebP or APNG with a transparent background, a few seconds each) can take their
-place one for one when they exist.
+His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART`, `ASSISTANT_ORB` in the config). The orb plays a
+short looping clip per state when one exists in `public/assistant/vichar/clips/` (idle, listening, thinking, done:
+720 × 720, a few seconds, white background, mp4); until `ASSISTANT_CLIPS_READY` is on, it shows the stills.
 
 ## Costs
 

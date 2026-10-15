@@ -144,7 +144,7 @@ Do these in the **Test sandbox**. Use the designer account (member) and the Core
 ### The assistant (first draft)
 Only its owner and the people the owner switches on see it. Test in the sandbox organisation.
 - [ ] Settings → People: you (owner) see an **Assistant** switch on each person; another Core Admin does not.
-- [ ] On a phone his button is in the middle of the bottom bar (hand waving out of it); on other pages and on desktop it floats bottom-right.
+- [ ] On a phone his orb is in the middle of the bottom bar; on a design page it floats at the bottom and settles into a droplet; on desktop bottom-right.
 - [ ] Hold it: the sheet opens. Type "new project for Sharad Purnima and Annakut with a print card 8.5 by 5.5,
       WhatsApp, Instagram, LED and website hero, and one for Kids Annakut with the same". Two project cards appear;
       sizes only on formats that allow one; unknowns show in amber.
@@ -153,7 +153,7 @@ Only its owner and the people the owner switches on see it. Test in the sandbox 
       lists what the project still needs (date, invite text, venue…).
 - [ ] Say "the invite text is Join us for Annakut darshan, it's at 6:30 pm, give the print card to <a member>", Save:
       the review step updates. Say "publish it": the project goes live and you land on it.
-- [ ] On a design that was sent for review, tap the button (he peeks up over the bar, the words show as you speak), say "tell <a member's first name> the text is cut
+- [ ] On a design that was sent for review, tap the orb (it grows above the bar, the words show as you speak), say "tell <a member's first name> the text is cut
       off at the sides and check the spelling of mahaprasad", release. The card names the person and lists two
       points; Send posts two change requests, @mentioning them. Tap again to stop; while he works he is the orb.
 - [ ] Hold-to-talk with no transcription key set still works in Chrome and Safari (the browser listens; the live words
