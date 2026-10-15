@@ -63,6 +63,24 @@ export async function writeFile(supabase: SupabaseClient, path: string, body: Bu
   if (error) throw new Error(error.message);
 }
 
+/**
+ * How big a stored file is, without downloading it (null when that cannot be told). A signed upload link cannot
+ * cap the size, so anything that reads an upload checks this first and refuses a huge one before it is in memory.
+ */
+export async function fileSize(supabase: SupabaseClient, path: string): Promise<number | null> {
+  try {
+    if (isR2(path)) {
+      const res = await r2().aws.fetch(objectUrl(keyOf(path)), { method: "HEAD" });
+      const n = Number(res.headers.get("content-length"));
+      return res.ok && Number.isFinite(n) ? n : null;
+    }
+    const slash = path.lastIndexOf("/");
+    const { data } = await supabase.storage.from(BUCKET).list(path.slice(0, slash), { search: path.slice(slash + 1), limit: 5 });
+    const size = (data?.find((f) => f.name === path.slice(slash + 1))?.metadata as { size?: number } | null)?.size;
+    return typeof size === "number" ? size : null;
+  } catch { return null; }
+}
+
 export async function readFile(supabase: SupabaseClient, path: string): Promise<Buffer | null> {
   if (isR2(path)) {
     const res = await r2().aws.fetch(objectUrl(keyOf(path)));

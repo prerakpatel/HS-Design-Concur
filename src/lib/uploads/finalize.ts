@@ -2,12 +2,14 @@ import { revalidatePath } from "next/cache";
 import { slotName } from "@/lib/project";
 import { processUpload } from "@/lib/images";
 import { rasterisePdf } from "@/lib/pdf";
-import { readFile, writeFile, copyFile, removeFiles, newPath } from "@/lib/files";
+import { readFile, writeFile, copyFile, removeFiles, newPath, fileSize } from "@/lib/files";
 import { recomputeSlotState } from "@/lib/slot-state";
 import { pruneOldVersions } from "@/lib/uploads/prune";
 import type { ActiveContext } from "@/lib/auth";
 import { MARK_VERSION } from "@/config/marks";
 import { MAX_UPLOAD_BYTES } from "@/config/limits";
+
+const ACCEPTED_MIMES = ["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf"];
 import { serviceOr } from "@/lib/supabase/service";
 
 /**
@@ -17,18 +19,26 @@ import { serviceOr } from "@/lib/supabase/service";
  */
 export async function finalizeUploadFor(ctx: ActiveContext & { guest?: boolean }, slotId: string, tmpPath: string, mime: string, side: "front" | "back" = "front", mode: "auto" | "new" = "auto") {
   const { supabase, user, org } = ctx;
-  const { data: slot } = await supabase.from("slots").select("*,events(id,org_id,title,created_by,brief_locked_at),label,formats(name,class)").eq("id", slotId).maybeSingle();
-  const event = slot?.events as unknown as { id: string; org_id: string; title: string; created_by: string; brief_locked_at: string | null } | null;
+  const { data: slot } = await supabase.from("slots").select("*,events(id,org_id,title,created_by,brief_locked_at,status,deleted_at),label,formats(name,class,allowed_mimes)").eq("id", slotId).maybeSingle();
+  const event = slot?.events as unknown as { id: string; org_id: string; title: string; created_by: string; brief_locked_at: string | null; status: string; deleted_at: string | null } | null;
   if (!slot || !event || event.org_id !== org.id) return { error: "Slot not found" };
   // Guests upload too (to any format of their project); only approving and assigning stay with the organization.
-  const fmt = slot.formats as unknown as { name: string; class: string };
+  const fmt = slot.formats as unknown as { name: string; class: string; allowed_mimes: string[] | null };
+  const tooBig = `Files must be under ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB.`;
+  // The same rules the upload link was given are checked again here: this route can be called directly, and what
+  // was declared (type, project still open) may have changed since the link was made.
+  if (event.status === "archived" || event.deleted_at) { await removeFiles(supabase, [tmpPath]); return { error: "This event is archived and read-only." }; }
+  if (!ACCEPTED_MIMES.includes(mime) || (fmt.allowed_mimes && !fmt.allowed_mimes.includes(mime))) { await removeFiles(supabase, [tmpPath]); return { error: `This format accepts ${(fmt.allowed_mimes ?? ACCEPTED_MIMES).map((m) => m.split("/")[1].toUpperCase()).join(", ")}.` }; }
 
+  // A signed upload link cannot cap the size, so it is looked at before the file is read into memory.
+  const size = await fileSize(supabase, tmpPath);
+  if (size !== null && size > MAX_UPLOAD_BYTES) { await removeFiles(supabase, [tmpPath]); return { error: tooBig }; }
   const input = await readFile(supabase, tmpPath);
   if (!input) return { error: "Upload not found in storage" };
-  // A signed upload link cannot cap the size, so the size is checked here (the browser checks it first as well).
-  if (input.length > MAX_UPLOAD_BYTES) { await removeFiles(supabase, [tmpPath]); return { error: `Files must be under ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB.` }; }
+  if (input.length > MAX_UPLOAD_BYTES) { await removeFiles(supabase, [tmpPath]); return { error: tooBig }; }
   const isPdf = mime === "application/pdf";
   if (isPdf && fmt.class !== "print") return { error: "PDF uploads are for print formats. Export a PNG or JPG for digital formats." };
+  if (isPdf && input.subarray(0, 5).toString("latin1") !== "%PDF-") { await removeFiles(supabase, [tmpPath]); return { error: "That file is not a PDF." }; }
 
   // A print PDF becomes one side per page (page 1 front, page 2 back); an image is one side.
   let inputs: { side: "front" | "back"; buf: Buffer; mime: string }[];

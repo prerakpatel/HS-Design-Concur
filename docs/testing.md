@@ -31,6 +31,8 @@ Designer = you. Approver = the second admin (a second browser profile or phone w
 - [ ] Drop **two** images at once on the print format. A confirmation shows both; Swap works; Upload both saves them.
 - [ ] Use the upload icon on the back image to replace just the back. The front is untouched.
 - [ ] Upload a file with the wrong type or over 8 MB. A clear error; nothing is left behind.
+- [ ] Rename a PNG to `.gif` and upload it to a format that accepts GIFs: "That file is not a GIF." Rename a text file to `.pdf` on a print format: "That file is not a PDF."
+- [ ] A very large print PDF (a banner size) uploads and previews, at a lower resolution, instead of failing.
 - [ ] A 2x file (for example 2160 x 2700 for a 1080 x 1350 format) shows no size warning.
 
 ### Review (as approver)
