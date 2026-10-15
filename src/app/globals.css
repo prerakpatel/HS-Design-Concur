@@ -285,14 +285,20 @@
 @keyframes buddy-caption-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .buddy-caption { animation: buddy-caption-in 0.25s ease-out both; }
 @keyframes buddy-orb-in { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+/* Out of the bar's disc and up: he leaves the small disc and arrives in the orb, one movement. */
+@keyframes buddy-orb-grow { from { transform: translateY(86px) scale(0.5); opacity: 0.6; } to { transform: none; opacity: 1; } }
 @keyframes buddy-orb-ring { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.45); opacity: 0; } }
 .buddy-orb { animation: buddy-orb-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1) both; transition: transform 0.1s; }
+.buddy-orb-grow { animation: buddy-orb-grow 0.45s cubic-bezier(0.2, 0.9, 0.2, 1) both; }
+/* A soft rise of the page's own colour under the orb, for depth. */
+@keyframes buddy-glow-in { from { opacity: 0; } to { opacity: 1; } }
+.buddy-glow { background: linear-gradient(to top, color-mix(in oklch, var(--background) 92%, transparent) 0%, color-mix(in oklch, var(--background) 55%, transparent) 45%, transparent 100%); animation: buddy-glow-in 0.4s ease-out both; }
 .buddy-orb-ring { background: color-mix(in oklch, var(--brand) 40%, transparent); animation: buddy-orb-ring 1.6s ease-out infinite; }
 .buddy-float:hover { opacity: 1; }
 /* His sheet takes three quarters of the screen; the page behind it dims so the conversation is the only thing lit. */
-[data-slot="drawer-overlay"]:has(+ [data-vichar]) { background: rgb(0 0 0 / 0.45); }
+[data-slot="drawer-overlay"]:has(+ [data-vichar]) { background: rgb(0 0 0 / 0.62); }
 .buddy-pop { animation: buddy-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 @keyframes buddy-art-in { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
 .buddy-art { animation: buddy-art-in 0.35s ease-out both; }
 .buddy-dots-text::after { content: "..."; display: inline-block; width: 1.2em; text-align: left; animation: buddy-dots 1.2s steps(1) infinite; }
-@media (prefers-reduced-motion: reduce) { .buddy *, .buddy-pop, .buddy-dock-listening, .buddy-caption, .buddy-orb, .buddy-orb-ring, .buddy-float { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .buddy *, .buddy-pop, .buddy-dock-listening, .buddy-caption, .buddy-orb, .buddy-orb-grow, .buddy-orb-ring, .buddy-glow, .buddy-float { animation: none !important; transition: none !important; } }

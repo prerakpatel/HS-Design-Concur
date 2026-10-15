@@ -32,7 +32,7 @@ export const ASSISTANT_FIGURE = "/assistant/vichar/calm.webp";
 export const ASSISTANT_CLIPS_READY = false;
 export const ASSISTANT_ORB = {
   // Idle is always a still: he only moves once you tap him.
-  idle: { image: "/assistant/vichar/nav-head.webp", video: null },
+  idle: { image: "/assistant/vichar/calm-head.webp", video: null },
   listening: { image: "/assistant/vichar/listening-head.webp", video: "/assistant/vichar/clips/listening.mp4" },
   thinking: { image: "/assistant/vichar/writing-head.webp", video: "/assistant/vichar/clips/thinking.mp4" },
   done: { image: "/assistant/vichar/calm-head.webp", video: "/assistant/vichar/clips/done.mp4" },

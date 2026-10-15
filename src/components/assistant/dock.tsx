@@ -1,5 +1,5 @@
 "use client";
-// icons: stop
+// icons: stop mic
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSyncExternalStore } from "react";
@@ -22,12 +22,13 @@ export interface OrbMedia { video?: string | null; image: string }
 export type OrbState = "idle" | "listening" | "thinking" | "done";
 
 /** Face in a disc: the clip when it plays, the still otherwise (or when the clip is missing or cannot play). */
-export function OrbFace({ media, className }: { media: OrbMedia; className?: string }) {
+export function OrbFace({ media, className, inset = false }: { media: OrbMedia; className?: string; /** A little room around him, for the small disc. */ inset?: boolean }) {
   const [failed, setFailed] = useState<string | null>(null);
   const video = media.video && failed !== media.video ? media.video : null;
+  const fit = cn("size-full object-cover", inset && "scale-[0.86]");
   return (
     <span className={cn("block size-full overflow-hidden rounded-full bg-white", className)}>
-      {video ? <video key={video} src={video} autoPlay muted loop playsInline disablePictureInPicture className="size-full object-cover" onError={() => setFailed(video)} /> : <img key={media.image} src={media.image} alt="" className="buddy-art size-full object-cover" draggable={false} />}
+      {video ? <video key={video} src={video} autoPlay muted loop playsInline disablePictureInPicture className={fit} onError={() => setFailed(video)} /> : <img key={media.image} src={media.image} alt="" className={cn("buddy-art", fit)} draggable={false} />}
     </span>
   );
 }
@@ -60,12 +61,14 @@ export interface DockProps {
 export function NavDock({ slot, media, state, level, caption, attention, onTap, onHold }: DockProps & { slot: HTMLElement }) {
   const press = usePress(onTap, onHold);
   const active = state === "listening" || state === "thinking";
+  // At rest the disc holds his face with a mic badge; once tapped he moves up into the orb and the disc becomes the stop.
   const button = (
     <button type="button" aria-label={state === "listening" ? "Stop listening" : "Talk to the assistant"} aria-pressed={state === "listening"} {...press}
-      className={cn("buddy-dock relative -mt-5 flex size-14 items-center justify-center rounded-full bg-card p-0.5 shadow-md ring-1 ring-border transition-transform active:scale-95", state === "listening" && "buddy-dock-listening ring-2 ring-brand")}
+      className={cn("buddy-dock relative -mt-5 flex size-14 items-center justify-center rounded-full p-0.5 shadow-md ring-1 transition-[background-color,box-shadow] duration-300 active:scale-95", active ? "bg-brand ring-brand" : "bg-card ring-border")}
       style={{ touchAction: "manipulation", WebkitTouchCallout: "none" }}>
-      <OrbFace media={media.idle} />
-      {state === "listening" && <span className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-brand text-brand-foreground ring-2 ring-card"><Icon name="stop" size={20} fill className="!text-[14px]" /></span>}
+      <span className={cn("absolute inset-0.5 transition-opacity duration-200", active ? "opacity-0" : "opacity-100")}><OrbFace media={media.idle} inset /></span>
+      <span className={cn("flex size-full items-center justify-center text-brand-foreground transition-opacity duration-200", active ? "opacity-100" : "opacity-0")}><Icon name="stop" size={24} fill /></span>
+      {!active && <span className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full bg-brand-soft text-brand-soft-foreground ring-2 ring-card"><Icon name="mic" size={20} className="!text-[14px]" /></span>}
       {attention && !active && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
     </button>
   );
@@ -73,10 +76,13 @@ export function NavDock({ slot, media, state, level, caption, attention, onTap, 
     <>
       {createPortal(button, slot)}
       {active && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-50 flex flex-col items-center gap-2" aria-live="polite">
-          {caption && <Caption>{caption}</Caption>}
-          <Orb media={media[state]} state={state} level={level} size={96} />
-        </div>
+        <>
+          <div className="buddy-glow pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+66px)] z-[45] h-48" />
+          <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-50 flex flex-col items-center gap-2" aria-live="polite">
+            {caption && <Caption>{caption}</Caption>}
+            <Orb media={media[state]} state={state} level={level} size={96} grow />
+          </div>
+        </>
       )}
     </>
   );
@@ -99,25 +105,29 @@ export function FloatingDock({ media, state, level, caption, attention, onTap, o
   const awake = active || attention || touched || wasActive;
   const size = active ? 96 : awake ? 56 : 40;
   return (
-    <div className={cn("fixed z-50 flex flex-col items-center gap-2", corner ? "bottom-5 right-5 md:bottom-7 md:right-8" : "inset-x-0 bottom-[max(env(safe-area-inset-bottom),12px)]")} aria-live="polite">
-      {active && caption && <Caption>{caption}</Caption>}
-      <button type="button" aria-label={state === "listening" ? "Stop listening" : "Talk to the assistant"} aria-pressed={state === "listening"} {...press}
-        onPointerEnter={wake}
-        className={cn("buddy-float relative rounded-full bg-card p-0.5 shadow-md ring-1 ring-border transition-[width,height,transform,opacity] duration-300 ease-out", !active && !awake && "translate-y-[45%] opacity-80", state === "listening" && "buddy-dock-listening ring-2 ring-brand")}
-        style={{ width: size, height: size, touchAction: "manipulation", WebkitTouchCallout: "none" }}>
-        <Orb media={media[active ? state : "idle"]} state={state} level={level} size={size - 4} bare />
-        {state === "listening" && <span className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-brand text-brand-foreground ring-2 ring-card"><Icon name="stop" size={20} fill className="!text-[14px]" /></span>}
-        {attention && !active && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
-      </button>
-    </div>
+    <>
+      {active && <div className={cn("buddy-glow pointer-events-none fixed z-[45]", corner ? "bottom-0 right-0 h-56 w-72" : "inset-x-0 bottom-0 h-56")} />}
+      <div className={cn("fixed z-50 flex flex-col gap-2", corner ? "bottom-5 right-5 items-end md:bottom-7 md:right-8" : "inset-x-0 bottom-[max(env(safe-area-inset-bottom),12px)] items-center")} aria-live="polite">
+        {active && caption && <Caption>{caption}</Caption>}
+        <button type="button" aria-label={state === "listening" ? "Stop listening" : "Talk to the assistant"} aria-pressed={state === "listening"} {...press}
+          onPointerEnter={wake}
+          className={cn("buddy-float relative rounded-full p-0.5 shadow-md ring-1 transition-[width,height,transform,opacity,background-color] duration-300 ease-out", active ? "bg-foreground ring-foreground" : "bg-card ring-border", !active && !awake && "translate-y-[45%] opacity-80")}
+          style={{ width: size, height: size, touchAction: "manipulation", WebkitTouchCallout: "none" }}>
+          <Orb media={media[active ? state : "idle"]} state={state} level={level} size={size - 4} bare inset={!active} />
+          {state === "listening" && <span className="absolute -bottom-0.5 -right-0.5 flex size-7 items-center justify-center rounded-full bg-brand text-brand-foreground ring-2 ring-card"><Icon name="stop" size={20} fill className="!text-[16px]" /></span>}
+          {!active && awake && <span className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full bg-brand-soft text-brand-soft-foreground ring-2 ring-card"><Icon name="mic" size={20} className="!text-[14px]" /></span>}
+          {attention && !active && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
+        </button>
+      </div>
+    </>
   );
 }
 
 /** The orb itself: a disc with his face, swelling with the voice while he listens, a soft ring while he works. */
-function Orb({ media, state, level, size, bare = false }: { media: OrbMedia; state: OrbState; level: number; size: number; bare?: boolean }) {
+function Orb({ media, state, level, size, bare = false, grow = false, inset = false }: { media: OrbMedia; state: OrbState; level: number; size: number; bare?: boolean; /** Rises out of the disc in the bar. */ grow?: boolean; inset?: boolean }) {
   return (
-    <div className={cn("buddy-orb relative rounded-full", !bare && "bg-foreground p-1 shadow-xl")} data-state={state} style={{ width: size, height: size, transform: state === "listening" ? `scale(${1 + level * 0.08})` : undefined }}>
-      <OrbFace media={media} />
+    <div className={cn("buddy-orb relative rounded-full", !bare && "bg-foreground p-1 shadow-xl", grow && "buddy-orb-grow")} data-state={state} style={{ width: size, height: size, transform: state === "listening" ? `scale(${1 + level * 0.08})` : undefined }}>
+      <OrbFace media={media} inset={inset} />
       {state === "thinking" && <span className="buddy-orb-ring absolute inset-0 rounded-full" />}
     </div>
   );
