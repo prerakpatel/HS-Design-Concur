@@ -133,7 +133,7 @@ export function Assistant(p: AssistantProps) {
                   <p className="text-foreground">“New project for Sharad Purnima and Annakut with a print card 8.5 by 5.5, WhatsApp, Instagram, LED and website hero.”</p>
                   <p className="text-foreground">“Tell Chirantan the text is cut off at the sides and to check the spelling of mahaprasad.”</p>
                 </div>
-                <img src={ASSISTANT_FIGURE} alt="" className="buddy-pop h-36 w-auto shrink-0 select-none" draggable={false} aria-hidden />
+                <img src={ASSISTANT_FIGURE} alt="" className="buddy-pop h-36 w-auto shrink-0 select-none" draggable={false} aria-hidden loading="lazy" decoding="async" />
               </div>
             )}
             {entries.map((e, i) => {

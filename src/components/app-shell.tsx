@@ -11,7 +11,8 @@ import { InstallNudge } from "@/components/install-nudge";
 import { WhatsNewDialog, type ChangelogState } from "@/components/whats-new";
 import { Suspense } from "react";
 import type { Organization } from "@/lib/types";
-import { Assistant, type AssistantProps } from "@/components/assistant/assistant";
+import { AssistantMount } from "@/components/assistant/assistant-mount";
+import type { AssistantProps } from "@/components/assistant/assistant";
 
 export interface ShellProps { org: Organization; orgs: Organization[]; user: { name: string; role: string; initials: string; avatar?: string | null }; slots: { used: number; max: number }; sidebarOpen?: boolean; changelog: ChangelogState; /** The assistant, for people it is switched on for. */ assistant?: AssistantProps | null }
 
@@ -24,7 +25,7 @@ export function AppShell({ org, orgs, user, slots, sidebarOpen = true, changelog
       <AppBadge />
       <PushPrompt />
       <InstallNudge />
-      {assistant && <Assistant {...assistant} />}
+      {assistant && <AssistantMount {...assistant} />}
       <AppSidebar org={org} orgs={orgs} user={user} slots={slots} whatsNewUnseen={changelog.unseen} />
       <Suspense><WhatsNewDialog state={changelog} /></Suspense>
       <SidebarInset className="min-h-dvh min-w-0 bg-background">

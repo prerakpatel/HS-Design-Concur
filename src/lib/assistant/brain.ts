@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { ASSISTANT_EFFORT, ASSISTANT_MODEL, ASSISTANT_NAME } from "@/config/assistant";
 import { OutcomeSchema, type Outcome, type Turn, type Where } from "@/lib/assistant/schema";
+import { unclear } from "@/lib/assistant/outcome";
 import { UserError } from "@/lib/user-error";
 
 /**
@@ -65,4 +66,3 @@ export async function think(context: string, thread: Turn[], where: Where): Prom
   return { outcome, raw };
 }
 
-export const unclear = (say: string): Outcome => ({ kind: "unclear", say, projects: [], addFormats: null, comments: [], question: null, link: null });

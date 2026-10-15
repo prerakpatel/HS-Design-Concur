@@ -4,7 +4,7 @@ import { requireActiveUser } from "@/lib/auth";
 import { UserError } from "@/lib/user-error";
 import { assistantAllowed } from "@/lib/assistant/access";
 import { loadAssistantContext, resolveId } from "@/lib/assistant/context";
-import { think, unclear } from "@/lib/assistant/brain";
+import { unclear } from "@/lib/assistant/outcome";
 import { insertDraftProject, requestFormats } from "@/lib/create-project";
 import { addComment } from "@/app/actions/reviews";
 import { DEFAULT_VENUE } from "@/config/orgs";
@@ -26,6 +26,8 @@ export async function assistantTurn(thread: Turn[], where: Where): Promise<{ out
   let result: { outcome: Outcome; raw: string };
   // The last few turns are enough history; it must start with the person's words.
   const recent = thread.slice(-12); while (recent.length && recent[0].role !== "user") recent.shift();
+  // The model's library is loaded on first use, not with every page.
+  const { think } = await import("@/lib/assistant/brain");
   try { result = await think(context.text, recent, where); }
   catch (e) { if (e instanceof UserError) throw e; console.error("assistant", e); return { outcome: unclear("Something went wrong on my side. Try again?"), raw: "", people: context.people }; }
   const o = result.outcome;
