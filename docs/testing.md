@@ -121,6 +121,11 @@ Do these in the **Test sandbox**. Use the designer account (member) and the Core
 - [ ] Upload with the approver account after the designer's version is approved: a new version (v2), as before.
 - [ ] Download the ZIP of the approved designs: files are all there.
 
+### Approving your own work (database guard)
+- [ ] Designer A (also an approver) uploads and sends a version. A cannot approve it: "You cannot approve a version you uploaded".
+- [ ] Core Admin replaces the file on the designer's pending version (Fix v1): it works, and the version now shows the Core Admin as uploader.
+- [ ] Approve, reopen and approve again on a version someone else uploaded: all work.
+
 ### What should NOT happen
 - [ ] Nothing posted in the real Slack or Google Chat channels. If anything did, stop and check the sandbox organisation's Settings → Organizations has no webhook.
 
