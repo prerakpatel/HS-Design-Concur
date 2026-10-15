@@ -39,8 +39,8 @@ export const ASSISTANT_PEEK = {
 export const ASSISTANT_MODEL = "claude-opus-5-5";
 export const ASSISTANT_EFFORT = "medium" as const;
 
-/** A recording longer than this is cut off (the transcription service wants short clips; Vercel allows 60 s per request). */
-export const MAX_CLIP_SECONDS = 90;
+/** A recording longer than this is cut off. It is sent in 25-second pieces, so the service's 30-second limit does not apply. */
+export const MAX_CLIP_SECONDS = 120;
 
 /**
  * Words the transcription service is told to expect, so Gujarati and temple terms come back spelled the app's way.

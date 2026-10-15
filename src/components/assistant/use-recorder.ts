@@ -2,6 +2,9 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_CLIP_SECONDS } from "@/config/assistant";
 
+/** A recording is cut into pieces this long; the transcription service takes up to 30 s per request. */
+const SEGMENT_MS = 25_000;
+
 export type RecorderState = "idle" | "listening" | "transcribing";
 
 interface SpeechRecognitionLike { lang: string; interimResults: boolean; continuous: boolean; start(): void; stop(): void; abort(): void; onresult: ((e: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null }
@@ -26,6 +29,8 @@ export function useRecorder(cloud: boolean, keyterms: string[]) {
   const heard = useRef("");
   const stopMeter = useRef<() => void>(() => {});
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const segment = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopAll = useRef<(() => void) | null>(null);
   const done = useRef<((text: string) => void) | null>(null);
   const supported = typeof window !== "undefined" && ((cloud && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== "undefined") || (!cloud && !!browserSpeech()));
 
@@ -42,14 +47,16 @@ export function useRecorder(cloud: boolean, keyterms: string[]) {
 
   const stop = () => {
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
-    if (rec.current && rec.current.state !== "inactive") { rec.current.stop(); rec.current = null; return; }
+    if (stopAll.current) { const f = stopAll.current; stopAll.current = null; f(); return; }
     if (speech.current) { stopMeter.current(); speech.current.stop(); }
   };
 
   const cancel = () => {
     done.current = null;
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
-    if (rec.current && rec.current.state !== "inactive") { rec.current.onstop = () => { rec.current = null; stopMeter.current(); setState("idle"); }; rec.current.stop(); }
+    if (segment.current) { clearInterval(segment.current); segment.current = null; }
+    stopAll.current = null;
+    if (rec.current && rec.current.state !== "inactive") { const r = rec.current; rec.current = null; r.onstop = () => { r.stream.getTracks().forEach((t) => t.stop()); stopMeter.current(); setState("idle"); }; r.stop(); }
     if (speech.current) { speech.current.onend = null; speech.current.abort(); speech.current = null; stopMeter.current(); setState("idle"); }
   };
 
@@ -61,22 +68,34 @@ export function useRecorder(cloud: boolean, keyterms: string[]) {
       let stream: MediaStream;
       try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch { onError("The microphone is blocked. Allow it in the browser's site settings, or type instead."); return; }
       const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find((m) => MediaRecorder.isTypeSupported(m));
-      const r = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-      chunks.current = [];
-      r.ondataavailable = (e) => { if (e.data.size) chunks.current.push(e.data); };
-      r.onstop = async () => {
+      // The transcription service takes clips of up to 30 s, so a long request is recorded as a run of short
+      // segments (a fresh recorder every SEGMENT_MS, each a complete file) and the words are joined in order.
+      const segments: Blob[] = []; let finishing = false;
+      const transcribe = async (blob: Blob) => {
+        const body = new FormData(); body.set("audio", blob, "clip"); body.set("keyterms", keyterms.join("|"));
+        const res = await fetch("/api/assistant/transcribe", { method: "POST", body });
+        const data = (await res.json()) as { transcript?: string; error?: string };
+        if (!res.ok) throw new Error(data.error ?? "Transcription failed");
+        return (data.transcript ?? "").trim();
+      };
+      const finish = async () => {
         stream.getTracks().forEach((t) => t.stop()); stopMeter.current();
-        const blob = new Blob(chunks.current, { type: r.mimeType || "audio/webm" });
         setState("transcribing");
         try {
-          const body = new FormData(); body.set("audio", blob, "clip"); body.set("keyterms", keyterms.join("|"));
-          const res = await fetch("/api/assistant/transcribe", { method: "POST", body });
-          const data = (await res.json()) as { transcript?: string; error?: string };
-          if (!res.ok) throw new Error(data.error ?? "Transcription failed");
-          setState("idle"); done.current?.(data.transcript ?? "");
+          const parts = await Promise.all(segments.filter((b) => b.size > 1000).map(transcribe));
+          setState("idle"); done.current?.(parts.filter(Boolean).join(" "));
         } catch (e) { setState("idle"); onError(e instanceof Error ? e.message : "Transcription failed"); }
       };
-      rec.current = r; r.start(); meter(stream); setState("listening");
+      const record = () => {
+        const r = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+        chunks.current = [];
+        r.ondataavailable = (e) => { if (e.data.size) chunks.current.push(e.data); };
+        r.onstop = () => { segments.push(new Blob(chunks.current, { type: r.mimeType || "audio/webm" })); if (finishing) finish(); else if (rec.current === r) record(); };
+        rec.current = r; r.start();
+      };
+      stopAll.current = () => { finishing = true; const r = rec.current; rec.current = null; if (segment.current) clearInterval(segment.current); segment.current = null; if (r && r.state !== "inactive") r.stop(); else finish(); };
+      record(); meter(stream); setState("listening");
+      segment.current = setInterval(() => { const r = rec.current; if (r && r.state === "recording") r.stop(); }, SEGMENT_MS);
     } else {
       const Speech = browserSpeech(); if (!Speech) { onError("This browser can't listen. Type instead."); return; }
       const s = new Speech(); s.lang = "en-IN"; s.interimResults = true; s.continuous = true;
