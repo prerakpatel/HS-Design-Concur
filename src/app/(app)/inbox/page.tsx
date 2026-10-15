@@ -20,7 +20,8 @@ export default async function InboxPage() {
   const { data } = await supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(60);
   const items = data ?? []; const unread = items.filter((n) => !n.read_at).length;
   // Opening the Inbox counts as reading it: this view still shows what was new, the next one (and the app badge) will not.
-  if (unread > 0) after(async () => { await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("user_id", user.id).is("read_at", null); });
+  const shownUnread = items.filter((n) => !n.read_at).map((n) => n.id as number);
+  if (shownUnread.length > 0) after(async () => { await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("user_id", user.id).in("id", shownUnread).is("read_at", null); });
   return (
     <>
       <PageHeader title="Inbox" subtitle={unread ? `${unread} unread` : "All caught up"} actions={unread ? <form action={markAllRead}><Button variant="secondary" type="submit">Mark all read</Button></form> : null} />

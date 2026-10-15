@@ -128,6 +128,14 @@ Do these in the **Test sandbox**. Use the designer account (member) and the Core
 - [ ] Core Admin replaces the file on the designer's pending version (Fix v1): it works, and the version now shows the Core Admin as uploader.
 - [ ] Approve, reopen and approve again on a version someone else uploaded: all work.
 
+### Notifications, push and headers (after the second review round)
+- [ ] Post a very long comment (several paragraphs) on a version of a project with chat connected: the chat post still arrives, shortened, with the "Open in Design & Concur" link at the end.
+- [ ] Type `@alex` in a comment when the team has an Alexander and an Alex: only the exact name is mentioned. Writing someone's email address in a comment mentions nobody.
+- [ ] Open the Inbox with more than 60 notifications: only the ones shown are marked read; the rest stay unread.
+- [ ] A second push about the same format still buzzes the phone (it replaces the first one).
+- [ ] Remove a person (Settings → Users → Remove): they stop receiving pushes.
+- [ ] In the browser's developer tools, Network → any page: the response has `X-Frame-Options: DENY` and a `Content-Security-Policy` with `frame-ancestors 'none'`. Sign-in, uploads and downloads still work.
+
 ### What should NOT happen
 - [ ] Nothing posted in the real Slack or Google Chat channels. If anything did, stop and check the sandbox organisation's Settings → Organizations has no webhook.
 

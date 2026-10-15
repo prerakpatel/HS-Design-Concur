@@ -12,6 +12,7 @@ import { removeFiles } from "@/lib/files";
 import { assetFilename } from "@/lib/labels";
 import { recomputeSlotState } from "@/lib/slot-state";
 import { sanitizeComment, plainText, mentionIds, groupMentionIds } from "@/lib/rich-text";
+import { mentionsToken } from "@/lib/mention-match";
 import { UserError } from "@/lib/user-error";
 
 /** The version and its project, for a member of the project's organization or a guest on the project. */
@@ -171,8 +172,7 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
   if (groupIds.length) { const { data: gm } = await supabase.from("group_members").select("user_id,groups!inner(org_id)").in("group_id", groupIds).eq("groups.org_id", org.id); for (const row of gm ?? []) mentions.add(row.user_id as string); }
   for (const m of members ?? []) {
     const name = (m.name ?? "").toLowerCase(); const first = name.split(" ")[0]; const handle = m.email.split("@")[0].toLowerCase();
-    const lower = text.toLowerCase();
-    if ((name && lower.includes("@" + name)) || (first && new RegExp(`@${first.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\b|$)`).test(lower)) || lower.includes("@" + handle)) mentions.add(m.id);
+    if (mentionsToken(text, name) || mentionsToken(text, first) || mentionsToken(text, handle)) mentions.add(m.id);
   }
   // A comment is conversation. Anyone can turn theirs into a change request: work for one person (whoever is @mentioned,
   // else whoever uploaded this version, else the format's designer) that sends the version back. On an approved version
@@ -259,7 +259,16 @@ export async function sendCommentBatch(versionId: string) {
   const changes = drafts.filter((d) => d.needs_change);
   const plain = drafts.filter((d) => !d.needs_change);
   if (changes.length) await announceChanges(ctx, changes.map((d) => ({ html: d.body as string, assignee: (d.assignee_id as string | null) ?? null })));
-  if (plain.length) await announceComments(ctx, plain.map((d) => ({ html: d.body as string, mentions: [...new Set([...((d.mentions as string[]) ?? []), ...mentionIds(d.body as string)])] })));
+  if (plain.length) {
+    // Only people who can be mentioned on this project (the organization's active members and the project's guests)
+    // are told: a draft can carry any id, since it was saved before this check ran.
+    const [{ data: orgMembers }, people0] = await Promise.all([
+      supabase.from("users").select("id,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", ctx.org.id),
+      loadProjectPeople(supabase, ctx.event),
+    ]);
+    const allowed = new Set([...(orgMembers ?? []).map((m) => m.id as string), ...people0.filter((p) => p.guest && p.userId).map((p) => p.userId!)]);
+    await announceComments(ctx, plain.map((d) => ({ html: d.body as string, mentions: [...new Set([...((d.mentions as string[]) ?? []), ...mentionIds(d.body as string)])].filter((id) => allowed.has(id)) })));
+  }
   revalidatePath(`/events/${event.id}/slots/${slot.id}`);
   return { ok: true, count: drafts.length };
 }

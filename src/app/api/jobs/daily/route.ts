@@ -52,7 +52,7 @@ export async function GET(req: Request) {
   for (const s of due ?? []) {
     const ev = s.events as unknown as { title: string; status: string; org_id: string }; if (ev.status !== "active") continue;
     const payload = { eventId: s.event_id, slotId: s.id, title: ev.title, format: slotName((s.formats as unknown as { name: string }).name, s.label as string | null), when: s.due_on === today ? "today" : "3d", due: s.due_on, assignee: s.assignee_id };
-    const { data: dup } = await db.from("notifications").select("id").eq("user_id", s.assignee_id).eq("kind", "slot.due").contains("payload", { slotId: s.id, when: payload.when }).limit(1);
+    const { data: dup } = await db.from("notifications").select("id").eq("user_id", s.assignee_id).eq("kind", "slot.due").contains("payload", { slotId: s.id, when: payload.when, due: s.due_on }).limit(1);
     if (dup?.length) continue;
     await notify(db, [s.assignee_id], "slot.due", payload, undefined, { orgId: ev.org_id });
     report.reminders = (report.reminders as number) + 1;
@@ -85,7 +85,8 @@ export async function GET(req: Request) {
       if (dup?.length) continue;
       await notify(db, approvers, "review.waiting", { eventId: r.eventId, slotId: r.slotId, versionId: r.versionId, title: r.title, format: r.format, number: r.number, by: r.by, since: r.since, days: r.days, day: today }, r.uploadedBy, { orgId });
     } else {
-      const scope = privateEvent ? { orgId, eventId: privateEvent } : { orgId };
+      // `scope` keeps the organisation-wide reminder apart from a project-specific one (both carry the same orgId).
+      const scope = privateEvent ? { orgId, eventId: privateEvent, scope: "project" } : { orgId, scope: "org" };
       const { data: dup } = await db.from("notifications").select("id").eq("kind", "reviews.waiting").contains("payload", { ...scope, day: today }).limit(1);
       if (dup?.length) continue;
       const items = rows.slice(0, 15).map((r) => ({ title: r.title, format: r.format, number: r.number, days: r.days }));
@@ -175,7 +176,7 @@ export async function GET(req: Request) {
   if (emailConfigured()) {
     const { data: users } = await db.from("users").select("id,email,name").eq("status", "active").eq("email_pref", "digest");
     for (const u of users ?? []) {
-      const { data: rows } = await db.from("notifications").select("id,kind,payload,organisations(slug,email_enabled)").eq("user_id", u.id).is("emailed_at", null).order("created_at", { ascending: false }).limit(30);
+      const { data: rows } = await db.from("notifications").select("id,kind,payload,organisations(slug,email_enabled)").eq("user_id", u.id).is("emailed_at", null).gte("created_at", new Date(Date.now() - 2 * DAY_MS).toISOString()).order("created_at", { ascending: false }).limit(30);
       // An organisation with email switched off is left out (those rows stay unmailed; they are still in the Inbox).
       const items = (rows ?? []).filter((n) => ((n.organisations as unknown as { email_enabled: boolean | null } | null)?.email_enabled ?? true));
       if (!items.length) continue;
@@ -185,7 +186,7 @@ export async function GET(req: Request) {
     }
     // Instant users also get, by email, the job-created notifications that do not go through notify() (which already
     // emails them after the job responds: listing those here as well would send each one twice).
-    const { data: instant } = await db.from("notifications").select("id,user_id,kind,payload,users!inner(email,email_pref,status)").in("kind", ["draft.expiring", "draft.swept", "devices.refresh"]).is("emailed_at", null).eq("users.email_pref", "instant").eq("users.status", "active");
+    const { data: instant } = await db.from("notifications").select("id,user_id,kind,payload,users!inner(email,email_pref,status)").in("kind", ["draft.expiring", "draft.swept", "devices.refresh"]).is("emailed_at", null).gte("created_at", new Date(Date.now() - 2 * DAY_MS).toISOString()).eq("users.email_pref", "instant").eq("users.status", "active");
     for (const n of instant ?? []) {
       const u = n.users as unknown as { email: string }; const p = n.payload as Record<string, unknown>;
       const r = await sendEmail(u.email, subjectFor(n.kind as NotificationKind, p), { heading: notificationText(n.kind, p), body: String(p.title ?? ""), cta: { label: "Open Design & Concur", href: appUrl(notificationHref(p)) } });

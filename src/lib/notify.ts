@@ -92,7 +92,7 @@ export async function notify(supabase: SupabaseClient, userIds: Iterable<string 
     if (error) console.error("[notify] could not save notifications:", error.message);
   }
   const mentions = toChat ? [...new Set(opts?.mention ? [...opts.mention] : CHAT[kind] === "mention" ? ids : [])].filter((id): id is string => !!id && id !== exclude) : [];
-  after(() => deliver(supabase, ids, kind, payload, opts?.orgId, mentions));
+  after(() => deliver(supabase, ids, kind, payload, opts?.orgId, mentions).catch((e) => console.error("[notify] delivery failed:", (e as Error).message)));
 }
 
 /** The organisation a notification belongs to: the one it was sent for, else the one that owns its project. Null for org-less moments. */
