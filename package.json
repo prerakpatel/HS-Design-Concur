@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/lib/glossary/glossary.test.ts src/lib/aspect.test.ts src/lib/rich-text.test.ts src/lib/chat-target.test.ts src/lib/files.test.ts",
+    "test": "node --test src/lib/glossary/glossary.test.ts src/lib/aspect.test.ts src/lib/rich-text.test.ts src/lib/chat-target.test.ts src/lib/files.test.ts src/lib/on-site-path.test.ts",
     "screenshots": "node scripts/screenshots.mjs",
     "icons": "node scripts/icon-names.mjs"
   },

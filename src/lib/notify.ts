@@ -1,10 +1,11 @@
 import { DAY_MS, MINUTE_MS } from "@/lib/time";
-import { REMINDER_LEAD_DAYS } from "@/config/limits";
+import { REMINDER_LEAD_DAYS, CHAT_PREVIEW_DAYS } from "@/config/limits";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { after } from "next/server";
 import { sendEmail, appUrl } from "@/lib/email";
 import { postChat, chat, mention, everyone, platformOf, chatSafePayload, type ChatUser, type ChatImage } from "@/lib/chat";
 import { signedUrl } from "@/lib/storage";
+import { copyFile, r2Enabled, R2 } from "@/lib/files";
 import { sendPush } from "@/lib/push";
 import { notificationText, notificationHref, openLink, chatLines } from "@/lib/labels";
 import { htmlToChat, mentionIds } from "@/lib/rich-text";
@@ -185,18 +186,23 @@ async function deliver(caller: SupabaseClient, ids: string[], kind: Notification
   }
 }
 
-/** Preview-image link for chat. The chat bucket is private, so a signed link that lasts as long as the post matters. */
-const PREVIEW_LINK_DAYS = 7;
-
 /**
  * The watermarked front preview of the version a post is about (thumb for GIFs, which have no preview), as a
  * signed URL both platforms can fetch. Nothing when the post is not about one version.
+ * The post gets its own copy of the picture (swept after CHAT_PREVIEW_DAYS): replacing the file in place, or an older
+ * version losing its files, would otherwise leave a broken image in a post that is still on screen.
  */
 async function previewImage(supabase: SupabaseClient, payload: Record<string, unknown>, alt: string, href: string): Promise<ChatImage | null> {
   if (typeof payload.versionId !== "string") return null;
   try {
     const { data } = await supabase.from("version_sides").select("preview_path,thumb_path").eq("version_id", payload.versionId).eq("side", "front").maybeSingle();
-    const url = await signedUrl(supabase, data?.preview_path ?? data?.thumb_path, PREVIEW_LINK_DAYS * DAY_MS / 1000);
+    const source = data?.preview_path ?? data?.thumb_path;
+    let path = source;
+    if (source && r2Enabled()) {
+      const own = `${R2}chat/${payload.versionId}-${Date.now().toString(36)}.webp`;
+      try { await copyFile(supabase, source, own); path = own; } catch (e) { console.error("[chat preview copy]", (e as Error).message); }
+    }
+    const url = await signedUrl(supabase, path, CHAT_PREVIEW_DAYS * DAY_MS / 1000);
     return url ? { url, alt: alt.replace(/^\S+\s/, ""), href } : null;
   } catch (e) { console.error("[chat preview]", (e as Error).message); return null; }
 }

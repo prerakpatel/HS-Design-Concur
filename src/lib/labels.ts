@@ -1,3 +1,4 @@
+import { isOnSitePath } from "@/lib/on-site-path";
 import { REMINDER_LEAD_DAYS, DRAFT_SWEEP_DAYS } from "@/config/limits";
 import type { Format } from "@/lib/types";
 
@@ -97,7 +98,7 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
 }
 export function notificationHref(p: Record<string, unknown>): string {
   // Only an on-site path: a notification must never send someone to another website.
-  if (typeof p.href === "string" && /^\/(?!\/)/.test(p.href)) return p.href;
+  if (isOnSitePath(p.href)) return p.href;
   if (p.eventId && p.slotId) return `/events/${p.eventId}/slots/${p.slotId}`;
   if (p.eventId) return `/events/${p.eventId}`;
   return "/events";
