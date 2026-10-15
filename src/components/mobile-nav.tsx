@@ -28,7 +28,7 @@ export function MobileNav({ user, assistant = false }: { user: { initials: strin
             </Link>
           </li>
         ); })}
-        {assistant && <li className="order-1 flex flex-1 justify-center"><div id="dc-nav-assistant" className="flex h-14 w-14 items-start justify-center" /></li>}
+        {assistant && <li className="order-1 flex flex-1 items-start justify-center"><div id="dc-nav-assistant" className="flex h-11 w-16 items-center justify-center" /></li>}
       </ul>
     </nav>
   );

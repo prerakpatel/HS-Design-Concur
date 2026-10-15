@@ -55,20 +55,21 @@ export interface DockProps {
 }
 
 /**
- * In the phone's bottom bar: his face in a disc in the middle, a little bigger than the tabs. Tap and the orb grows
- * out of it above the bar while he listens (tap again to stop) and works; then the sheet opens. Hold for the thread.
+ * In the phone's bottom bar: his face in a disc in the middle, level with the tabs, a mic under his chin. Tap and the
+ * orb grows out of it onto the bar's top edge while he listens (the disc becomes the stop, level with the tabs' icons)
+ * and works; then the sheet opens. Hold for the thread.
  */
 export function NavDock({ slot, media, state, level, caption, attention, onTap, onHold }: DockProps & { slot: HTMLElement }) {
   const press = usePress(onTap, onHold);
   const active = state === "listening" || state === "thinking";
-  // At rest the disc holds his face with a mic badge; once tapped he moves up into the orb and the disc becomes the stop.
+  // At rest the disc holds his face with the mic under his chin; once tapped he moves up into the orb and the disc becomes the stop.
   const button = (
     <button type="button" aria-label={state === "listening" ? "Stop listening" : "Talk to the assistant"} aria-pressed={state === "listening"} {...press}
-      className={cn("buddy-dock relative flex items-center justify-center rounded-full p-0.5 shadow-md ring-1 transition-[background-color,box-shadow,width,height,margin] duration-300 active:scale-95", active ? "mt-0 size-8 bg-brand ring-brand" : "-mt-5 size-14 bg-card ring-border")}
+      className={cn("buddy-dock relative flex items-center justify-center rounded-full p-0.5 shadow-md ring-1 transition-[background-color,box-shadow,width,height] duration-300 active:scale-95", active ? "size-8 bg-brand-hover ring-brand-hover" : "size-16 bg-card ring-border")}
       style={{ touchAction: "manipulation", WebkitTouchCallout: "none" }}>
       <span className={cn("absolute inset-0.5 transition-opacity duration-200", active ? "opacity-0" : "opacity-100")}><OrbFace media={media.idle} inset /></span>
       <span className={cn("flex size-full items-center justify-center text-brand-foreground transition-opacity duration-200", active ? "opacity-100" : "opacity-0")}><span className="block size-2.5 rounded-[2px] bg-current" /></span>
-      {!active && <span className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full bg-brand-soft text-brand-soft-foreground ring-2 ring-card"><Icon name="mic" size={20} className="!text-[14px]" /></span>}
+      {!active && <span className="absolute -bottom-1.5 left-1/2 flex size-7 -translate-x-1/2 items-center justify-center rounded-full bg-brand text-brand-foreground ring-2 ring-card"><Icon name="mic" size={20} className="!text-[17px]" /></span>}
       {attention && !active && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
     </button>
   );
@@ -77,11 +78,12 @@ export function NavDock({ slot, media, state, level, caption, attention, onTap, 
       {createPortal(button, slot)}
       {active && (
         <>
-          <div className="buddy-glow pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+66px)] z-[45] h-52" />
-          {/* The orb sits low enough to overlap the disc it came out of; the words, or what he is doing, in one slot above it. */}
-          <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+76px)] z-50 flex flex-col items-center gap-2.5" aria-live="polite">
+          {/* Behind the bar (z-30 < the bar's z-40), so it never paints over the tabs. */}
+          <div className="buddy-glow pointer-events-none fixed inset-x-0 bottom-0 z-30 h-64" />
+          {/* The orb rests on the bar's top edge, clear of the stop below it; the words, or what he is doing, in one slot above it. */}
+          <div className="pointer-events-none fixed inset-x-0 bottom-[calc(max(env(safe-area-inset-bottom),12px)+78px)] z-50 flex flex-col items-center gap-2.5" aria-live="polite">
             {caption && (state === "listening" ? <Caption>{caption}</Caption> : <Pill>{caption}</Pill>)}
-            <Orb media={media[state]} state={state} level={level} size={96} grow />
+            <Orb media={media[state]} state={state} level={level} size={112} grow />
           </div>
         </>
       )}
@@ -115,8 +117,8 @@ export function FloatingDock({ media, state, level, caption, attention, onTap, o
           className={cn("buddy-float relative rounded-full p-0.5 shadow-md ring-1 transition-[width,height,transform,opacity,background-color] duration-300 ease-out", active ? "bg-foreground ring-foreground" : "bg-card ring-border", !active && !awake && "translate-y-[45%] opacity-80")}
           style={{ width: size, height: size, touchAction: "manipulation", WebkitTouchCallout: "none" }}>
           <Orb media={media[active ? state : "idle"]} state={state} level={level} size={size - 4} bare inset={!active} />
-          {state === "listening" && <span className="absolute -bottom-0.5 -right-0.5 flex size-7 items-center justify-center rounded-full bg-brand text-brand-foreground ring-2 ring-card"><span className="block size-2.5 rounded-[2px] bg-current" /></span>}
-          {!active && awake && <span className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full bg-brand-soft text-brand-soft-foreground ring-2 ring-card"><Icon name="mic" size={20} className="!text-[14px]" /></span>}
+          {state === "listening" && <span className="absolute -bottom-0.5 -right-0.5 flex size-7 items-center justify-center rounded-full bg-brand-hover text-brand-foreground ring-2 ring-card"><span className="block size-2.5 rounded-[2px] bg-current" /></span>}
+          {!active && awake && <span className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full bg-brand text-brand-foreground ring-2 ring-card"><Icon name="mic" size={20} className="!text-[15px]" /></span>}
           {attention && !active && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
         </button>
       </div>
