@@ -153,7 +153,7 @@ Use a spare test account, not a real teammate.
 - [ ] Open a person → **Disable user** → a confirmation explains what happens → confirm. They appear greyed out at the bottom with a "Disabled" tag.
 - [ ] As that person (private window): signing in lands on "Access turned off". Nothing else opens. Their comments and uploads still show their name.
 - [ ] Open them again → **Enable user**: they sign in and everything is as before (organizations, role, groups kept).
-- [ ] You cannot disable yourself, or the last Core Admin.
+- [ ] You cannot disable or remove yourself (your own row has no such buttons, and the database refuses it too), or the last Core Admin. Another Core Admin has to do it for you.
 - [ ] Tick **Hide from lists** on a person and save. They no longer appear when someone types @, in the Designer picker, or in the "add people" suggestions of a project. They still sign in and use everything, and their name still shows on what they created or commented. If a format is assigned to them, their name still shows there.
 - [ ] A hidden person who is @-mentioned by typing their name in full is not pinged (they are not in the list).
 - [ ] A disabled person who is assigned a format is not @-pinged in chat.
