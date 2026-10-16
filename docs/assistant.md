@@ -53,25 +53,34 @@ and `GEMINI_API_KEY` (one or both, optional). Without `ANTHROPIC_API_KEY` the sh
 `src/components/assistant/dock.tsx` and `assistant.tsx`. On phones a raised mic sits in the middle of the bottom bar
 in a notch cut out of its top edge (a CSS mask on the bar's surface, the rim drawn as an arc, a soft shadow following
 both), labelled "Vichar" like the tabs; Inbox takes Archive's place in that bar and archived projects stay under
-Projects → Past. Tap the label alone and the button dribbles like a dropped ball, a nudge for the curious. **Tap** and his screen takes over the phone and he listens straight
-away: his face at the top with a pill under it that says what he is doing (Listening… / Working out the words… /
-Thinking… / Doing it…), the thread below, and one pill at the bottom to type in or hold the mic. While he listens
-the pill shows the sound; the arrow sends, the stop drops it. **Hold** the mic to open the screen without listening.
-On pages without the bar (a design, project setup) a small disc floats at the bottom, on desktop in the corner,
-where his screen is a tall sheet in the middle; left alone it settles into the edge. An amber dot means a card is
-waiting.
+Projects → Past. Tap the label alone and the button dribbles like a dropped ball, a nudge for the curious. On pages
+without the bar (a design, project setup) and on desktop the same mic floats bottom right, on phones over a faint rise
+of the page colour so it stands off what scrolls beneath.
 
-The thread is kept plain: your words in one soft bubble (tap it to fix what he heard), his line, one bordered card,
-and under it one full-width button that does it, with the form as a quiet link. Start over sits top left and asks
-first, since it drops the draft; closing his screen after something was done clears it too. Colour is kept for the
-two marks that matter: a warning mark on anything that still needs you, a tick on what got done.
+He shows up at moments rather than living on the chrome: a hello card at the top of Projects, once (him peeking over
+its top edge, one line, a Try button that opens his screen listening; dismissed, it stays away until
+`ASSISTANT_HELLO_VERSION` is bumped), and his screen itself.
+
+**Tap** the mic and his screen takes over the phone and he listens straight away. The top is frosted glass: his face,
+a pill under his chin that says what he is doing (Listening… / Working out the words… / Thinking… / Doing it…), the
+way out and Start over in the corners; the thread scrolls under it and blurs away as it goes. At the bottom one pill:
+type (it grows with the words; Enter sends, Shift+Enter breaks a line) or hold the mic. While he listens the pill
+fills from the right with the sound; the arrow sends, the stop drops it. **Hold** the mic to open the screen without
+listening. Tap something you said and it comes back into the pill to fix; sending replays the thread from there.
+An amber dot on the mic means a card is waiting.
+
+The thread is kept plain: your words in one soft bubble, his line, one bordered card, and under it one full-width
+button that does it, with the form as a quiet link. Start over asks first, since it drops the draft; closing his
+screen after something was done clears it too. Colour is kept for the two marks that matter: a warning mark on
+anything that still needs you, a tick on what got done.
 
 His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART` in the config): one still, cropped to his head
-wherever he appears, and short looping clips zoomed to his bust that play in his avatar (`clips/writing.mp4` while he
-listens, `clips/thinking.mp4` while he works). Idle never moves. `peek` is a picture of him peeking over an edge, kept for a moment that is still being designed.
+wherever he appears; short looping clips zoomed to his bust that play in his avatar (`clips/writing.mp4` while he
+listens, `clips/thinking.mp4` while he works); and `peek`, him over the top of the hello card. Idle never moves.
 
 Text is the rounded cut of Google Sans Flex (headings keep the straight one); Gujarati letters fall through to
-Noto Serif Gujarati. Both are loaded in the root layout for the whole app.
+Noto Serif Gujarati. Both are loaded in the root layout for the whole app. Fields are kept at 16px on phones so the
+page does not zoom when one is focused.
 
 ## Costs
 

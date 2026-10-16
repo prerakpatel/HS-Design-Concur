@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/user-error";
 import { assistantTurn, assistantCreateProjects, assistantAddFormats, assistantComment, assistantUpdateProject } from "@/app/actions/assistant";
 import type { CommentDraft, Outcome, Person, Turn, Where } from "@/lib/assistant/schema";
-import { NavDock, FloatingDock, Face, useNavSlot } from "@/components/assistant/dock";
-import { ASSISTANT_ART } from "@/config/assistant";
+import { NavDock, FloatingMic, HelloCard, Face, useSlot, NAV_SLOT_ID, HELLO_SLOT_ID } from "@/components/assistant/dock";
+import { ASSISTANT_ART, ASSISTANT_HELLO_VERSION } from "@/config/assistant";
 import { useRecorder } from "@/components/assistant/use-recorder";
 import { CardActions, CommentCard, DoneCard, OptionButtons, ProjectCard, ProjectUpdateCard, Say } from "@/components/assistant/cards";
 
@@ -47,9 +47,14 @@ const whereOf = (path: string): Where => {
   return { page: path === "/events" || path === "/" ? "projects" : "other", eventId: null, slotId: null, path };
 };
 
-/** How many bars the composer draws while he listens, and how long a press counts as holding the mic. */
-const WAVE_BARS = 11;
+/** The sound while he listens: one bar every so often, the newest at the right, as many as the pill can show. */
+const WAVE_BARS = 64;
+const WAVE_EVERY_MS = 70;
+/** How long a press counts as holding the mic. */
 const HOLD_MS = 400;
+/** His hello card stays away once dismissed, until he learns something new. */
+const HELLO_KEY = "dc.vichar.hello";
+const helloDismissed = () => { try { return localStorage.getItem(HELLO_KEY) === ASSISTANT_HELLO_VERSION; } catch { return true; } };
 
 /**
  * The assistant: his disc in the bottom bar (or floating where there is no bar), and the screen that takes over when
@@ -69,7 +74,8 @@ export function Assistant(p: AssistantProps) {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [hello, setHello] = useState(() => !helloDismissed());
   const pressAt = useRef(0);
   const endRef = useRef<HTMLDivElement>(null);
   const rec = useRecorder(!!p.ears, p.keyterms);
@@ -84,11 +90,18 @@ export function Assistant(p: AssistantProps) {
 
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" }); }, [entries, thinking, rec.state]);
 
-  // The last few loudness readings, drawn as bars in the composer while he listens.
-  const [wave, setWave] = useState<number[]>(() => Array(WAVE_BARS).fill(0));
-  useEffect(() => { if (!listening) { setWave(Array(WAVE_BARS).fill(0)); return; } setWave((w) => [...w.slice(1), rec.level]); }, [rec.level, listening]);
+  // The loudness, sampled while he listens and drawn as bars that fill the pill from the right.
+  const level = useRef(0); level.current = rec.level;
+  const [wave, setWave] = useState<number[]>([]);
+  useEffect(() => { if (!listening) { setWave([]); return; } const t = setInterval(() => setWave((w) => [...w.slice(-(WAVE_BARS - 1)), level.current]), WAVE_EVERY_MS); return () => clearInterval(t); }, [listening]);
+  // The pill grows with what is typed, a few lines at most.
+  useEffect(() => { const el = inputRef.current; if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 144) + "px"; }, [text]);
 
   const reset = () => { setEntries([]); setPeople([]); setText(""); setEditing(null); setConfirmReset(false); persist(null); };
+  /** Tap what you said and it comes back into the pill to fix; sending replays the thread from there. */
+  const edit = (i: number, words: string) => { setEditing(i); setText(words); inputRef.current?.focus(); };
+  const cancelEdit = () => { setEditing(null); setText(""); };
+  const dismissHello = () => { setHello(false); try { localStorage.setItem(HELLO_KEY, ASSISTANT_HELLO_VERSION); } catch { /* private mode */ } };
 
   /** Send words to the brain: from the mic, the keyboard, or an edited earlier line (which replays from there). */
   const send = useCallback(async (words: string, replaceAt: number | null = null) => {
@@ -106,14 +119,15 @@ export function Assistant(p: AssistantProps) {
 
   const listen = useCallback(() => {
     if (!rec.supported) { toast.error("This browser can't listen. Type instead."); inputRef.current?.focus(); return; }
-    rec.start((words) => { if (words.trim()) send(words); else setEntries((cur) => [...cur, { role: "error", text: "I didn't catch anything. Tap the mic and speak, or type it." }]); }, (msg) => setEntries((cur) => [...cur, { role: "error", text: msg }]));
-  }, [rec, send]);
+    rec.start((words) => { if (words.trim()) send(words, editing); else setEntries((cur) => [...cur, { role: "error", text: "I didn't catch anything. Tap the mic and speak, or type it." }]); }, (msg) => setEntries((cur) => [...cur, { role: "error", text: msg }]));
+  }, [rec, send, editing]);
 
   // His disc: tap and his screen takes over and he listens straight away; hold to open it for typing.
-  const navSlot = useNavSlot(pathname);
+  const navSlot = useSlot(NAV_SLOT_ID, pathname);
+  const helloSlot = useSlot(HELLO_SLOT_ID, pathname);
   const tap = () => { if (open) { setOpen(false); return; } setOpen(true); if (!working && rec.state === "idle") listen(); };
   const attention = !open && !!last && (last.role === "done" || lastOutcome?.kind === "question" || !!lastOutcome?.projects.some((x) => x.gaps.length) || !!lastOutcome?.comments.some((c) => c.unresolved.length));
-  const dock = { still: ASSISTANT_ART.still, attention, onTap: tap, onHold: () => setOpen(true) };
+  const dock = { attention, onTap: tap, onHold: () => setOpen(true) };
 
   // What the pill under his face says, and which clip plays in it.
   const status = listening ? "Listening…" : rec.state === "transcribing" ? "Working out the words…" : thinking ? "Thinking…" : busy ? "Doing it…" : p.name;
@@ -151,22 +165,28 @@ export function Assistant(p: AssistantProps) {
 
   return (
     <>
-      {navSlot ? <NavDock slot={navSlot} {...dock} /> : !open && <FloatingDock {...dock} corner={where.page !== "asset" && where.page !== "wizard"} />}
+      {navSlot ? <NavDock slot={navSlot} {...dock} /> : !open && <FloatingMic {...dock} raised={where.page === "asset" || where.page === "wizard"} />}
+      {hello && helloSlot && <HelloCard slot={helloSlot} peek={ASSISTANT_ART.peek} onTry={() => { dismissHello(); tap(); }} onDismiss={dismissHello} />}
       <Drawer open={open} onOpenChange={(o) => { setOpen(o); if (!o) { rec.cancel(); if (last?.role === "done") reset(); } }}>
         {/* His screen: the whole phone; on a wide screen a tall sheet in the middle. */}
-        <DrawerContent data-vichar className="h-[100dvh] max-h-[100dvh] rounded-none border-0 data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:max-h-[100dvh] data-[vaul-drawer-direction=bottom]:rounded-none [&>div:first-child]:hidden! md:mx-auto md:h-[85dvh] md:max-h-[85dvh] md:max-w-xl md:rounded-t-3xl md:data-[vaul-drawer-direction=bottom]:max-h-[85dvh] md:data-[vaul-drawer-direction=bottom]:rounded-t-3xl">
-          {/* Him at the top, his name (or what he is doing) under his chin, the way out in the corner. */}
-          <div className="relative flex shrink-0 flex-col items-center pt-[max(env(safe-area-inset-top),16px)]">
-            {entries.length > 0 && <Button variant="secondary" size="sm" className="absolute left-5 top-[max(env(safe-area-inset-top),16px)] h-8 rounded-full" onClick={() => setConfirmReset(true)} disabled={working || listening}>Start over</Button>}
-            <Button variant="secondary" size="icon-sm" className="absolute right-5 top-[max(env(safe-area-inset-top),16px)] rounded-full" onClick={() => setOpen(false)} aria-label="Close"><Icon name="close" /></Button>
-            <Face still={ASSISTANT_ART.still} clip={clip} size={88} className="mt-3 ring-2 ring-border" />
-            <div className="buddy-art -mt-4 rounded-full border-2 border-border bg-card px-3.5 py-1.5 text-sm shadow-md" aria-live="polite">
-              <DrawerTitle className="text-sm font-normal">{status}</DrawerTitle>
+        <DrawerContent data-vichar className="relative h-[100dvh] max-h-[100dvh] rounded-none border-0 data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:max-h-[100dvh] data-[vaul-drawer-direction=bottom]:rounded-none [&>div:first-child]:hidden! md:mx-auto md:h-[85dvh] md:max-h-[85dvh] md:max-w-xl md:rounded-t-3xl md:data-[vaul-drawer-direction=bottom]:max-h-[85dvh] md:data-[vaul-drawer-direction=bottom]:rounded-t-3xl">
+          {/* The top is frosted glass: him, his name (or what he is doing) under his chin, the way out and Start over in the corners.
+              The thread scrolls under it and fades out as it goes, so what was said earlier blurs away behind him. */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
+            <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+164px)] bg-gradient-to-b from-card from-45% via-card/85 via-70% to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+164px)] backdrop-blur-md [mask-image:linear-gradient(to_bottom,black_40%,transparent)]" />
+            <div className="relative flex flex-col items-center pt-[max(env(safe-area-inset-top),16px)]">
+              {entries.length > 0 && <Button variant="secondary" size="sm" className="pointer-events-auto absolute left-5 top-[max(env(safe-area-inset-top),16px)] h-8 rounded-full bg-card/70 backdrop-blur-md hover:bg-card" onClick={() => setConfirmReset(true)} disabled={working || listening}>Start over</Button>}
+              <Button variant="secondary" size="icon-sm" className="pointer-events-auto absolute right-5 top-[max(env(safe-area-inset-top),16px)] rounded-full bg-card/70 backdrop-blur-md hover:bg-card" onClick={() => setOpen(false)} aria-label="Close"><Icon name="close" /></Button>
+              <Face still={ASSISTANT_ART.still} clip={clip} size={88} className="mt-3 ring-2 ring-border" />
+              <div className="buddy-art -mt-4 rounded-full border-2 border-border bg-card px-3.5 py-1.5 text-sm shadow-md" aria-live="polite">
+                <DrawerTitle className="text-sm font-normal">{status}</DrawerTitle>
+              </div>
+              <DrawerDescription className="sr-only">Say or type what you need. Projects, formats, comments.</DrawerDescription>
             </div>
-            <DrawerDescription className="sr-only">Say or type what you need. Projects, formats, comments.</DrawerDescription>
           </div>
 
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-3 pt-8">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-3 pt-[calc(max(env(safe-area-inset-top),16px)+160px)]">
             {entries.length === 0 && (
               <div className="space-y-2 rounded-2xl bg-subtle p-4 text-sm leading-5">
                 <p className="text-muted-foreground">Try:</p>
@@ -177,19 +197,10 @@ export function Assistant(p: AssistantProps) {
             {entries.map((e, i) => {
               if (e.role === "user") return (
                 <div key={i} className="flex flex-col items-end">
-                  {editing === i ? (
-                    <form className="w-full max-w-[90%]" onSubmit={(ev) => { ev.preventDefault(); const v = new FormData(ev.currentTarget).get("t"); send(String(v ?? ""), i); }}>
-                      <input name="t" defaultValue={e.text} autoFocus className="w-full rounded-2xl border border-border bg-background px-4 py-2.5 text-[15px]" />
-                      <p className="mt-1 text-right text-xs text-muted-foreground">Enter to send it again · <button type="button" className="underline" onClick={() => setEditing(null)}>keep as is</button></p>
-                    </form>
-                  ) : (
-                    <>
-                      {i === lastUserAt && !working && <span className="mb-0.5 text-[11px] text-muted-foreground">Tap to edit</span>}
-                      <button type="button" title="Tap to fix what I heard" onClick={() => !working && setEditing(i)} className="max-w-[90%] rounded-2xl rounded-br-md bg-brand-soft px-4 py-2.5 text-left text-[15px] leading-6 text-brand-soft-foreground">
-                        {e.text}<Icon name="edit" fill className="ml-1.5 align-[-3px] !text-[16px] opacity-60" />
-                      </button>
-                    </>
-                  )}
+                  {i === lastUserAt && !working && editing == null && <span className="mb-0.5 text-[11px] text-muted-foreground">Tap to edit</span>}
+                  <button type="button" title="Tap to fix what I heard" onClick={() => !working && edit(i, e.text)} className={cn("max-w-[90%] rounded-2xl rounded-br-md bg-brand-soft px-4 py-2.5 text-left text-[15px] leading-6 text-brand-soft-foreground", editing === i && "ring-2 ring-brand/50")}>
+                    {e.text}<Icon name="edit" fill className="ml-1.5 align-[-3px] !text-[16px] opacity-60" />
+                  </button>
                 </div>
               );
               if (e.role === "error") return <div key={i} className="space-y-2"><Say tone="muted">{e.text}</Say>{i === entries.length - 1 && retry}</div>;
@@ -221,27 +232,28 @@ export function Assistant(p: AssistantProps) {
             <div ref={endRef} />
           </div>
 
-          {/* One pill: type, or the mic. While he listens it shows the sound, a stop to drop it, and the arrow to send. */}
-          <form className="shrink-0 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3" onSubmit={(e) => { e.preventDefault(); send(text); }}>
-            <div className="flex h-14 items-center gap-2 rounded-full border border-border bg-background pl-4 pr-1.5 focus-within:border-foreground/40">
+          {/* One pill: type (it grows with the words), or the mic. While he listens it fills with the sound from the right, a stop to drop it, the arrow to send. */}
+          <form className="shrink-0 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2" onSubmit={(e) => { e.preventDefault(); send(text, editing); }}>
+            {editing != null && !listening && <div className="mb-1.5 flex items-center justify-between px-3 text-xs text-muted-foreground"><span>Fixing what you said · he will redo it from there</span><button type="button" className="underline-offset-4 hover:underline" onClick={cancelEdit}>Cancel</button></div>}
+            <div className="flex min-h-14 items-end gap-2 rounded-[28px] border border-border bg-background pl-4 pr-1.5 focus-within:border-foreground/40">
               {listening ? (
                 <>
-                  <div className="flex flex-1 items-center justify-end gap-0.5" aria-hidden>
-                    {wave.map((v, i) => <span key={i} className="w-1 rounded-full bg-foreground transition-[height] duration-75" style={{ height: 2 + Math.round(v * 16) }} />)}
+                  <div className="flex h-14 flex-1 items-center justify-end gap-[2px] overflow-hidden" aria-hidden>
+                    {wave.map((v, i) => <span key={i} className="w-[3px] shrink-0 rounded-full bg-foreground" style={{ height: 2 + Math.round(v * 20) }} />)}
                   </div>
-                  <button type="button" className="flex size-10 items-center justify-center rounded-full text-foreground" onClick={() => rec.cancel()} aria-label="Stop and drop it"><Icon name="stop" fill size={24} /></button>
-                  <button type="button" className="flex size-11 items-center justify-center rounded-full bg-brand text-brand-foreground" onClick={() => rec.stop()} aria-label="Send what I said"><Icon name="arrow_upward" size={24} /></button>
+                  <button type="button" className="mb-1.5 flex size-10 shrink-0 items-center justify-center rounded-full text-foreground" onClick={() => rec.cancel()} aria-label="Stop and drop it"><Icon name="stop" fill size={24} /></button>
+                  <button type="button" className="mb-1.5 flex size-11 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground" onClick={() => rec.stop()} aria-label="Send what I said"><Icon name="arrow_upward" size={24} /></button>
                 </>
               ) : (
                 <>
-                  <input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} placeholder={rec.supported ? "Hold the mic, or type" : "Type what you need"} disabled={working} className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none" />
+                  <textarea ref={inputRef} rows={1} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(text, editing); } }} placeholder={rec.supported ? "Hold the mic, or type" : "Type what you need"} disabled={working} className="max-h-36 min-w-0 flex-1 resize-none bg-transparent py-4 text-[15px] leading-6 outline-none" />
                   {text.trim()
-                    ? <button type="submit" disabled={working} className="flex size-11 items-center justify-center rounded-full bg-brand text-brand-foreground disabled:opacity-50" aria-label="Send"><Icon name="arrow_upward" size={24} /></button>
+                    ? <button type="submit" disabled={working} className="mb-1.5 flex size-11 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground disabled:opacity-50" aria-label="Send"><Icon name="arrow_upward" size={24} /></button>
                     : <button type="button" aria-label="Hold to talk" disabled={working || rec.state === "transcribing"}
                         onPointerDown={(e) => { e.preventDefault(); if (rec.state === "idle") { pressAt.current = Date.now(); listen(); } }}
                         onPointerUp={() => { if (rec.state === "listening" && Date.now() - pressAt.current > HOLD_MS) rec.stop(); }}
                         onContextMenu={(e) => e.preventDefault()}
-                        className="flex size-11 items-center justify-center rounded-full bg-secondary text-secondary-foreground disabled:opacity-50" style={{ touchAction: "none" }}>
+                        className="mb-1.5 flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground disabled:opacity-50" style={{ touchAction: "none" }}>
                         <Icon name="mic" fill size={24} />
                       </button>}
                 </>

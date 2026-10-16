@@ -16,10 +16,13 @@ export const ASSISTANT_NAME = "Vichar";
  */
 export const ASSISTANT_ART = {
   still: "/assistant/vichar/neutral.webp",
-  /** Him peeking over an edge: eyes and hands, transparent background (about 3:2). Not placed anywhere yet. */
+  /** Him peeking over an edge (eyes and hands, transparent background): over the top of his hello card. */
   peek: "/assistant/vichar/peek.webp",
   clips: { thinking: "/assistant/vichar/clips/thinking.mp4", writing: "/assistant/vichar/clips/writing.mp4" },
 };
+
+/** Bump when he learns something worth a hello: the card at the top of Projects comes back once for everyone. */
+export const ASSISTANT_HELLO_VERSION = "2026-10-16";
 
 /** The model that turns words into drafts, and how hard it thinks (low | medium | high). */
 export const ASSISTANT_MODEL = "claude-opus-5-5";
