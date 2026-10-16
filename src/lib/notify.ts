@@ -172,7 +172,7 @@ async function deliver(caller: SupabaseClient, ids: string[], kind: Notification
     const allHtml = excerptHtml ? [excerptHtml] : items;
     const wanted = [...new Set([...mentions, ...placeholderIds, ...allHtml.flatMap(mentionIds)])];
     const people = new Map<string, ChatUser>();
-    if (wanted.length) for (const u of ((await supabase.from("users").select("id,name,email,slack_user_id,gchat_user_id").in("id", wanted)).data as ChatUser[] | null) ?? []) people.set(u.id, u);
+    if (wanted.length) for (const u of ((await supabase.from("users").select("id,name,email,slack_user_id,gchat_user_id,status").in("id", wanted)).data as (ChatUser & { status: string })[] | null) ?? []) if (u.status === "active") people.set(u.id, u); // someone whose access is off is never pinged
     const results = await Promise.all(hooks.map((hook) => {
       const platform = platformOf(hook);
       const at = (id: string) => { const u = people.get(id); return u ? mention(u, platform) : ""; };

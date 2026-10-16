@@ -33,6 +33,7 @@ export async function addProjectPerson(eventId: string, rawEmail: string) {
   const db = createServiceClient();
   const { data: who } = await db.from("users").select("id,name,email,status,slack_user_id,gchat_user_id").ilike("email", email).maybeSingle();
   if (who?.status === "removed") throw new UserError("This person's access was removed. A Core Admin can restore them in Settings → People first.");
+  if (who?.status === "disabled") throw new UserError("This person's access is turned off. A Core Admin can enable them in Settings → Users first.");
 
   const { count } = await supabase.from("project_members").select("email", { count: "exact", head: true }).eq("event_id", eventId);
   const emails = new Set([email]);
@@ -69,7 +70,7 @@ export async function addProjectPerson(eventId: string, rawEmail: string) {
 /** The organization's members not on the list yet, offered while typing an email (loaded when the panel opens). */
 export async function projectSuggestions(eventId: string, exclude: string[]) {
   const { supabase, event } = await manageable(eventId);
-  const { data } = await supabase.from("users").select("name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", event.org_id);
+  const { data } = await supabase.from("users").select("name,email,org_memberships!inner(org_id)").eq("status", "active").eq("hide_in_lists", false).eq("org_memberships.org_id", event.org_id);
   const skip = new Set(exclude.map((e) => e.toLowerCase()));
   return ((data ?? []) as { name: string | null; email: string }[]).filter((u) => !skip.has(u.email.toLowerCase())).map((u) => ({ email: u.email.toLowerCase(), name: u.name ?? u.email }));
 }

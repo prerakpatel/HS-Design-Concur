@@ -280,7 +280,7 @@ export function AssetStage({ canRequestChanges = false, versionApproved = false,
               {status.canAssign && !readOnly ? (
                 <SelectField value={status.assigneeId ?? ""} onChange={(e) => reassign(e.target.value)} disabled={pending} aria-label="Assigned designer" className="w-[60%] [&>select]:h-9 [&>select]:pl-3 [&>select]:text-right">
                   <option value="">Unassigned</option>
-                  {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  {members.filter((m) => m.kind !== "group").map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </SelectField>
               ) : <span className="truncate text-right">{members.find((m) => m.id === status.assigneeId)?.name ?? "Unassigned"}</span>}
             </div>

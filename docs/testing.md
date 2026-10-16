@@ -147,6 +147,17 @@ Do these in the **Test sandbox**. Use the designer account (member) and the Core
 - [ ] Mark the last one done in the app instead, then press a button for it in Slack: the message says "no longer open"/done, nothing breaks.
 - [ ] The channel post "Open changes need resolving" lists each asset as a link (in Slack and in Google Chat).
 
+### Disable user, Hide from lists, linked chat accounts (Settings → Users)
+Use a spare test account, not a real teammate.
+- [ ] The Users list shows **Slack** and **Chat** under each person: green with a tick when their ID is set, grey with an empty circle when not.
+- [ ] Open a person → **Disable user** → a confirmation explains what happens → confirm. They appear greyed out at the bottom with a "Disabled" tag.
+- [ ] As that person (private window): signing in lands on "Access turned off". Nothing else opens. Their comments and uploads still show their name.
+- [ ] Open them again → **Enable user**: they sign in and everything is as before (organizations, role, groups kept).
+- [ ] You cannot disable yourself, or the last Core Admin.
+- [ ] Tick **Hide from lists** on a person and save. They no longer appear when someone types @, in the Designer picker, or in the "add people" suggestions of a project. They still sign in and use everything, and their name still shows on what they created or commented. If a format is assigned to them, their name still shows there.
+- [ ] A hidden person who is @-mentioned by typing their name in full is not pinged (they are not in the list).
+- [ ] A disabled person who is assigned a format is not @-pinged in chat.
+
 ### What should NOT happen
 - [ ] Nothing posted in the real Slack or Google Chat channels. If anything did, stop and check the sandbox organisation's Settings → Organizations has no webhook.
 

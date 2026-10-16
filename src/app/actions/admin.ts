@@ -57,7 +57,8 @@ export async function updateUser(userId: string, formData: FormData) {
   const slack_user_id = normaliseSlackId(String(formData.get("slack_user_id") ?? ""));
   const gchat_user_id = String(formData.get("gchat_user_id") ?? "").trim().replace(/^users\//, "") || null;
   if (gchat_user_id && !/^\d{6,}$/.test(gchat_user_id)) throw new UserError("A Google Chat user ID is a long number");
-  await supabase.from("users").update({ role, is_glossary_steward, function_tags, slack_user_id, gchat_user_id }).eq("id", userId);
+  const hide_in_lists = formData.get("hide_in_lists") === "on";
+  await supabase.from("users").update({ role, is_glossary_steward, function_tags, slack_user_id, gchat_user_id, hide_in_lists }).eq("id", userId);
   await setMemberships(supabase, userId, orgIds, approverOrgIds);
   if (formData.get("groups_present")) {
     // Only this organization's groups are on the form; memberships in the other org's groups are left alone.
@@ -67,6 +68,31 @@ export async function updateUser(userId: string, formData: FormData) {
     if (ownIds.length) await supabase.from("group_members").delete().eq("user_id", userId).in("group_id", ownIds);
     if (wanted.length) await supabase.from("group_members").insert(wanted.map((group_id) => ({ group_id, user_id: userId })));
   }
+  revalidatePath("/settings");
+}
+
+/**
+ * Turn someone's access off, reversibly: they can open nothing, and are left out of every list, until enabled again.
+ * Unlike Remove, their organizations, role and groups are kept, so enabling restores everything.
+ */
+export async function disableUser(userId: string) {
+  const { supabase, user } = await requireCoreAdmin();
+  if (userId === user.id) throw new UserError("You cannot disable yourself");
+  const { data: target } = await supabase.from("users").select("status,role").eq("id", userId).maybeSingle();
+  if (target?.status !== "active") throw new UserError("Only someone with access can be disabled");
+  const { count } = await supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "core_admin").eq("status", "active").neq("id", userId);
+  if (target.role === "core_admin" && (count ?? 0) === 0) throw new UserError("There must be at least one Core Admin");
+  const { error } = await supabase.from("users").update({ status: "disabled" }).eq("id", userId);
+  if (error) throw new UserError(error.message);
+  revalidatePath("/settings");
+}
+
+export async function enableUser(userId: string) {
+  const { supabase } = await requireCoreAdmin();
+  const { data: target } = await supabase.from("users").select("status").eq("id", userId).maybeSingle();
+  if (target?.status !== "disabled") throw new UserError("This person is not disabled");
+  const { error } = await supabase.from("users").update({ status: "active" }).eq("id", userId);
+  if (error) throw new UserError(error.message);
   revalidatePath("/settings");
 }
 

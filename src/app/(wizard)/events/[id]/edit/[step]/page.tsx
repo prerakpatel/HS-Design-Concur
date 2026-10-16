@@ -79,9 +79,11 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
   if (s === "assign") {
     const [{ data: slots }, { data: members }] = await Promise.all([
       supabase.from("slots").select("*,formats(name,sort)").eq("event_id", id).eq("requested", true),
-      supabase.from("users").select("id,name,email,function_tags,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id).order("name"),
+      supabase.from("users").select("id,name,email,function_tags,hide_in_lists,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id).order("name"),
     ]);
-    const people = ((members ?? []) as unknown as Pick<AppUser, "id" | "name" | "email" | "function_tags">[]).sort((a, b) => Number(b.function_tags.includes("designer")) - Number(a.function_tags.includes("designer"))).map((p) => ({ id: p.id, label: `${p.name ?? p.email}${p.function_tags.includes("designer") ? " · Designer" : ""}` }));
+    // People marked "hide from lists" are not offered, unless a format is already assigned to them.
+    const assigned = new Set((slots ?? []).map((sl) => sl.assignee_id as string | null).filter(Boolean));
+    const people = ((members ?? []) as unknown as Pick<AppUser, "id" | "name" | "email" | "function_tags" | "hide_in_lists">[]).filter((p) => !p.hide_in_lists || assigned.has(p.id)).sort((a, b) => Number(b.function_tags.includes("designer")) - Number(a.function_tags.includes("designer"))).map((p) => ({ id: p.id, label: `${p.name ?? p.email}${p.function_tags.includes("designer") ? " · Designer" : ""}` }));
     const rows = (slots ?? []).map((sl) => ({ ...sl, sort: (sl.formats as unknown as { sort: number })?.sort ?? 0 })).sort(byFormatThenLabel).map((sl) => ({ slotId: sl.id, name: slotName((sl.formats as unknown as { name: string })?.name, sl.label), assignee: sl.assignee_id ?? "", due: sl.due_on ?? "" }));
     return (
       <WizardShell assets={assets} eventId={id} step={s} statuses={statuses} title="Who designs what, and by when?" subtitle="Designers are listed first. Due dates send a reminder three days before and on the day." wide>

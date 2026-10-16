@@ -139,7 +139,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
   if (screen === "settings" || screen === "requests" || screen === "formats") return shell(<>
     <PageHeader title="Settings" subtitle="People, access, the format catalog and notifications" />
     {tabs([["users", "Users"], ["requests", "Requests · 2"], ["formats", "Formats"], ["notifications", "Notifications"]], screen === "settings" ? "users" : screen)}
-    {screen === "formats" ? <FormatsList formats={F.FORMATS} /> : screen === "settings" ? <UsersList currentUserId="u-1" orgs={F.ORGS.map((o) => ({ id: o.id, label: o.short_name }))} users={F.USERS.map((u) => ({ ...u, email_pref: F.USERS_PREFS[u.id] }))} /> : <AccessRequests action={noopUser} orgs={F.ORGS.map((o) => ({ id: o.id, label: o.short_name }))} defaultOrgId={org.id} pending={F.PENDING} />}
+    {screen === "formats" ? <FormatsList formats={F.FORMATS} /> : screen === "settings" ? <UsersList currentUserId="u-1" orgs={F.ORGS.map((o) => ({ id: o.id, label: o.short_name }))} users={F.USERS.map((u, i) => ({ ...u, email_pref: F.USERS_PREFS[u.id], slack_user_id: i === 1 ? null : "U0123ABCD", gchat_user_id: i === 2 ? null : "110000000000000000001", hideInLists: i === 0, status: i === F.USERS.length - 1 ? "disabled" as const : "active" as const }))} /> : <AccessRequests action={noopUser} orgs={F.ORGS.map((o) => ({ id: o.id, label: o.short_name }))} defaultOrgId={org.id} pending={F.PENDING} />}
   </>);
 
   if (screen === "inbox") return shell(<>

@@ -11,10 +11,10 @@ import { StateBadge } from "@/components/state-badge";
 import { Icon } from "@/components/material-icon";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Input } from "@/components/ui/input";
-import { updateUser, removeUser } from "@/app/actions/admin";
+import { updateUser, removeUser, disableUser, enableUser } from "@/app/actions/admin";
 import { errorMessage } from "@/lib/user-error";
 
-export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; approverOrgIds: string[]; glossarySteward: boolean; function_tags: string[]; orgIds: string[]; groupIds?: string[]; email_pref?: "instant" | "digest" | "off"; slack_user_id?: string | null; gchat_user_id?: string | null }
+export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; approverOrgIds: string[]; glossarySteward: boolean; function_tags: string[]; orgIds: string[]; groupIds?: string[]; email_pref?: "instant" | "digest" | "off"; slack_user_id?: string | null; gchat_user_id?: string | null; status?: "active" | "disabled"; hideInLists?: boolean }
 export interface OrgOption { id: string; label: string }
 const TAGS = [{ value: "central", label: "Central" }, { value: "publication", label: "Publication" }, { value: "designer", label: "Designer" }];
 const tagLabel = (t: string) => TAGS.find((x) => x.value === t)?.label ?? t;
@@ -27,11 +27,13 @@ export function UsersList({ users, orgs, groups = [], currentUserId }: { users: 
       <ul className="divide-y divide-border">
         {users.map((u) => (
           <li key={u.id}>
-            <button type="button" onClick={() => setOpen(u)} className="-mx-3 flex w-[calc(100%+24px)] items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-subtle md:gap-4">
+            <button type="button" onClick={() => setOpen(u)} className={"-mx-3 flex w-[calc(100%+24px)] items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-subtle md:gap-4 " + (u.status === "disabled" ? "opacity-60" : "")}>
               <UserAvatar initials={u.initials} src={u.avatar} size={36} />
-              <div className="min-w-0 flex-1 md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_120px] md:items-center md:gap-4">
+              <div className="min-w-0 flex-1 md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_120px_92px] md:items-center md:gap-4">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium leading-5">{u.name}{u.id === currentUserId && <span className="ml-2 text-xs font-normal text-muted-foreground">you</span>}</p>
+                  <p className="truncate text-sm font-medium leading-5">{u.name}{u.id === currentUserId && <span className="ml-2 text-xs font-normal text-muted-foreground">you</span>}
+                    {u.status === "disabled" && <span className="ml-2 rounded-full bg-muted px-2 py-px text-[11px] font-medium text-muted-foreground">Disabled</span>}
+                    {u.hideInLists && <span title="Left out of @ lists and pickers" className="ml-2 rounded-full bg-muted px-2 py-px text-[11px] font-medium text-muted-foreground">Hidden</span>}</p>
                   <p className="truncate text-[13px] text-muted-foreground">{u.email}</p>
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:mt-0">
@@ -47,6 +49,7 @@ export function UsersList({ users, orgs, groups = [], currentUserId }: { users: 
                   <p className="truncate">{orgs.filter((o) => u.orgIds.includes(o.id)).map((o) => o.label).join(", ") || "No org"}{u.email_pref && <span className="text-muted-foreground/80 md:hidden"> · Email {u.email_pref === "instant" ? "as it happens" : u.email_pref === "digest" ? "daily" : "off"}</span>}</p>
                   {u.email_pref && <p className="hidden truncate text-xs text-muted-foreground/80 md:block">Email {u.email_pref === "instant" ? "as it happens" : u.email_pref === "digest" ? "daily" : "off"}</p>}
                 </div>
+                <ChatLinks u={u} />
               </div>
               <Icon name="chevron_right" className="shrink-0 text-muted-foreground" />
             </button>
@@ -56,6 +59,16 @@ export function UsersList({ users, orgs, groups = [], currentUserId }: { users: 
       <UserPanel user={open} orgs={orgs} groups={groups} isSelf={open?.id === currentUserId} onClose={() => setOpen(null)} />
     </>
   );
+}
+
+/** Which chat accounts are linked, at a glance (the IDs themselves are in the person's panel). */
+function ChatLinks({ u }: { u: EditableUser }) {
+  const item = (label: string, on: boolean) => (
+    <span key={label} title={on ? `${label} is linked` : `No ${label} ID yet`} className={"inline-flex items-center gap-1 text-xs " + (on ? "text-success-text" : "text-muted-foreground/70")}>
+      <Icon name={on ? "check_circle" : "radio_button_unchecked"} className="!text-[14px]" fill={on} />{label}
+    </span>
+  );
+  return <div className="mt-1 flex items-center gap-3 md:mt-0 md:flex-col md:items-start md:gap-0.5">{item("Slack", !!u.slack_user_id)}{item("Chat", !!u.gchat_user_id)}</div>;
 }
 
 function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser | null; orgs: OrgOption[]; groups: OrgOption[]; isSelf: boolean; onClose: () => void }) {
@@ -70,6 +83,7 @@ function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser
               <div className="flex items-center gap-3"><UserAvatar initials={user.initials} src={user.avatar} size={40} /><div><DialogTitle className="text-lg">{user.name}</DialogTitle><DialogDescription>{user.email}</DialogDescription></div></div>
             </DialogHeader>
             <div className="min-h-0 flex-1 space-y-7 overflow-y-auto px-6 py-6">
+              {user.status === "disabled" && <p className="rounded-xl bg-subtle px-4 py-3 text-sm text-muted-foreground">Access is turned off. {user.name.split(" ")[0]} cannot open the app. Their organizations, role and groups are kept, so enabling them restores everything.</p>}
               <Field label="Role" hint="Core Admins approve access, manage people and can delete any event.">
                 <ChoiceChips name="role" defaultValue={user.role} options={[{ value: "member", label: "Member" }, { value: "core_admin", label: "Core Admin" }]} />
               </Field>
@@ -89,6 +103,7 @@ function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser
                   <ChoiceChips name="group" multiple defaultValue={user.groupIds ?? []} options={groups.map((g) => ({ value: g.id, label: g.label }))} />
                 </Field>
               )}
+              <HideRow defaultOn={!!user.hideInLists} />
               <Field label="Chat mentions" hint="So Slack and Google Chat posts can ping them. Slack: their profile → ⋮ → Copy member ID. Google Chat fills itself in when they sign in.">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="space-y-1.5 text-sm"><span className="text-muted-foreground">Slack member ID</span><Input name="slack_user_id" defaultValue={user.slack_user_id ?? ""} placeholder="U0123ABCD" autoCapitalize="characters" spellCheck={false} className="font-mono uppercase" /></label>
@@ -97,13 +112,31 @@ function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser
               </Field>
             </div>
             <div className="flex items-center justify-between gap-3 border-t border-border px-6 py-4">
-              {!isSelf ? <ConfirmButton variant="ghost" label="Remove" title={`Remove ${user.name}?`} description="They lose access immediately. Their comments and uploads stay." confirmLabel="Remove" action={async () => { await removeUser(user.id); onClose(); }} /> : <span />}
+              {!isSelf ? (
+                <div className="flex items-center gap-1">
+                  {user.status === "disabled"
+                    ? <Button type="button" variant="secondary" disabled={pending} onClick={() => start(async () => { try { await enableUser(user.id); toast.success(`${user.name} can use the app again`); onClose(); router.refresh(); } catch (err) { toast.error(errorMessage(err)); } })}>Enable user</Button>
+                    : <ConfirmButton variant="ghost" label="Disable user" title={`Turn off ${user.name}'s access?`} description={`${user.name.split(" ")[0]} will not be able to open the app, and will not appear in any list. Their comments and uploads stay, with their name. Their organizations, role and groups are kept, so you can enable them again at any time and everything comes back. If they are the only approver in an organization, designs there cannot be approved until someone else is.`} confirmLabel="Disable user" action={async () => { await disableUser(user.id); onClose(); }} />}
+                  <ConfirmButton variant="ghost" label="Remove" title={`Remove ${user.name}?`} description="They lose access immediately and their organizations are cleared; adding them back later means setting everything up again. Their comments and uploads stay. To switch someone off for a while, use Disable user instead." confirmLabel="Remove" action={async () => { await removeUser(user.id); onClose(); }} />
+                </div>
+              ) : <span />}
               <Button type="submit" size="lg" disabled={pending}>{pending ? "Saving…" : "Save changes"}</Button>
             </div>
           </form>
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function HideRow({ defaultOn }: { defaultOn: boolean }) {
+  const [on, setOn] = useState(defaultOn);
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border p-4">
+      <input type="hidden" name="hide_in_lists" value={on ? "on" : "off"} />
+      <input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-primary" />
+      <span><span className="block text-sm font-medium">Hide from lists</span><span className="block text-sm text-muted-foreground">They keep full access, and their name still shows on what they create, upload or comment on. They are left out when someone types @, picks a designer or adds people to a project.</span></span>
+    </label>
   );
 }
 
