@@ -18,18 +18,25 @@ export async function POST(req: Request) {
   const secret = process.env.SLACK_SIGNING_SECRET;
   if (!secret) return new Response("Slack buttons are not set up", { status: 503 });
   const raw = await req.text();
-  if (!verifySlackSignature(secret, req.headers.get("x-slack-request-timestamp"), req.headers.get("x-slack-signature"), raw)) return new Response("Bad signature", { status: 401 });
+  const stamp = req.headers.get("x-slack-request-timestamp");
+  if (!verifySlackSignature(secret, stamp, req.headers.get("x-slack-signature"), raw)) {
+    // Never logs the secret. The usual cause of every press failing is pasting the wrong value into SLACK_SIGNING_SECRET.
+    console.error(`[slack actions] refused a request: bad signature (timestamp ${stamp ? `${Math.abs(Math.floor(Date.now() / 1000) - Number(stamp))}s off` : "missing"}). Check that SLACK_SIGNING_SECRET is the Slack app's Signing Secret (Basic Information → App Credentials), not the Client Secret, with no spaces, and redeploy.`);
+    return new Response("Bad signature", { status: 401 });
+  }
 
   let payload: Payload;
   try { payload = JSON.parse(new URLSearchParams(raw).get("payload") ?? "{}") as Payload; } catch { return new Response("Bad request", { status: 400 }); }
   const action = payload.actions?.[0]; const responseUrl = payload.response_url;
-  if (payload.type !== "block_actions" || !action || !responseUrl || !payload.user?.id) return new Response(null, { status: 200 });
+  if (payload.type !== "block_actions" || !action || !responseUrl || !payload.user?.id) { console.warn(`[slack actions] ignored a request of type ${payload.type ?? "unknown"}`); return new Response(null, { status: 200 }); }
+  console.log(`[slack actions] ${action.action_id} pressed by Slack member ${payload.user.id}`);
 
   // Slack wants an answer within three seconds: the work happens after replying; the message is updated when it is done.
   after(async () => {
     const db = createServiceClient();
     const { data: people } = await db.from("users").select("id,name,email").eq("slack_user_id", payload.user!.id!).eq("status", "active").limit(1);
     const me = people?.[0];
+    if (!me) console.warn(`[slack actions] no active account has Slack member ID ${payload.user!.id}`);
     if (!me) return whisperSlack(responseUrl, "Your Slack account is not linked to a Design & Concur account yet. Ask an admin to add your Slack member ID in Settings → Users.");
 
     if (action.action_id === TEST_PING) return replaceSlackMessage(responseUrl, "Button test", testDoneBlocks(me.name ?? me.email));
