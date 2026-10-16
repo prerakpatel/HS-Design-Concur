@@ -38,19 +38,22 @@ export function MobileNav({ user, assistant = false }: { user: { initials: strin
           {assistant && <svg className="absolute left-1/2 top-0 -translate-x-1/2" width="120" height="48" viewBox="0 0 120 48"><path d="M 17.01 0 A 3 3 0 0 0 20.01 3.07 A 40 40 0 1 0 99.99 3.07 A 3 3 0 0 0 102.99 0" fill="none" stroke="var(--border)" strokeWidth="2" /></svg>}
         </div>
       </div>
-      {/* Spread like a native bar: the outer tabs sit 16px from the sides, the rest spaced evenly between. */}
-      <ul className="relative mx-auto flex max-w-md items-stretch justify-between px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2.5">
+      {/* Spread like a native bar: the outer tabs sit 20px from the sides, the rest spaced evenly between. */}
+      <ul className="relative mx-auto flex max-w-md items-stretch justify-between px-5 pb-[max(env(safe-area-inset-bottom),12px)] pt-2.5">
         {tabs.map((t, i) => { const active = pathname === t.href || pathname.startsWith(t.href + "/"); return (
-          <li key={t.href} className={"flex w-10 shrink-0 justify-center" + (assistant && i >= tabs.length / 2 ? " order-2" : "")}>
+          <li key={t.href} className={"flex w-12 shrink-0 justify-center" + (assistant && i >= tabs.length / 2 ? " order-2" : "")}>
             <Link href={t.href} className={"flex flex-col items-center gap-1 whitespace-nowrap py-1.5 text-[12px] font-medium " + (active ? "text-foreground" : "text-muted-foreground")}>
-              <span className={"relative flex h-8 w-14 items-center justify-center rounded-full " + (active ? "bg-sidebar-accent" : "")}>
-                {t.href === "/profile" ? <UserAvatar initials={user.initials} src={user.avatar} size={24} className={active ? "ring-2 ring-foreground" : ""} /> : <Icon name={t.icon} size={24} fill={active} />}
-                {t.href === "/inbox" && <CountBubble count={unread} className="absolute -right-1 -top-1 ring-2 ring-card" />}
+              <span className={"flex h-8 w-14 items-center justify-center rounded-full " + (active ? "bg-sidebar-accent" : "")}>
+                {/* The count sits on the icon's shoulder, not the pill's corner. */}
+                <span className="relative flex">
+                  {t.href === "/profile" ? <UserAvatar initials={user.initials} src={user.avatar} size={26} className={active ? "ring-2 ring-foreground" : ""} /> : <Icon name={t.icon} size={24} fill={active} className="!text-[26px]" />}
+                  {t.href === "/inbox" && <CountBubble count={unread} className="absolute -right-2 -top-1.5 ring-2 ring-card" />}
+                </span>
               </span>{t.label}
             </Link>
           </li>
         ); })}
-        {assistant && <li id="dc-nav-assistant" className="order-1 flex w-10 shrink-0 justify-center" />}
+        {assistant && <li id="dc-nav-assistant" className="order-1 flex w-12 shrink-0 justify-center" />}
       </ul>
     </nav>
   );
