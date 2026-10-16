@@ -104,8 +104,8 @@ export function FloatingMic({ attention, onTap, onHold, raised }: DockProps & { 
 export function HelloCard({ slot, wave, onTry, onLater }: { slot: HTMLElement; wave: string; onTry: () => void; onLater: () => void }) {
   return createPortal(
     <div className="buddy-art relative mb-6 mt-7 rounded-2xl border border-border bg-card p-4 pr-[116px]">
-      {/* Flush with the screen's right edge on phones (the page's 16px gutter), tucked inside the card on wider screens. */}
-      <img src={wave} alt="" aria-hidden className="pointer-events-none absolute -right-4 -top-7 w-[110px] select-none md:right-3" draggable={false} />
+      {/* Flush with the screen’s right edge on phones (the page’s 20px gutter), tucked inside the card on wider screens. */}
+      <img src={wave} alt="" aria-hidden className="pointer-events-none absolute -right-5 -top-7 w-[110px] select-none md:right-3" draggable={false} />
       <p className="font-medium">Vichar is here.</p>
       <p className="mt-0.5 text-[13px] leading-[18px] text-muted-foreground">Say what you need: a new project with its formats, a format on one that exists, or a note for a designer. He drafts it; you tap.</p>
       <div className="mt-3 flex flex-wrap gap-2">
