@@ -30,7 +30,7 @@ the self-update policy so nobody can switch it on for themselves (migration `202
 
 ## How it works
 
-1. **Ears.** Hold the character (or the mic in the sheet) and speak; release to send. With `SARVAM_API_KEY` set the
+1. **Ears.** Tap him and speak (or hold the mic in his screen; release to send). With `SARVAM_API_KEY` set the
    clip goes to Sarvam (Saaras v4, language auto-detected, Gujarati and English mixed in one sentence, with the
    temple words from `SPEECH_KEYTERMS` and the format names as expected vocabulary). With only `GEMINI_API_KEY`
    set, Gemini transcribes instead. With neither, the browser's own speech recognition listens (Chrome, Safari;
@@ -50,18 +50,22 @@ and `GEMINI_API_KEY` (one or both, optional). Without `ANTHROPIC_API_KEY` the sh
 
 ## The character
 
-`src/components/assistant/dock.tsx` and `buddy.tsx`. He is an orb. On phones it sits in the middle of the bottom bar,
-a little bigger than the tabs: his face in a disc. **Tap** and the orb grows out of it above the bar while he
-listens, swelling with your voice, the words so far in a bubble; tap again to stop. While he works the orb shows him
-thinking with a soft ring; then the sheet opens with his card. **Hold** for the thread, to type. On pages without
-the bar (a design, project setup) the orb floats at the bottom, and on desktop in the corner; left alone it settles
-into a small droplet tucked into the edge and grows back when touched. An amber dot means a card is waiting. Inside
-the sheet he is a head crop per mood (puzzled when he did not catch something), with the full figure beside the
-suggestions.
+`src/components/assistant/dock.tsx` and `assistant.tsx`. On phones Vichar sits in the middle of the bottom bar: his
+face in a disc, level with the tabs, a mic under his chin. **Tap** and his screen takes over the phone and he
+listens straight away: his face at the top with a pill under it that says what he is doing (Listening… / Working out
+the words… / Thinking… / Doing it…), the thread below, and one pill at the bottom to type in or hold the mic. While he
+listens the pill shows the sound; the arrow sends, the stop drops it. **Hold** his disc to open the screen without
+listening. On pages without the bar (a design, project setup) the same disc floats at the bottom, on desktop in the
+corner, where his screen is a tall sheet in the middle; left alone it settles into the edge. An amber dot means a card
+is waiting.
 
-His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART`, `ASSISTANT_ORB` in the config). The orb plays a
-short looping clip per state when one exists in `public/assistant/vichar/clips/` (idle, listening, thinking, done:
-720 × 720, a few seconds, white background, mp4); until `ASSISTANT_CLIPS_READY` is on, it shows the stills.
+The thread is kept plain: your words in one brand bubble (tap it to fix what he heard), his line, one bordered card,
+one brand button that does it and Cancel, with the form as a quiet link. Colour is kept for the two marks that
+matter: a warning mark on anything that still needs you, a tick on what got done.
+
+His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART` in the config): one still, cropped to his head
+wherever he appears, and short looping clips that play in his avatar while he works (`clips/thinking.mp4` while he
+works out what you said, `clips/writing.mp4` while he creates what you confirmed). Idle never moves.
 
 ## Costs
 

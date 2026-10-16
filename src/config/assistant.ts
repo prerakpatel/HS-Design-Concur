@@ -11,31 +11,13 @@ export const ASSISTANT_OWNER = "pushkar.patel@hariss.org";
 export const ASSISTANT_NAME = "Vichar";
 
 /**
- * Vichar's artwork (public/assistant/vichar): a head crop per mood for the bubble in the sheet, the full figure
- * for the sheet's welcome, and the orb's pieces below. A list means the poses alternate while
- * that mood lasts.
+ * Vichar's artwork (public/assistant/vichar). `still` is him at rest: the disc in the bar and the avatar at the top
+ * of his screen, cropped to his head. The clips play in that avatar while he works (thinking: working out what you
+ * said; writing: creating what you confirmed). Idle never moves.
  */
 export const ASSISTANT_ART = {
-  calm: "/assistant/vichar/calm-head.webp",
-  listening: "/assistant/vichar/listening-head.webp",
-  thinking: ["/assistant/vichar/think-1-head.webp", "/assistant/vichar/writing-head.webp", "/assistant/vichar/think-2-head.webp"],
-  "needs-you": "/assistant/vichar/think-2-head.webp",
-  puzzled: "/assistant/vichar/puzzled-head.webp",
-  done: "/assistant/vichar/calm-head.webp",
-} as const;
-export const ASSISTANT_FIGURE = "/assistant/vichar/calm.webp";
-/**
- * The orb (his button and the disc that grows out of it): a still per state, and a short looping clip for the states after a tap when
- * one exists in public/assistant/vichar/clips (720 × 720, a few seconds, white background, mp4). Clips are off until
- * they are there, so nothing is fetched for nothing.
- */
-export const ASSISTANT_CLIPS_READY = false;
-export const ASSISTANT_ORB = {
-  // Idle is always a still: he only moves once you tap him.
-  idle: { image: "/assistant/vichar/calm-head.webp", video: null },
-  listening: { image: "/assistant/vichar/listening-head.webp", video: "/assistant/vichar/clips/listening.mp4" },
-  thinking: { image: "/assistant/vichar/writing-head.webp", video: "/assistant/vichar/clips/thinking.mp4" },
-  done: { image: "/assistant/vichar/calm-head.webp", video: "/assistant/vichar/clips/done.mp4" },
+  still: "/assistant/vichar/neutral.webp",
+  clips: { thinking: "/assistant/vichar/clips/thinking.mp4", writing: "/assistant/vichar/clips/writing.mp4" },
 } as const;
 
 /** The model that turns words into drafts, and how hard it thinks (low | medium | high). */
