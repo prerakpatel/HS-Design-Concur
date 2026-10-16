@@ -68,8 +68,8 @@ him listening. It opens from the hello card, the first time his screen opens, or
 or skipped it stays away until `ASSISTANT_HELLO_VERSION` moves. After that, one line under his pill the first time
 his screen opens on a kind of page (a design, project setup, a project) says what that page is good for.
 
-He shows up at moments rather than living on the chrome: a hello card at the top of Projects, once (him leaning out of
-it, one line, Try it opens his screen listening, I'll try later puts it away; either way it stays away until
+He shows up at moments rather than living on the chrome: a hello card at the top of Projects, once (him leaning in from
+the screen's edge, waving, one line, Try it opens his screen listening, I'll try later puts it away; either way it stays away until
 `ASSISTANT_HELLO_VERSION` is bumped), and his screen itself.
 
 **Tap** the mic and his screen takes over the phone and he listens straight away. The top is frosted glass: his face,
@@ -87,7 +87,7 @@ anything that still needs you, a tick on what got done.
 
 His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART` in the config): one still, cropped to his head
 wherever he appears; short looping clips zoomed to his bust that play in his avatar (`clips/writing.mp4` while he
-listens, `clips/thinking.mp4` while he works); and `bust`, head and shoulders fading out at the chest, leaning out of the hello card. Idle never moves.
+listens, `clips/thinking.mp4` while he works); and `wave`, him leaning in from the screen's edge, waving, over the hello card. Idle never moves.
 
 Text is the rounded cut of Google Sans Flex (headings keep the straight one); Gujarati letters fall through to
 Noto Serif Gujarati. Both are loaded in the root layout for the whole app. Fields are kept at 16px on phones so the

@@ -302,7 +302,7 @@ export function Assistant(p: AssistantProps) {
   return (
     <>
       {navSlot ? <NavDock slot={navSlot} {...dock} /> : !open && <FloatingMic {...dock} raised={where.page === "asset" || where.page === "wizard"} />}
-      {hello && helloSlot && <HelloCard slot={helloSlot} bust={ASSISTANT_ART.bust} onTry={() => { dismissHello(); startTour(); }} onLater={dismissHello} />}
+      {hello && helloSlot && <HelloCard slot={helloSlot} wave={ASSISTANT_ART.wave} onTry={() => { dismissHello(); startTour(); }} onLater={dismissHello} />}
       {wide ? open && (
         /* Docked on the right of a wide screen: a compact header, the same thread and pill; the page stays usable beside it. */
         <aside data-vichar className="fixed inset-y-0 right-0 z-40 flex w-[380px] flex-col border-l border-border bg-card shadow-[-8px_0_24px_rgb(0_0_0/0.05)]" aria-label={p.name}>
