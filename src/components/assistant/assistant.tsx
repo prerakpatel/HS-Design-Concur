@@ -15,6 +15,7 @@ import { NavDock, FloatingMic, HelloCard, Face, useSlot, NAV_SLOT_ID, HELLO_SLOT
 import { ASSISTANT_ART, ASSISTANT_HELLO_VERSION } from "@/config/assistant";
 import { useRecorder } from "@/components/assistant/use-recorder";
 import { CardActions, CommentCard, DoneCard, OptionButtons, ProjectCard, ProjectUpdateCard, Say } from "@/components/assistant/cards";
+import { Tour, tourDone, markTourDone, type TourState } from "@/components/assistant/tour";
 
 export interface AssistantProps {
   name: string;
@@ -55,6 +56,14 @@ const HOLD_MS = 400;
 /** His hello card stays away once dismissed, until he learns something new. */
 const HELLO_KEY = "dc.vichar.hello";
 const helloDismissed = () => { try { return localStorage.getItem(HELLO_KEY) === ASSISTANT_HELLO_VERSION; } catch { return true; } };
+/** A line under his pill the first time his screen opens on a kind of page: what this page is good for. */
+const NUDGES: Partial<Record<Where["page"], string>> = {
+  asset: "Here you can say: tell someone what to change on this design.",
+  wizard: "Say the date, the invite text, who gets which format, or “publish it”.",
+  project: "Say a format to add to this project, or ask what is pending on it.",
+};
+const NUDGE_KEY = "dc.vichar.nudges";
+const nudgesSeen = (): string[] => { try { return JSON.parse(localStorage.getItem(NUDGE_KEY) ?? "[]"); } catch { return []; } };
 
 /**
  * The assistant: his disc in the bottom bar (or floating where there is no bar), and the screen that takes over when
@@ -76,6 +85,9 @@ export function Assistant(p: AssistantProps) {
   const [confirmReset, setConfirmReset] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [hello, setHello] = useState(() => !helloDismissed());
+  const [tour, setTour] = useState<TourState | null>(null);
+  const tourRef = useRef<TourState | null>(null); tourRef.current = tour;
+  const [nudge, setNudge] = useState<string | null>(null);
   const pressAt = useRef(0);
   const endRef = useRef<HTMLDivElement>(null);
   const rec = useRecorder(!!p.ears, p.keyterms);
@@ -94,6 +106,8 @@ export function Assistant(p: AssistantProps) {
   const level = useRef(0); level.current = rec.level;
   const [wave, setWave] = useState<number[]>([]);
   useEffect(() => { if (!listening) { setWave([]); return; } const t = setInterval(() => setWave((w) => [...w.slice(-(WAVE_BARS - 1)), level.current]), WAVE_EVERY_MS); return () => clearInterval(t); }, [listening]);
+  // The first time his screen opens on a kind of page, one line on what this page is good for.
+  useEffect(() => { if (!open) { setNudge(null); return; } const text = NUDGES[where.page]; if (!text || entries.length > 0) return; const seen = nudgesSeen(); if (seen.includes(where.page)) return; setNudge(text); try { localStorage.setItem(NUDGE_KEY, JSON.stringify([...seen, where.page])); } catch { /* private mode */ } }, [open, where.page, entries.length]);
   // The pill grows with what is typed, a few lines at most.
   useEffect(() => { const el = inputRef.current; if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 144) + "px"; }, [text]);
 
@@ -102,6 +116,11 @@ export function Assistant(p: AssistantProps) {
   const edit = (i: number, words: string) => { setEditing(i); setText(words); inputRef.current?.focus(); };
   const cancelEdit = () => { setEditing(null); setText(""); };
   const dismissHello = () => { setHello(false); try { localStorage.setItem(HELLO_KEY, ASSISTANT_HELLO_VERSION); } catch { /* private mode */ } };
+  /** The walk-through: from the hello card, the first time his screen opens, or "Show me how". */
+  const startTour = () => { reset(); setTour({ step: 1, said: null }); setOpen(true); };
+  const tourSaid = (words: string) => { const clean = words.trim(); if (!clean) { toast.message("I didn't catch anything. Try once more."); return; } setTour((t) => (t ? { ...t, said: clean } : t)); };
+  const tourNext = () => setTour((t) => (t ? { step: (t.step + 1) as TourState["step"], said: null } : t));
+  const endTour = () => { markTourDone(); setTour(null); };
 
   /** Send words to the brain: from the mic, the keyboard, or an edited earlier line (which replays from there). */
   const send = useCallback(async (words: string, replaceAt: number | null = null) => {
@@ -119,18 +138,20 @@ export function Assistant(p: AssistantProps) {
 
   const listen = useCallback(() => {
     if (!rec.supported) { toast.error("This browser can't listen. Type instead."); inputRef.current?.focus(); return; }
-    rec.start((words) => { if (words.trim()) send(words, editing); else setEntries((cur) => [...cur, { role: "error", text: "I didn't catch anything. Tap the mic and speak, or type it." }]); }, (msg) => setEntries((cur) => [...cur, { role: "error", text: msg }]));
+    rec.start((words) => { if (tourRef.current) tourSaid(words); else if (words.trim()) send(words, editing); else setEntries((cur) => [...cur, { role: "error", text: "I didn't catch anything. Tap the mic and speak, or type it." }]); }, (msg) => setEntries((cur) => [...cur, { role: "error", text: msg }]));
   }, [rec, send, editing]);
+  /** What the pill sends: in the walk-through, to the practice step; otherwise to him. */
+  const submit = () => { if (tour) { tourSaid(text); setText(""); } else send(text, editing); };
 
   // His disc: tap and his screen takes over and he listens straight away; hold to open it for typing.
   const navSlot = useSlot(NAV_SLOT_ID, pathname);
   const helloSlot = useSlot(HELLO_SLOT_ID, pathname);
-  const tap = () => { if (open) { setOpen(false); return; } setOpen(true); if (!working && rec.state === "idle") listen(); };
+  const tap = () => { if (open) { setOpen(false); return; } if (!tourDone() && entries.length === 0) { startTour(); return; } setOpen(true); if (!working && rec.state === "idle") listen(); };
   const attention = !open && !!last && (last.role === "done" || lastOutcome?.kind === "question" || !!lastOutcome?.projects.some((x) => x.gaps.length) || !!lastOutcome?.comments.some((c) => c.unresolved.length));
   const dock = { attention, onTap: tap, onHold: () => setOpen(true) };
 
   // What the pill under his face says, and which clip plays in it.
-  const status = listening ? "Listening…" : rec.state === "transcribing" ? "Working out the words…" : thinking ? "Thinking…" : busy ? "Doing it…" : p.name;
+  const status = listening ? "Listening…" : rec.state === "transcribing" ? "Working out the words…" : thinking ? "Thinking…" : busy ? "Doing it…" : tour ? "Practice" : p.name;
   const clip = listening ? ASSISTANT_ART.clips.writing : working ? ASSISTANT_ART.clips.thinking : null;
 
   const act = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); } };
@@ -166,8 +187,8 @@ export function Assistant(p: AssistantProps) {
   return (
     <>
       {navSlot ? <NavDock slot={navSlot} {...dock} /> : !open && <FloatingMic {...dock} raised={where.page === "asset" || where.page === "wizard"} />}
-      {hello && helloSlot && <HelloCard slot={helloSlot} bust={ASSISTANT_ART.bust} onTry={() => { dismissHello(); tap(); }} onLater={dismissHello} />}
-      <Drawer open={open} onOpenChange={(o) => { setOpen(o); if (!o) { rec.cancel(); if (last?.role === "done") reset(); } }}>
+      {hello && helloSlot && <HelloCard slot={helloSlot} bust={ASSISTANT_ART.bust} onTry={() => { dismissHello(); startTour(); }} onLater={dismissHello} />}
+      <Drawer open={open} onOpenChange={(o) => { setOpen(o); if (!o) { rec.cancel(); if (tour) setTour(null); if (last?.role === "done") reset(); } }}>
         {/* His screen: the whole phone; on a wide screen a tall sheet in the middle. */}
         <DrawerContent data-vichar className="relative h-[100dvh] max-h-[100dvh] rounded-none border-0 data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:max-h-[100dvh] data-[vaul-drawer-direction=bottom]:rounded-none [&>div:first-child]:hidden! md:mx-auto md:h-[85dvh] md:max-h-[85dvh] md:max-w-xl md:rounded-t-3xl md:data-[vaul-drawer-direction=bottom]:max-h-[85dvh] md:data-[vaul-drawer-direction=bottom]:rounded-t-3xl">
           {/* The top is frosted glass: him, his name (or what he is doing) under his chin, the way out and Start over in the corners.
@@ -176,25 +197,28 @@ export function Assistant(p: AssistantProps) {
             <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+164px)] bg-gradient-to-b from-card from-45% via-card/85 via-70% to-transparent" />
             <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+164px)] backdrop-blur-md [mask-image:linear-gradient(to_bottom,black_40%,transparent)]" />
             <div className="relative flex flex-col items-center pt-[max(env(safe-area-inset-top),16px)]">
-              {entries.length > 0 && <Button variant="secondary" size="sm" className="pointer-events-auto absolute left-5 top-[max(env(safe-area-inset-top),16px)] h-8 rounded-full bg-card/70 backdrop-blur-md hover:bg-card" onClick={() => setConfirmReset(true)} disabled={working || listening}>Start over</Button>}
+              {entries.length > 0 && !tour && <Button variant="secondary" size="sm" className="pointer-events-auto absolute left-5 top-[max(env(safe-area-inset-top),16px)] h-8 rounded-full bg-card/70 backdrop-blur-md hover:bg-card" onClick={() => setConfirmReset(true)} disabled={working || listening}>Start over</Button>}
               <Button variant="secondary" size="icon-sm" className="pointer-events-auto absolute right-5 top-[max(env(safe-area-inset-top),16px)] rounded-full bg-card/70 backdrop-blur-md hover:bg-card" onClick={() => setOpen(false)} aria-label="Close"><Icon name="close" /></Button>
               <Face still={ASSISTANT_ART.still} clip={clip} size={88} className="mt-3 ring-2 ring-border" />
               <div className="buddy-art -mt-4 rounded-full border-2 border-border bg-card px-3.5 py-1.5 text-sm shadow-md" aria-live="polite">
                 <DrawerTitle className="text-sm font-normal">{status}</DrawerTitle>
               </div>
               <DrawerDescription className="sr-only">Say or type what you need. Projects, formats, comments.</DrawerDescription>
+              {nudge && !tour && <p className="buddy-art mt-3 max-w-[300px] text-center text-[13px] leading-[18px] text-muted-foreground">{nudge}</p>}
             </div>
           </div>
 
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-3 pt-[calc(max(env(safe-area-inset-top),16px)+160px)]">
-            {entries.length === 0 && (
+            {tour && <Tour tour={tour} formats={p.formats} formatNames={formatNames} busy={listening || rec.state === "transcribing"} onSay={listen} onType={() => inputRef.current?.focus()} onNext={tourNext} onSkip={endTour} onFinish={() => { endTour(); listen(); }} />}
+            {!tour && entries.length === 0 && (
               <div className="space-y-2 rounded-2xl bg-subtle p-4 text-sm leading-5">
                 <p className="text-muted-foreground">Try:</p>
                 <p>“New project for Sharad Purnima and Annakut with a print card 8.5 by 5.5, WhatsApp, Instagram, LED and website hero.”</p>
                 <p>“Tell Chirantan the text is cut off at the sides and to check the spelling of mahaprasad.”</p>
+                <p className="pt-1"><button type="button" className="text-[13px] text-muted-foreground underline-offset-4 hover:underline" onClick={startTour}>Show me how</button></p>
               </div>
             )}
-            {entries.map((e, i) => {
+            {!tour && entries.map((e, i) => {
               if (e.role === "user") return (
                 <div key={i} className="flex flex-col items-end">
                   {i === lastUserAt && !working && editing == null && <span className="mb-0.5 text-[11px] text-muted-foreground">Tap to edit</span>}
@@ -233,7 +257,7 @@ export function Assistant(p: AssistantProps) {
           </div>
 
           {/* One pill: type (it grows with the words), or the mic. While he listens it fills with the sound from the right, a stop to drop it, the arrow to send. */}
-          <form className="shrink-0 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2" onSubmit={(e) => { e.preventDefault(); send(text, editing); }}>
+          <form className="shrink-0 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2" onSubmit={(e) => { e.preventDefault(); submit(); }}>
             {editing != null && !listening && <div className="mb-1.5 flex items-center justify-between px-3 text-xs text-muted-foreground"><span>Fixing what you said · he will redo it from there</span><button type="button" className="underline-offset-4 hover:underline" onClick={cancelEdit}>Cancel</button></div>}
             <div className="flex min-h-14 items-end gap-2 rounded-[28px] border border-border bg-background pl-4 pr-1.5 focus-within:border-foreground/40">
               {listening ? (
@@ -246,7 +270,7 @@ export function Assistant(p: AssistantProps) {
                 </>
               ) : (
                 <>
-                  <textarea ref={inputRef} rows={1} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(text, editing); } }} placeholder={rec.supported ? "Hold the mic, or type" : "Type what you need"} disabled={working} className="max-h-36 min-w-0 flex-1 resize-none bg-transparent py-4 text-[15px] leading-6 outline-none" />
+                  <textarea ref={inputRef} rows={1} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }} placeholder={rec.supported ? "Hold the mic, or type" : "Type what you need"} disabled={working} className="max-h-36 min-w-0 flex-1 resize-none bg-transparent py-4 text-[15px] leading-6 outline-none" />
                   {text.trim()
                     ? <button type="submit" disabled={working} className="mb-1.5 flex size-11 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground disabled:opacity-50" aria-label="Send"><Icon name="arrow_upward" size={24} /></button>
                     : <button type="button" aria-label="Hold to talk" disabled={working || rec.state === "transcribing"}

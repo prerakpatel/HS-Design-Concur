@@ -57,6 +57,13 @@ Projects → Past. Tap the label alone and the button dribbles like a dropped ba
 without the bar (a design, project setup) and on desktop the same mic floats bottom right, on phones over a faint rise
 of the page colour so it stands off what scrolls beneath.
 
+**First time.** His walk-through (`src/components/assistant/tour.tsx`): two practice turns and a send-off. The
+person reads a sample line, or says it their own way, hears themselves transcribed for real, and sees the card the
+sample would make, marked as practice. The brain is not called, so trying him costs nothing. "Now for real" leaves
+him listening. It opens from the hello card, the first time his screen opens, or "Show me how" in the welcome; done
+or skipped it stays away until `ASSISTANT_HELLO_VERSION` moves. After that, one line under his pill the first time
+his screen opens on a kind of page (a design, project setup, a project) says what that page is good for.
+
 He shows up at moments rather than living on the chrome: a hello card at the top of Projects, once (him leaning out of
 it, one line, Try it opens his screen listening, I'll try later puts it away; either way it stays away until
 `ASSISTANT_HELLO_VERSION` is bumped), and his screen itself.
