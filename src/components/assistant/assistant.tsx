@@ -60,8 +60,17 @@ const WAVE_EVERY_MS = 70;
 /** How long a press counts as holding the mic. */
 const HOLD_MS = 400;
 /** His hello card stays away once dismissed, until he learns something new. */
+/**
+ * His hello card: "I'll try later" means later. It snoozes the card for a few days, twice at most; Try it, or the
+ * walk-through from anywhere else, ends it for good. All of it is forgotten when ASSISTANT_HELLO_VERSION moves.
+ */
 const HELLO_KEY = "dc.vichar.hello";
-const helloDismissed = () => { try { return localStorage.getItem(HELLO_KEY) === ASSISTANT_HELLO_VERSION; } catch { return true; } };
+const HELLO_SNOOZE_MS = 3 * 24 * 60 * 60_000;
+const HELLO_SNOOZES = 2;
+type HelloState = { v: string; done?: boolean; snoozes?: number; until?: number };
+const readHello = (): HelloState => { try { const h = JSON.parse(localStorage.getItem(HELLO_KEY) ?? "null") as HelloState | null; return h && h.v === ASSISTANT_HELLO_VERSION ? h : { v: ASSISTANT_HELLO_VERSION }; } catch { return { v: ASSISTANT_HELLO_VERSION, done: true }; } };
+const writeHello = (h: HelloState) => { try { localStorage.setItem(HELLO_KEY, JSON.stringify(h)); } catch { /* private mode */ } };
+const helloDismissed = () => { const h = readHello(); return !!h.done || (h.until ?? 0) > Date.now(); };
 /** A line under his pill the first time his screen opens on a kind of page: what this page is good for. */
 const NUDGES: Partial<Record<Where["page"], string>> = {
   asset: "Here you can say: tell someone what to change on this design.",
@@ -131,12 +140,18 @@ export function Assistant(p: AssistantProps) {
   /** Tap what you said and it comes back into the pill to fix; sending replays the thread from there. */
   const edit = (i: number, words: string) => { setEditing(i); setText(words); inputRef.current?.focus(); };
   const cancelEdit = () => { setEditing(null); setText(""); };
-  const dismissHello = () => { setHello(false); try { localStorage.setItem(HELLO_KEY, ASSISTANT_HELLO_VERSION); } catch { /* private mode */ } };
+  const dismissHello = () => { setHello(false); writeHello({ v: ASSISTANT_HELLO_VERSION, done: true }); };
+  const snoozeHello = () => {
+    const h = readHello(); const n = (h.snoozes ?? 0) + 1;
+    const next: HelloState = n >= HELLO_SNOOZES ? { v: ASSISTANT_HELLO_VERSION, done: true } : { v: ASSISTANT_HELLO_VERSION, snoozes: n, until: Date.now() + HELLO_SNOOZE_MS };
+    setHello(false); writeHello(next);
+    toast(n >= HELLO_SNOOZES ? "Okay. “Show me how” in Vichar’s screen walks you through any time." : "Okay. He’ll check in again in a few days.", { action: { label: "Undo", onClick: () => { writeHello(h); setHello(true); } } });
+  };
   /** The walk-through: from the hello card, the first time his screen opens, or "Show me how". */
   const startTour = () => { reset(); setTour({ step: 1, said: null }); setOpen(true); };
   const tourSaid = (words: string) => { const clean = words.trim(); if (!clean) { toast.message("I didn't catch anything. Try once more."); return; } setTour((t) => (t ? { ...t, said: clean } : t)); };
   const tourNext = () => setTour((t) => (t ? { step: (t.step + 1) as TourState["step"], said: null } : t));
-  const endTour = () => { markTourDone(); setTour(null); };
+  const endTour = () => { markTourDone(); setTour(null); if (hello) dismissHello(); };
 
   /** Send words to the brain: from the mic, the keyboard, or an edited earlier line (which replays from there). */
   const send = useCallback(async (words: string, replaceAt: number | null = null) => {
@@ -302,7 +317,7 @@ export function Assistant(p: AssistantProps) {
   return (
     <>
       {navSlot ? <NavDock slot={navSlot} {...dock} /> : !open && <FloatingMic {...dock} raised={where.page === "asset" || where.page === "wizard"} />}
-      {hello && helloSlot && <HelloCard slot={helloSlot} wave={ASSISTANT_ART.wave} onTry={() => { dismissHello(); startTour(); }} onLater={dismissHello} />}
+      {hello && helloSlot && <HelloCard slot={helloSlot} wave={ASSISTANT_ART.wave} onTry={() => { dismissHello(); startTour(); }} onLater={snoozeHello} />}
       {wide ? open && (
         /* Docked on the right of a wide screen: a compact header, the same thread and pill; the page stays usable beside it. */
         <aside data-vichar className="fixed inset-y-0 right-0 z-40 flex w-[380px] flex-col border-l border-border bg-card shadow-[-8px_0_24px_rgb(0_0_0/0.05)]" aria-label={p.name}>

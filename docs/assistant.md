@@ -69,8 +69,8 @@ or skipped it stays away until `ASSISTANT_HELLO_VERSION` moves. After that, one 
 his screen opens on a kind of page (a design, project setup, a project) says what that page is good for.
 
 He shows up at moments rather than living on the chrome: a hello card at the top of Projects, once (him leaning in from
-the screen's edge, waving, one line, Try it opens his screen listening, I'll try later puts it away; either way it stays away until
-`ASSISTANT_HELLO_VERSION` is bumped), and his screen itself.
+the screen's edge, waving, one line, Try it starts the walk-through; I'll try later snoozes it for three days, twice at most, with Undo in a toast;
+finishing or skipping the walk-through retires it; everything is forgotten when `ASSISTANT_HELLO_VERSION` is bumped), and his screen itself.
 
 **Tap** the mic and his screen takes over the phone and he listens straight away. The top is frosted glass: his face,
 a pill under his chin that says what he is doing (Listening… / Working out the words… / Thinking… / Doing it…), the
