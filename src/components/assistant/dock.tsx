@@ -44,54 +44,42 @@ function usePress(onTap: () => void, onHold: () => void) {
 
 export interface DockProps {
   still: string;
-  peek: string | null;
   /** A card is waiting for the person. */
   attention: boolean;
   onTap: () => void;
   onHold: () => void;
 }
 
-/** Where the bar keeps the space above its right half for him to peek over (src/components/mobile-nav.tsx). */
-const NAV_PEEK_ID = "dc-nav-peek";
-
 /**
  * In the phone's bottom bar: a raised mic in the middle, in a notch cut out of the bar, labelled like the tabs. Tap
- * and his screen takes over and he listens; hold to open it without listening. He peeks over the bar on the right,
- * hands on its edge; tap him and his button dribbles, so the curious find the way in.
+ * and his screen takes over and he listens; hold to open it without listening. Tap the label alone and the button
+ * dribbles, a nudge for the curious.
  */
-export function NavDock({ slot, peek, attention, onTap, onHold }: DockProps & { slot: HTMLElement }) {
+export function NavDock({ slot, attention, onTap, onHold }: DockProps & { slot: HTMLElement }) {
   const press = usePress(onTap, onHold);
   const [dribble, setDribble] = useState(0);
   const column = (
-    <button type="button" aria-label="Talk to the assistant" {...press}
-      className="relative flex flex-col items-center gap-1 whitespace-nowrap py-1.5 text-[12px] font-medium text-muted-foreground"
-      style={{ touchAction: "manipulation", WebkitTouchCallout: "none" }}>
-      {/* The icon row the tabs share; the mic rises out of it over the bar's edge, into the notch. */}
-      <span className="relative flex h-8 w-14 items-center justify-center">
-        <span key={dribble} className={cn("buddy-dock absolute -top-10 flex size-14 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-md ring-4 ring-brand-soft active:scale-95", dribble > 0 && "buddy-dribble")}>
-          <Icon name="mic" fill size={24} className="!text-[28px]" />
-          {attention && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
-        </span>
-      </span>
-      Vichar
-    </button>
+    <span className="flex flex-col items-center gap-1 whitespace-nowrap py-1.5 text-[12px] font-medium text-muted-foreground">
+      {/* The icon row the tabs share stays empty; the button is placed against the bar itself, so it sits exactly in the notch. */}
+      <span className="h-8 w-14" />
+      {/* 56px with a 4px ring: its centre 4px below the bar's top edge, matching the notch (src/app/globals.css). */}
+      <button type="button" aria-label="Talk to the assistant" {...press} key={dribble}
+        className={cn("buddy-dock absolute left-[calc(50%-28px)] top-[-24px] flex size-14 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-[0_3px_10px_rgb(0_0_0/0.18)] ring-4 ring-card", dribble > 0 && "buddy-dribble")}
+        style={{ touchAction: "manipulation", WebkitTouchCallout: "none" }}>
+        <Icon name="mic" fill size={24} className="!text-[28px]" />
+        {attention && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
+      </button>
+      <button type="button" className="-mt-1 px-2 pt-1" onClick={() => setDribble((n) => n + 1)} aria-label="Vichar">Vichar</button>
+    </span>
   );
-  const peekSlot = slot.ownerDocument.getElementById(NAV_PEEK_ID);
-  const peeking = peek && peekSlot && createPortal(
-    <button type="button" aria-label="That's Vichar. Tap the mic to talk to him." onClick={() => setDribble((n) => n + 1)}
-      className="absolute -bottom-px right-[6%] block w-[98px] select-none active:translate-y-0.5" style={{ WebkitTouchCallout: "none" }}>
-      <img src={peek} alt="" className="block w-full" draggable={false} />
-    </button>,
-    peekSlot,
-  );
-  return <>{createPortal(column, slot)}{peeking}</>;
+  return createPortal(column, slot);
 }
 
 /**
  * Everywhere without the bottom bar (design pages, project setup, desktop): the same disc floats at the bottom, in
  * the corner on desktop. Left alone it settles into the edge; it comes back up when touched or when a card waits.
  */
-export function FloatingDock({ still, attention, onTap, onHold, corner }: Omit<DockProps, "peek"> & { corner: boolean }) {
+export function FloatingDock({ still, attention, onTap, onHold, corner }: DockProps & { corner: boolean }) {
   const press = usePress(onTap, onHold);
   const [touched, setTouched] = useState(false);
   const wake = () => setTouched(true);

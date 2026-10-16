@@ -51,10 +51,9 @@ and `GEMINI_API_KEY` (one or both, optional). Without `ANTHROPIC_API_KEY` the sh
 ## The character
 
 `src/components/assistant/dock.tsx` and `assistant.tsx`. On phones a raised mic sits in the middle of the bottom bar
-in a notch cut out of its top edge (a CSS mask on the bar's surface, the rim drawn as an arc), labelled "Vichar" like
-the tabs; Inbox takes Archive's place in that bar and archived projects stay under Projects → Past. He peeks over the
-bar on the right, eyes and hands on its edge; tap him and the mic dribbles like a dropped ball, so the curious find
-the way in. **Tap** and his screen takes over the phone and he listens straight
+in a notch cut out of its top edge (a CSS mask on the bar's surface, the rim drawn as an arc, a soft shadow following
+both), labelled "Vichar" like the tabs; Inbox takes Archive's place in that bar and archived projects stay under
+Projects → Past. Tap the label alone and the button dribbles like a dropped ball, a nudge for the curious. **Tap** and his screen takes over the phone and he listens straight
 away: his face at the top with a pill under it that says what he is doing (Listening… / Working out the words… /
 Thinking… / Doing it…), the thread below, and one pill at the bottom to type in or hold the mic. While he listens
 the pill shows the sound; the arrow sends, the stop drops it. **Hold** the mic to open the screen without listening.
@@ -69,7 +68,7 @@ two marks that matter: a warning mark on anything that still needs you, a tick o
 
 His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART` in the config): one still, cropped to his head
 wherever he appears, and short looping clips zoomed to his bust that play in his avatar (`clips/writing.mp4` while he
-listens, `clips/thinking.mp4` while he works). Idle never moves. `peek` is the picture of him peeking over the bar.
+listens, `clips/thinking.mp4` while he works). Idle never moves. `peek` is a picture of him peeking over an edge, kept for a moment that is still being designed.
 
 Text is the rounded cut of Google Sans Flex (headings keep the straight one); Gujarati letters fall through to
 Noto Serif Gujarati. Both are loaded in the root layout for the whole app.

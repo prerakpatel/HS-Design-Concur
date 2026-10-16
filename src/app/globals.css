@@ -262,10 +262,11 @@
 
 /* The assistant (src/components/assistant). He only moves for a real state: a clip plays in his avatar while he works. */
 .buddy-dock { transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1); }
-/* The bar's notch: a circle cut out of its top edge around the mic (56px, with a 7px gap), its corners rounded into the
-   edge like a native tab bar. The shape is subtracted from the surface; the rim is the bar's own arc (mobile-nav.tsx). */
-.dc-nav-notch { -webkit-mask: linear-gradient(#000 0 0), url("data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 -40 120 80%27%3E%3Cpath d=%27M 17.19 0 A 8 8 0 0 0 25.15 7.26 A 35 35 0 1 0 94.85 7.26 A 8 8 0 0 0 102.81 0 L 102.81 -40 L 17.19 -40 Z%27/%3E%3C/svg%3E") 50% -40px / 120px 80px no-repeat; -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0), url("data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 -40 120 80%27%3E%3Cpath d=%27M 17.19 0 A 8 8 0 0 0 25.15 7.26 A 35 35 0 1 0 94.85 7.26 A 8 8 0 0 0 102.81 0 L 102.81 -40 L 17.19 -40 Z%27/%3E%3C/svg%3E") 50% -40px / 120px 80px no-repeat; mask-composite: exclude; }
-/* Tap him and his button bounces like a dropped ball: three bounces, each lower, easing out on the way up and in on the way down. */
+/* The bar's notch: a circle cut out of its top edge around the mic (56px with a 4px ring, a 6px gap), its corners eased into
+   the edge by 3px. The shape is subtracted from the surface; the rim is the bar's own arc; a soft shadow follows both (mobile-nav.tsx). */
+.dc-nav-shadow { filter: drop-shadow(0 -2px 6px rgb(0 0 0 / 0.07)); }
+.dc-nav-notch { -webkit-mask: linear-gradient(#000 0 0), url("data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 -44 120 88%27%3E%3Cpath d=%27M 19.01 0 A 3 3 0 0 0 22.01 3.07 A 38 38 0 1 0 97.99 3.07 A 3 3 0 0 0 100.99 0 L 100.99 -44 L 19.01 -44 Z%27/%3E%3C/svg%3E") 50% -44px / 120px 88px no-repeat; -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0), url("data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 -44 120 88%27%3E%3Cpath d=%27M 19.01 0 A 3 3 0 0 0 22.01 3.07 A 38 38 0 1 0 97.99 3.07 A 3 3 0 0 0 100.99 0 L 100.99 -44 L 19.01 -44 Z%27/%3E%3C/svg%3E") 50% -44px / 120px 88px no-repeat; mask-composite: exclude; }
+/* Tap the label and the button bounces like a dropped ball: three bounces, each lower, easing out on the way up and in on the way down. */
 @keyframes buddy-dribble {
   0% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1); }
   20% { transform: translateY(-16px); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.2); }

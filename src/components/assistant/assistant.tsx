@@ -113,7 +113,7 @@ export function Assistant(p: AssistantProps) {
   const navSlot = useNavSlot(pathname);
   const tap = () => { if (open) { setOpen(false); return; } setOpen(true); if (!working && rec.state === "idle") listen(); };
   const attention = !open && !!last && (last.role === "done" || lastOutcome?.kind === "question" || !!lastOutcome?.projects.some((x) => x.gaps.length) || !!lastOutcome?.comments.some((c) => c.unresolved.length));
-  const dock = { still: ASSISTANT_ART.still, peek: ASSISTANT_ART.peek, attention, onTap: tap, onHold: () => setOpen(true) };
+  const dock = { still: ASSISTANT_ART.still, attention, onTap: tap, onHold: () => setOpen(true) };
 
   // What the pill under his face says, and which clip plays in it.
   const status = listening ? "Listening…" : rec.state === "transcribing" ? "Working out the words…" : thinking ? "Thinking…" : busy ? "Doing it…" : p.name;
