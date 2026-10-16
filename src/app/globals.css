@@ -119,7 +119,7 @@
   --success: #15803d; --success-soft: #dcfce7; --success-text: #166534;
   --warning: #d97706; --warning-soft: #fef3c7; --warning-text: #92400e;
   --destructive-soft: #fee2e2; --destructive-text: #991b1b;
-  --font-sans: "Google Sans Flex", "Google Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Google Sans Flex", "Google Sans", "Noto Serif Gujarati", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 .dark {
@@ -162,6 +162,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Body text is the rounded cut of Google Sans Flex; headings keep the straight one. Gujarati falls through to Noto Serif Gujarati. */
+    font-variation-settings: "ROND" 100;
+  }
+  h1, h2, h3 {
+    font-variation-settings: "ROND" 0;
   }
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;

@@ -52,15 +52,15 @@ export function CommentCard({ c, people, onChange }: { c: CommentDraft; people: 
   );
 }
 
-/** Under the current card: the one button that does it, Cancel, and a quiet way out to the form. */
-export function CardActions({ primary, onPrimary, pending, onCancel, alt }: { primary: string; onPrimary: () => void; pending: boolean; onCancel: () => void; alt?: { href: string; label: string } }) {
+/**
+ * Under the current card: the one thing to do, full width, and a quiet way out to the form. There is no Cancel:
+ * closing his screen or Start over (top left, with a check) drops a draft.
+ */
+export function CardActions({ primary, onPrimary, pending, alt }: { primary: string; onPrimary: () => void; pending: boolean; alt?: { href: string; label: string } }) {
   return (
-    <div className="space-y-2 pt-1">
-      <div className="flex items-center gap-2">
-        <Button onClick={onPrimary} disabled={pending} className="h-10 rounded-full bg-brand px-5 text-brand-foreground hover:bg-brand-hover">{pending ? "Working…" : primary}</Button>
-        <Button variant="ghost" onClick={onCancel} disabled={pending} className="h-10 rounded-full px-4">Cancel</Button>
-      </div>
-      {alt && <Link href={alt.href} className="inline-block text-[13px] text-muted-foreground underline-offset-4 hover:underline">{alt.label}</Link>}
+    <div className="flex flex-col items-center gap-2 pt-1">
+      <Button onClick={onPrimary} disabled={pending} className="h-12 w-full rounded-full bg-brand text-[15px] text-brand-foreground hover:bg-brand-hover">{pending ? "Working…" : primary}</Button>
+      {alt && <Link href={alt.href} className="py-1 text-[13px] text-muted-foreground underline-offset-4 hover:underline">{alt.label}</Link>}
     </div>
   );
 }

@@ -26,8 +26,20 @@ export function Face({ still, clip = null, size, className }: { still: string; c
   return (
     <span className={cn("relative block shrink-0 overflow-hidden rounded-full bg-white", className)} style={{ width: size, height: size }} aria-hidden>
       {video
-        ? <video key={video} src={video} autoPlay muted loop playsInline disablePictureInPicture className="buddy-art size-full object-cover" onError={() => setFailed(video)} />
+        /* The clips show all of him; zoomed to the bust, anchored at his head. */
+        ? <video key={video} src={video} autoPlay muted loop playsInline disablePictureInPicture className="buddy-art size-full origin-[50%_6%] scale-[2.2] object-cover" onError={() => setFailed(video)} />
         : <img src={still} alt="" className="buddy-art absolute left-1/2 top-0 w-[164%] max-w-none -translate-x-1/2" draggable={false} />}
+    </span>
+  );
+}
+
+/** His head over the top edge of the bar: the picture when there is one, else his head from the still. */
+function Peek({ still, peek }: { still: string; peek: string | null }) {
+  return (
+    <span className="pointer-events-none absolute bottom-full left-1/2 block h-12 w-14 -translate-x-[70px] overflow-hidden" aria-hidden>
+      {peek
+        ? <img src={peek} alt="" className="absolute bottom-0 left-0 w-full" draggable={false} />
+        : <img src={still} alt="" className="absolute left-1/2 -top-[6%] w-[300%] max-w-none -translate-x-1/2" draggable={false} />}
     </span>
   );
 }
@@ -43,6 +55,7 @@ function usePress(onTap: () => void, onHold: () => void) {
 
 export interface DockProps {
   still: string;
+  peek: string | null;
   /** A card is waiting for the person. */
   attention: boolean;
   onTap: () => void;
@@ -50,28 +63,34 @@ export interface DockProps {
 }
 
 /**
- * In the phone's bottom bar: his face in a disc in the middle, level with the tabs, a mic under his chin. Tap and his
- * screen takes over and he listens. Hold to open it without listening.
+ * In the phone's bottom bar: a raised mic in the middle, labelled like the tabs, with him peeking over the bar beside
+ * it. Tap and his screen takes over and he listens. Hold to open it without listening.
  */
-export function NavDock({ slot, still, attention, onTap, onHold }: DockProps & { slot: HTMLElement }) {
+export function NavDock({ slot, still, peek, attention, onTap, onHold }: DockProps & { slot: HTMLElement }) {
   const press = usePress(onTap, onHold);
-  const button = (
+  const column = (
     <button type="button" aria-label="Talk to the assistant" {...press}
-      className="buddy-dock relative flex size-16 items-center justify-center rounded-full bg-card p-0.5 shadow-md ring-1 ring-border active:scale-95"
+      className="relative flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium text-muted-foreground"
       style={{ touchAction: "manipulation", WebkitTouchCallout: "none" }}>
-      <Face still={still} size={55} />
-      <span className="absolute -bottom-1.5 left-1/2 flex size-7 -translate-x-1/2 items-center justify-center rounded-full bg-brand text-brand-foreground ring-2 ring-card"><Icon name="mic" fill className="!text-[17px]" /></span>
-      {attention && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
+      <Peek still={still} peek={peek} />
+      {/* The icon row the tabs share; the mic rises out of it, over the bar's edge, with a ring of the bar's colour. */}
+      <span className="relative flex h-8 w-14 items-center justify-center">
+        <span className="buddy-dock absolute -top-7 flex size-14 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-md ring-4 ring-card active:scale-95">
+          <Icon name="mic" fill size={24} className="!text-[28px]" />
+          {attention && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
+        </span>
+      </span>
+      Vichar
     </button>
   );
-  return createPortal(button, slot);
+  return createPortal(column, slot);
 }
 
 /**
  * Everywhere without the bottom bar (design pages, project setup, desktop): the same disc floats at the bottom, in
  * the corner on desktop. Left alone it settles into the edge; it comes back up when touched or when a card waits.
  */
-export function FloatingDock({ still, attention, onTap, onHold, corner }: DockProps & { corner: boolean }) {
+export function FloatingDock({ still, attention, onTap, onHold, corner }: Omit<DockProps, "peek"> & { corner: boolean }) {
   const press = usePress(onTap, onHold);
   const [touched, setTouched] = useState(false);
   const wake = () => setTouched(true);

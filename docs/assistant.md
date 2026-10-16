@@ -50,22 +50,28 @@ and `GEMINI_API_KEY` (one or both, optional). Without `ANTHROPIC_API_KEY` the sh
 
 ## The character
 
-`src/components/assistant/dock.tsx` and `assistant.tsx`. On phones Vichar sits in the middle of the bottom bar: his
-face in a disc, level with the tabs, a mic under his chin. **Tap** and his screen takes over the phone and he
-listens straight away: his face at the top with a pill under it that says what he is doing (Listening… / Working out
-the words… / Thinking… / Doing it…), the thread below, and one pill at the bottom to type in or hold the mic. While he
-listens the pill shows the sound; the arrow sends, the stop drops it. **Hold** his disc to open the screen without
-listening. On pages without the bar (a design, project setup) the same disc floats at the bottom, on desktop in the
-corner, where his screen is a tall sheet in the middle; left alone it settles into the edge. An amber dot means a card
-is waiting.
+`src/components/assistant/dock.tsx` and `assistant.tsx`. On phones a raised mic sits in the middle of the bottom bar,
+labelled "Vichar" like the tabs, with him peeking over the bar beside it (Inbox takes Archive's place in that bar;
+archived projects stay under Projects → Past). **Tap** and his screen takes over the phone and he listens straight
+away: his face at the top with a pill under it that says what he is doing (Listening… / Working out the words… /
+Thinking… / Doing it…), the thread below, and one pill at the bottom to type in or hold the mic. While he listens
+the pill shows the sound; the arrow sends, the stop drops it. **Hold** the mic to open the screen without listening.
+On pages without the bar (a design, project setup) a small disc floats at the bottom, on desktop in the corner,
+where his screen is a tall sheet in the middle; left alone it settles into the edge. An amber dot means a card is
+waiting.
 
-The thread is kept plain: your words in one brand bubble (tap it to fix what he heard), his line, one bordered card,
-one brand button that does it and Cancel, with the form as a quiet link. Colour is kept for the two marks that
-matter: a warning mark on anything that still needs you, a tick on what got done.
+The thread is kept plain: your words in one soft bubble (tap it to fix what he heard), his line, one bordered card,
+and under it one full-width button that does it, with the form as a quiet link. Start over sits top left and asks
+first, since it drops the draft; closing his screen after something was done clears it too. Colour is kept for the
+two marks that matter: a warning mark on anything that still needs you, a tick on what got done.
 
 His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART` in the config): one still, cropped to his head
-wherever he appears, and short looping clips that play in his avatar while he works (`clips/thinking.mp4` while he
-works out what you said, `clips/writing.mp4` while he creates what you confirmed). Idle never moves.
+wherever he appears, and short looping clips zoomed to his bust that play in his avatar (`clips/writing.mp4` while he
+listens, `clips/thinking.mp4` while he works). Idle never moves. `peek` takes a picture of him peeking over a ledge
+for the bar; until there is one his head from the still peeks instead.
+
+Text is the rounded cut of Google Sans Flex (headings keep the straight one); Gujarati letters fall through to
+Noto Serif Gujarati. Both are loaded in the root layout for the whole app.
 
 ## Costs
 

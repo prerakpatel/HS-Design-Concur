@@ -11,14 +11,18 @@ export const ASSISTANT_OWNER = "pushkar.patel@hariss.org";
 export const ASSISTANT_NAME = "Vichar";
 
 /**
- * Vichar's artwork (public/assistant/vichar). `still` is him at rest: the disc in the bar and the avatar at the top
- * of his screen, cropped to his head. The clips play in that avatar while he works (thinking: working out what you
- * said; writing: creating what you confirmed). Idle never moves.
+ * Vichar's artwork (public/assistant/vichar). `still` is him at rest: the avatar at the top of his screen, cropped to
+ * his head. The clips play in that avatar: writing while he listens, thinking while he works. Idle never moves.
  */
 export const ASSISTANT_ART = {
   still: "/assistant/vichar/neutral.webp",
+  /**
+   * Him peeking over the bottom bar, beside his button: a picture of his head and hands over a ledge on a transparent
+   * background (about 3:2). Until there is one, his head from the still peeks instead.
+   */
+  peek: "/assistant/vichar/peek.webp" as string | null,
   clips: { thinking: "/assistant/vichar/clips/thinking.mp4", writing: "/assistant/vichar/clips/writing.mp4" },
-} as const;
+};
 
 /** The model that turns words into drafts, and how hard it thinks (low | medium | high). */
 export const ASSISTANT_MODEL = "claude-opus-5-5";

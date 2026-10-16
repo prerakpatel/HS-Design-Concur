@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,7 @@ export function Assistant(p: AssistantProps) {
   const [thinking, setThinking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const pressAt = useRef(0);
   const endRef = useRef<HTMLDivElement>(null);
@@ -86,7 +88,7 @@ export function Assistant(p: AssistantProps) {
   const [wave, setWave] = useState<number[]>(() => Array(WAVE_BARS).fill(0));
   useEffect(() => { if (!listening) { setWave(Array(WAVE_BARS).fill(0)); return; } setWave((w) => [...w.slice(1), rec.level]); }, [rec.level, listening]);
 
-  const reset = () => { setEntries([]); setPeople([]); setText(""); setEditing(null); persist(null); };
+  const reset = () => { setEntries([]); setPeople([]); setText(""); setEditing(null); setConfirmReset(false); persist(null); };
 
   /** Send words to the brain: from the mic, the keyboard, or an edited earlier line (which replays from there). */
   const send = useCallback(async (words: string, replaceAt: number | null = null) => {
@@ -111,11 +113,11 @@ export function Assistant(p: AssistantProps) {
   const navSlot = useNavSlot(pathname);
   const tap = () => { if (open) { setOpen(false); return; } setOpen(true); if (!working && rec.state === "idle") listen(); };
   const attention = !open && !!last && (last.role === "done" || lastOutcome?.kind === "question" || !!lastOutcome?.projects.some((x) => x.gaps.length) || !!lastOutcome?.comments.some((c) => c.unresolved.length));
-  const dock = { still: ASSISTANT_ART.still, attention, onTap: tap, onHold: () => setOpen(true) };
+  const dock = { still: ASSISTANT_ART.still, peek: ASSISTANT_ART.peek, attention, onTap: tap, onHold: () => setOpen(true) };
 
   // What the pill under his face says, and which clip plays in it.
   const status = listening ? "Listening…" : rec.state === "transcribing" ? "Working out the words…" : thinking ? "Thinking…" : busy ? "Doing it…" : p.name;
-  const clip = busy ? ASSISTANT_ART.clips.writing : rec.state === "transcribing" || thinking ? ASSISTANT_ART.clips.thinking : null;
+  const clip = listening ? ASSISTANT_ART.clips.writing : working ? ASSISTANT_ART.clips.thinking : null;
 
   const act = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); } };
   const createProjects = (o: Outcome) => act(async () => {
@@ -155,6 +157,7 @@ export function Assistant(p: AssistantProps) {
         <DrawerContent data-vichar className="h-[100dvh] max-h-[100dvh] rounded-none border-0 data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:max-h-[100dvh] data-[vaul-drawer-direction=bottom]:rounded-none [&>div:first-child]:hidden! md:mx-auto md:h-[85dvh] md:max-h-[85dvh] md:max-w-xl md:rounded-t-3xl md:data-[vaul-drawer-direction=bottom]:max-h-[85dvh] md:data-[vaul-drawer-direction=bottom]:rounded-t-3xl">
           {/* Him at the top, his name (or what he is doing) under his chin, the way out in the corner. */}
           <div className="relative flex shrink-0 flex-col items-center pt-[max(env(safe-area-inset-top),16px)]">
+            {entries.length > 0 && <Button variant="secondary" size="sm" className="absolute left-5 top-[max(env(safe-area-inset-top),16px)] h-8 rounded-full" onClick={() => setConfirmReset(true)} disabled={working || listening}>Start over</Button>}
             <Button variant="secondary" size="icon-sm" className="absolute right-5 top-[max(env(safe-area-inset-top),16px)] rounded-full" onClick={() => setOpen(false)} aria-label="Close"><Icon name="close" /></Button>
             <Face still={ASSISTANT_ART.still} clip={clip} size={88} className="mt-3 ring-2 ring-border" />
             <div className="buddy-art -mt-4 rounded-full border-2 border-border bg-card px-3.5 py-1.5 text-sm shadow-md" aria-live="polite">
@@ -181,9 +184,9 @@ export function Assistant(p: AssistantProps) {
                     </form>
                   ) : (
                     <>
-                      {i === lastUserAt && !working && <span className="mb-0.5 text-[11px] text-brand">Tap to edit</span>}
-                      <button type="button" title="Tap to fix what I heard" onClick={() => !working && setEditing(i)} className="max-w-[90%] rounded-2xl rounded-br-md bg-brand px-4 py-2.5 text-left text-[15px] leading-6 text-brand-foreground">
-                        {e.text}<Icon name="edit" fill className="ml-1.5 align-[-3px] !text-[16px] opacity-80" />
+                      {i === lastUserAt && !working && <span className="mb-0.5 text-[11px] text-muted-foreground">Tap to edit</span>}
+                      <button type="button" title="Tap to fix what I heard" onClick={() => !working && setEditing(i)} className="max-w-[90%] rounded-2xl rounded-br-md bg-brand-soft px-4 py-2.5 text-left text-[15px] leading-6 text-brand-soft-foreground">
+                        {e.text}<Icon name="edit" fill className="ml-1.5 align-[-3px] !text-[16px] opacity-60" />
                       </button>
                     </>
                   )}
@@ -207,15 +210,14 @@ export function Assistant(p: AssistantProps) {
                   )}
                   {o.updateProject && <ProjectUpdateCard u={o.updateProject} />}
                   {o.comments.map((c, j) => <CommentCard key={j} c={c} people={people} onChange={(next) => updateComment(i, next)} />)}
-                  {current && o.kind === "draft" && o.projects.length > 0 && <CardActions primary={o.projects.length === 1 ? "Create draft project" : `Create ${o.projects.length} draft projects`} onPrimary={() => createProjects(o)} pending={busy} onCancel={reset} alt={{ href: "/events/new", label: "Use the form instead" }} />}
-                  {current && o.kind === "draft" && o.addFormats && <CardActions primary="Add formats" onPrimary={() => addFormats(o)} pending={busy} onCancel={reset} alt={{ href: `/events/${o.addFormats.eventId}/edit/formats`, label: "Use the form instead" }} />}
-                  {current && o.kind === "draft" && o.updateProject && <CardActions primary={o.updateProject.publish ? "Save and publish" : "Save"} onPrimary={() => updateProject(o)} pending={busy} onCancel={reset} alt={{ href: `/events/${o.updateProject.eventId}/edit/event`, label: "Use the form instead" }} />}
-                  {current && o.kind === "draft" && o.comments.map((c, j) => <CardActions key={j} primary={c.change ? "Send change request" + (c.items.length > 1 ? "s" : "") : "Post comment" + (c.items.length > 1 ? "s" : "")} onPrimary={() => postComments(c)} pending={busy} onCancel={reset} alt={{ href: `/events/${c.eventId}/slots/${c.slotId}`, label: "Open the design instead" }} />)}
+                  {current && o.kind === "draft" && o.projects.length > 0 && <CardActions primary={o.projects.length === 1 ? "Create draft project" : `Create ${o.projects.length} draft projects`} onPrimary={() => createProjects(o)} pending={busy} alt={{ href: "/events/new", label: "Use the form instead" }} />}
+                  {current && o.kind === "draft" && o.addFormats && <CardActions primary="Add formats" onPrimary={() => addFormats(o)} pending={busy} alt={{ href: `/events/${o.addFormats.eventId}/edit/formats`, label: "Use the form instead" }} />}
+                  {current && o.kind === "draft" && o.updateProject && <CardActions primary={o.updateProject.publish ? "Save and publish" : "Save"} onPrimary={() => updateProject(o)} pending={busy} alt={{ href: `/events/${o.updateProject.eventId}/edit/event`, label: "Use the form instead" }} />}
+                  {current && o.kind === "draft" && o.comments.map((c, j) => <CardActions key={j} primary={c.change ? "Send change request" + (c.items.length > 1 ? "s" : "") : "Post comment" + (c.items.length > 1 ? "s" : "")} onPrimary={() => postComments(c)} pending={busy} alt={{ href: `/events/${c.eventId}/slots/${c.slotId}`, label: "Open the design instead" }} />)}
                 </div>
               );
             })}
             {listening && rec.live && <p className="text-right text-[15px] leading-6 text-muted-foreground">{rec.live}</p>}
-            {entries.length > 0 && !working && !listening && <div className="pt-1 text-center"><button type="button" className="text-[13px] text-muted-foreground underline-offset-4 hover:underline" onClick={reset}>Start over</button></div>}
             <div ref={endRef} />
           </div>
 
@@ -248,6 +250,15 @@ export function Assistant(p: AssistantProps) {
           </form>
         </DrawerContent>
       </Drawer>
+      <Dialog open={confirmReset} onOpenChange={setConfirmReset}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader><DialogTitle>Start over?</DialogTitle><DialogDescription>This drops the draft. Nothing has been created from it.</DialogDescription></DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="ghost" className="rounded-full" onClick={() => setConfirmReset(false)}>Keep it</Button>
+            <Button className="rounded-full bg-brand text-brand-foreground hover:bg-brand-hover" onClick={reset}>Start over</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

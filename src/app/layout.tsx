@@ -6,7 +6,8 @@ import { ICON_NAMES } from "@/config/icons";
 import "./globals.css";
 
 // Google Sans Flex (text) and a Material Symbols subset (only the glyphs we use; regenerate with `npm run icons`).
-const TEXT_FONT = "https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,300..800&display=swap";
+// Google Sans Flex with its rounded axis (body text is set rounded in globals.css), and Noto Serif Gujarati for Gujarati letters.
+const TEXT_FONT = "https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght,ROND@6..144,300..800,0..100&family=Noto+Serif+Gujarati:wght@400..700&display=swap";
 const ICON_FONT = `https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=${ICON_NAMES.join(",")}&display=block`;
 
 export const metadata: Metadata = {

@@ -10,7 +10,7 @@ import { setCurrentOrg } from "@/app/actions/org";
 import type { Organization } from "@/lib/types";
 
 /** Phones: the organisation switcher on the left (one tap) and the bell on the right. Hidden on task screens, which have their own bar. */
-export function MobileTopBar({ org, orgs }: { org: Organization; orgs: Organization[] }) {
+export function MobileTopBar({ org, orgs, inbox = true }: { org: Organization; orgs: Organization[]; /** The bell; off when the bottom bar carries Inbox instead. */ inbox?: boolean }) {
   const pathname = usePathname();
   const unread = useUnreadCount();
   if (/\/events\/[^/]+\/slots\/|\/preview\/slot(-review|-versions)?$/.test(pathname)) return null;
@@ -31,10 +31,10 @@ export function MobileTopBar({ org, orgs }: { org: Organization; orgs: Organizat
           </DropdownMenuContent>
         </DropdownMenu>
       ) : <span className="flex items-center gap-2 text-sm font-semibold"><OrgMark org={org} size={24} />{org.name}</span>}
-      <Link href="/inbox" aria-label="Inbox" className={"relative flex size-10 items-center justify-center rounded-full hover:bg-muted " + (pathname.startsWith("/inbox") ? "bg-sidebar-accent" : "")}>
+      {inbox && <Link href="/inbox" aria-label="Inbox" className={"relative flex size-10 items-center justify-center rounded-full hover:bg-muted " + (pathname.startsWith("/inbox") ? "bg-sidebar-accent" : "")}>
         <Icon name="notifications" size={24} fill={pathname.startsWith("/inbox")} />
         <CountBubble count={unread} className="absolute right-0.5 top-0.5 ring-2 ring-background" />
-      </Link>
+      </Link>}
     </header>
   );
 }
