@@ -109,12 +109,13 @@ export async function GET(req: Request) {
     report.unsent = (report.unsent as number) + 1;
   }
 
-  // 1d. Comments that name a person (not a group) and are still open a day later: remind that person to mark them
-  // done, so nothing sits open by mistake. One in-app / push / email reminder per person per day, plus one chat post
-  // per organization listing who has comments waiting.
-  type OpenComment = { id: string; author_id: string; body: string; mentions: string[] | null; versions: { number: number; slots: { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } } } };
-  const { data: openRaw } = await db.from("comments").select("id,author_id,body,mentions,versions!inner(number,slots!inner(id,event_id,label,formats(name),events!inner(title,status,org_id,deleted_at)))").eq("is_draft", false).is("addressed_at", null).is("confirmed_at", null).lte("created_at", new Date(Date.now() - REVIEW_WAIT_HOURS * HOUR_MS).toISOString()).limit(2000);
-  const openComments = ((openRaw ?? []) as unknown as OpenComment[]).filter((c) => (c.mentions?.length ?? 0) > 0 && c.versions.slots.events.status === "active" && !c.versions.slots.events.deleted_at);
+  // 1d. Change requests still open a day later: remind the person they were given to (the assignee, else the people
+  // named) to mark them done, so nothing sits open by mistake. A plain comment has no "Mark as done", so it is never
+  // owed. One in-app / push / email reminder per person per day, plus one chat post per organization listing which
+  // assets have open change requests.
+  type OpenComment = { id: string; author_id: string; body: string; mentions: string[] | null; assignee_id: string | null; versions: { number: number; slots: { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } } } };
+  const { data: openRaw } = await db.from("comments").select("id,author_id,body,mentions,assignee_id,versions!inner(number,slots!inner(id,event_id,label,formats(name),events!inner(title,status,org_id,deleted_at)))").eq("is_draft", false).eq("needs_change", true).is("addressed_at", null).is("confirmed_at", null).lte("created_at", new Date(Date.now() - REVIEW_WAIT_HOURS * HOUR_MS).toISOString()).limit(2000);
+  const openComments = ((openRaw ?? []) as unknown as OpenComment[]).filter((c) => ((c.mentions?.length ?? 0) > 0 || c.assignee_id) && c.versions.slots.events.status === "active" && !c.versions.slots.events.deleted_at);
   const groupIds = [...new Set(openComments.flatMap((c) => groupMentionIds(c.body)))];
   const { data: gm } = groupIds.length ? await db.from("group_members").select("group_id,user_id").in("group_id", groupIds) : { data: [] as { group_id: string; user_id: string }[] };
   const groupMembers = new Map<string, string[]>();
@@ -126,9 +127,10 @@ export async function GET(req: Request) {
   for (const c of openComments) {
     const viaGroup = new Set(groupIds.length ? groupMentionIds(c.body).flatMap((g) => groupMembers.get(g) ?? []) : []);
     const named = new Set(mentionIds(c.body));
-    for (const id of c.mentions ?? []) {
+    // The change was given to its assignee; without one, to whoever was named.
+    for (const id of c.assignee_id ? [c.assignee_id] : (c.mentions ?? [])) {
       if (id === c.author_id || !active.has(id)) continue;
-      if (viaGroup.has(id) && !named.has(id)) continue;
+      if (!c.assignee_id && viaGroup.has(id) && !named.has(id)) continue;
       const orgs = owed.get(id) ?? new Map<string, OpenComment[]>();
       const org = c.versions.slots.events.org_id;
       orgs.set(org, [...(orgs.get(org) ?? []), c]); owed.set(id, orgs);

@@ -136,6 +136,10 @@ Do these in the **Test sandbox**. Use the designer account (member) and the Core
 - [ ] Remove a person (Settings → Users → Remove): they stop receiving pushes.
 - [ ] In the browser's developer tools, Network → any page: the response has `X-Frame-Options: DENY` and a `Content-Security-Policy` with `frame-ancestors 'none'`. Sign-in, uploads and downloads still work.
 
+### Comment menu and open-comment reminders
+- [ ] On someone else's plain comment there is no ⋮ menu (nothing to do with it). On a change request addressed to you it shows **Mark as done**; on your own comment it shows Edit and Delete.
+- [ ] A plain comment that mentions someone never appears in "Open comments need resolving": only change requests that are not done yet do. Marking the last one done removes the asset from the next post.
+
 ### What should NOT happen
 - [ ] Nothing posted in the real Slack or Google Chat channels. If anything did, stop and check the sandbox organisation's Settings → Organizations has no webhook.
 
