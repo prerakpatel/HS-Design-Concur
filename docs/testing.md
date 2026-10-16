@@ -144,7 +144,7 @@ Do these in the **Test sandbox**. Use the designer account (member) and the Core
 ### The assistant (first draft)
 Only its owner and the people the owner switches on see it. Test in the sandbox organisation.
 - [ ] Settings → People: you (owner) see an **Assistant** switch on each person; another Core Admin does not.
-- [ ] On a phone a raised mic labelled Vichar is in the middle of the bottom bar with him peeking over the bar beside it; Inbox (with its count) is in the bar and the bell is gone from the top. On a design page a small disc floats at the bottom and settles into the edge; on desktop bottom-right.
+- [ ] On a phone a raised mic labelled Vichar sits in a notch in the middle of the bottom bar, and he peeks over the bar on the right (tap him: the mic dribbles); Inbox (with its count) is in the bar and the bell is gone from the top. On a design page a small disc floats at the bottom and settles into the edge; on desktop bottom-right.
 - [ ] Tap it: his screen takes over the phone and he listens (the pill under his face says so, the writing clip plays, the bars at the bottom move with your voice). Stop drops it; the arrow sends. Gujarati in your bubble is in Noto Serif Gujarati.
 - [ ] Start over (top left) asks first; the card has one button and a link to the form, no Cancel.
 - [ ] Hold it: his screen opens without listening. Type "new project for Sharad Purnima and Annakut with a print card 8.5 by 5.5,

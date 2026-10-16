@@ -262,9 +262,22 @@
 
 /* The assistant (src/components/assistant). He only moves for a real state: a clip plays in his avatar while he works. */
 .buddy-dock { transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1); }
+/* The bar's notch: a circle cut out of its top edge around the mic (56px, with a 7px gap), its rim drawn by the bar's own SVG arc. */
+.dc-nav-notch { -webkit-mask: radial-gradient(circle 36px at 50% 4px, transparent 34px, #000 34.5px); mask: radial-gradient(circle 36px at 50% 4px, transparent 34px, #000 34.5px); }
+/* Tap him and the mic bounces like a dropped ball: three bounces, each lower, easing out on the way up and in on the way down. */
+@keyframes buddy-dribble {
+  0% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1); }
+  20% { transform: translateY(-16px); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.2); }
+  40% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1); }
+  56% { transform: translateY(-9px); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.2); }
+  72% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1); }
+  84% { transform: translateY(-4px); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.2); }
+  96%, 100% { transform: translateY(0); }
+}
+.buddy-dribble { animation: buddy-dribble 1s both; }
 .buddy-float:hover { opacity: 1; transform: none; }
 @keyframes buddy-art-in { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
 .buddy-art { animation: buddy-art-in 0.3s ease-out both; }
 /* On a wide screen his sheet sits in the middle and the page behind it dims; on a phone it is the whole screen. */
 [data-slot="drawer-overlay"]:has(+ [data-vichar]) { background: rgb(0 0 0 / 0.62); }
-@media (prefers-reduced-motion: reduce) { .buddy-art, .buddy-float { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .buddy-art, .buddy-float, .buddy-dribble { animation: none !important; transition: none !important; } }

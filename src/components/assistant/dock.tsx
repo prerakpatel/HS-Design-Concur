@@ -33,17 +33,6 @@ export function Face({ still, clip = null, size, className }: { still: string; c
   );
 }
 
-/** His head over the top edge of the bar: the picture when there is one, else his head from the still. */
-function Peek({ still, peek }: { still: string; peek: string | null }) {
-  return (
-    <span className="pointer-events-none absolute bottom-full left-1/2 block h-12 w-14 -translate-x-[70px] overflow-hidden" aria-hidden>
-      {peek
-        ? <img src={peek} alt="" className="absolute bottom-0 left-0 w-full" draggable={false} />
-        : <img src={still} alt="" className="absolute left-1/2 -top-[6%] w-[300%] max-w-none -translate-x-1/2" draggable={false} />}
-    </span>
-  );
-}
-
 /** Press handling shared by his buttons: tap, or hold (to open the thread without listening). */
 function usePress(onTap: () => void, onHold: () => void) {
   const press = useRef<{ timer: ReturnType<typeof setTimeout> | null; held: boolean }>({ timer: null, held: false });
@@ -62,28 +51,40 @@ export interface DockProps {
   onHold: () => void;
 }
 
+/** Where the bar keeps the space above its right half for him to peek over (src/components/mobile-nav.tsx). */
+const NAV_PEEK_ID = "dc-nav-peek";
+
 /**
- * In the phone's bottom bar: a raised mic in the middle, labelled like the tabs, with him peeking over the bar beside
- * it. Tap and his screen takes over and he listens. Hold to open it without listening.
+ * In the phone's bottom bar: a raised mic in the middle, in a notch cut out of the bar, labelled like the tabs. Tap
+ * and his screen takes over and he listens; hold to open it without listening. He peeks over the bar on the right,
+ * hands on its edge; tap him and the mic dribbles, so the curious find the way in.
  */
-export function NavDock({ slot, still, peek, attention, onTap, onHold }: DockProps & { slot: HTMLElement }) {
+export function NavDock({ slot, peek, attention, onTap, onHold }: DockProps & { slot: HTMLElement }) {
   const press = usePress(onTap, onHold);
+  const [dribble, setDribble] = useState(0);
   const column = (
     <button type="button" aria-label="Talk to the assistant" {...press}
       className="relative flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium text-muted-foreground"
       style={{ touchAction: "manipulation", WebkitTouchCallout: "none" }}>
-      <Peek still={still} peek={peek} />
-      {/* The icon row the tabs share; the mic rises out of it, over the bar's edge, with a ring of the bar's colour. */}
+      {/* The icon row the tabs share; the mic rises out of it over the bar's edge, into the notch. */}
       <span className="relative flex h-8 w-14 items-center justify-center">
-        <span className="buddy-dock absolute -top-7 flex size-14 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-md ring-4 ring-card active:scale-95">
-          <Icon name="mic" fill size={24} className="!text-[28px]" />
+        <span className="buddy-dock absolute -top-10 flex size-14 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-md active:scale-95">
+          <span key={dribble} className={cn("flex", dribble > 0 && "buddy-dribble")}><Icon name="mic" fill size={24} className="!text-[28px]" /></span>
           {attention && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
         </span>
       </span>
       Vichar
     </button>
   );
-  return createPortal(column, slot);
+  const peekSlot = slot.ownerDocument.getElementById(NAV_PEEK_ID);
+  const peeking = peek && peekSlot && createPortal(
+    <button type="button" aria-label="That's Vichar. Tap the mic to talk to him." onClick={() => setDribble((n) => n + 1)}
+      className="absolute bottom-0 right-[7%] block w-[116px] select-none active:translate-y-0.5" style={{ WebkitTouchCallout: "none" }}>
+      <img src={peek} alt="" className="block w-full" draggable={false} />
+    </button>,
+    peekSlot,
+  );
+  return <>{createPortal(column, slot)}{peeking}</>;
 }
 
 /**
