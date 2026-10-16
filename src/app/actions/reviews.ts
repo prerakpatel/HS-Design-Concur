@@ -159,7 +159,7 @@ export async function addComment(versionId: string, body: string, pin?: { x: num
   const { supabase, user, org, slot } = ctx;
   const html = sanitizeComment(body); const text = plainText(html); if (!text) throw new UserError("Empty comment");
   const [{ data: orgMembers }, people0] = await Promise.all([
-    supabase.from("users").select("id,name,email,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", org.id),
+    supabase.from("users").select("id,name,email,org_memberships!inner(org_id)").eq("status", "active").eq("hide_in_lists", false).eq("org_memberships.org_id", org.id),
     loadProjectPeople(supabase, ctx.event),
   ]);
   // The project's guests can be @mentioned too; they are on its People list, not in the organization.
@@ -263,7 +263,7 @@ export async function sendCommentBatch(versionId: string) {
     // Only people who can be mentioned on this project (the organization's active members and the project's guests)
     // are told: a draft can carry any id, since it was saved before this check ran.
     const [{ data: orgMembers }, people0] = await Promise.all([
-      supabase.from("users").select("id,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", ctx.org.id),
+      supabase.from("users").select("id,org_memberships!inner(org_id)").eq("status", "active").eq("hide_in_lists", false).eq("org_memberships.org_id", ctx.org.id),
       loadProjectPeople(supabase, ctx.event),
     ]);
     const allowed = new Set([...(orgMembers ?? []).map((m) => m.id as string), ...people0.filter((p) => p.guest && p.userId).map((p) => p.userId!)]);

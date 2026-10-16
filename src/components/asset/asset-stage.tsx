@@ -280,7 +280,7 @@ export function AssetStage({ canRequestChanges = false, versionApproved = false,
               {status.canAssign && !readOnly ? (
                 <SelectField value={status.assigneeId ?? ""} onChange={(e) => reassign(e.target.value)} disabled={pending} aria-label="Assigned designer" className="w-[60%] [&>select]:h-9 [&>select]:pl-3 [&>select]:text-right">
                   <option value="">Unassigned</option>
-                  {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  {members.filter((m) => m.kind !== "group").map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </SelectField>
               ) : <span className="truncate text-right">{members.find((m) => m.id === status.assigneeId)?.name ?? "Unassigned"}</span>}
             </div>
@@ -339,7 +339,8 @@ export function AssetStage({ canRequestChanges = false, versionApproved = false,
                           ? <span title="Marker on the design: tap to find it" className="inline-flex items-center gap-1 text-xs text-muted-foreground"><PinChip n={pin} active={active === c.id} />{sides.length > 1 ? c.pin_side : null}</span>
                           : <span title={`Pinned on v${c.version}: tap to see it there`} className="inline-flex items-center gap-1 text-xs text-muted-foreground"><PinChip n={pin} muted />on v{c.version}<Icon name="arrow_outward" className="!text-[13px]" /></span>)}
                       </p>
-                      {canComment && editing?.id !== c.id && (
+                      {/* The ⋮ menu only exists when it has something in it: Mark as done / Reopen on a change request, Edit / Delete on your own comment (or any, for a Core Admin). */}
+                      {canComment && editing?.id !== c.id && ((!c.draft && (c.needs_change || done)) || c.mine || canModerate) && (
                         <DropdownMenu>
                           <DropdownMenuTrigger aria-label="Comment options" className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-60 hover:bg-muted hover:opacity-100 group-hover/c:opacity-100"><Icon name="more_vert" className="!text-[18px]" /></DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44 rounded-xl p-1.5">

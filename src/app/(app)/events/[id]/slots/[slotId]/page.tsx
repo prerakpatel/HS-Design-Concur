@@ -29,7 +29,7 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
     supabase.from("slots").select("*,fmt:formats(*)").eq("id", slotId).eq("event_id", id).maybeSingle<Slot & { fmt: Format | null }>(),
     supabase.from("versions").select("*,version_sides(*),uploader:uploaded_by(name,email)").eq("slot_id", slotId).order("number", { ascending: false }),
     // The @ list: members of the organization being worked in (a guest's list is the project's People, below).
-    homeOrg ? supabase.from("users").select("id,name,email,avatar_url,role,function_tags,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", homeOrg) : Promise.resolve({ data: [] }),
+    homeOrg ? supabase.from("users").select("id,name,email,avatar_url,role,function_tags,hide_in_lists,org_memberships!inner(org_id)").eq("status", "active").eq("org_memberships.org_id", homeOrg) : Promise.resolve({ data: [] }),
     supabase.from("slots").select("id,is_primary,label,formats(name,sort),versions(created_at)").eq("event_id", id).eq("requested", true),
     // The whole conversation for this format, across versions: what was asked on v1 is the reason v2 exists.
     supabase.from("comments").select("*,author:author_id(name,email,avatar_url,role,function_tags),assignee:assignee_id(name,email),versions!inner(slot_id)").eq("versions.slot_id", slotId).order("created_at"),
@@ -77,7 +77,8 @@ export default async function SlotPage({ params, searchParams }: { params: Promi
   const mlist: Member[] = guest
     ? people.filter((p) => p.userId).map((p) => toMember({ id: p.userId!, name: p.name, email: p.email, avatar_url: p.avatar }))
     : [
-      ...(orgMembers as unknown as Pick<AppUser, "id" | "name" | "email" | "avatar_url">[]).map(toMember),
+      // People marked "hide from lists" are left out, except the one this format is assigned to (their name must still show).
+      ...(orgMembers as unknown as Pick<AppUser, "id" | "name" | "email" | "avatar_url" | "hide_in_lists">[]).filter((m) => !m.hide_in_lists || m.id === slot.assignee_id).map(toMember),
       ...projectGuests.map((p) => toMember({ id: p.userId!, name: p.name, email: p.email, avatar_url: p.avatar })),
       // Groups sit in the same @ list; their chip id is group:<id> so a comment can be sent to a whole team's chat.
       ...(projectGuests.length ? [] : groups).map((g) => ({ id: `group:${g.id}`, name: g.name, handle: groupHandle(g.name), avatar: null, kind: "group" as const })),

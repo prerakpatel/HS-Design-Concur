@@ -1,4 +1,5 @@
 import { isOnSitePath } from "@/lib/on-site-path";
+import { assetBullet } from "@/lib/chat-bullets";
 import { REMINDER_LEAD_DAYS, DRAFT_SWEEP_DAYS } from "@/config/limits";
 import { APP_TIMEZONE } from "@/config/orgs";
 import type { Format } from "@/lib/types";
@@ -70,9 +71,9 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
     case "version.uploaded": return { head: `📤 ${t} · ${f}${n}`, body: `Sent for review by ${by}.` };
     case "review.waiting": return { head: `⏳ ${t} · ${f}${n}`, body: `Waiting for review since ${chatDate(p.since)} · ${p.days} day${p.days === 1 ? "" : "s"}. Approve it or request changes.` };
     case "comments.pending": {
-      const assets = (Array.isArray(p.assets) ? p.assets as { title: string; format: string; open: number }[] : []);
+      const assets = (Array.isArray(p.assets) ? p.assets as { title: string; format: string; open: number; url?: string }[] : []);
       const more = Number(p.total ?? assets.length) - assets.length;
-      return { head: "✅ Open comments need resolving", body: [...assets.map((x) => `• ${x.title} · ${x.format}: ${x.open} open comment${x.open === 1 ? "" : "s"}`), ...(more > 0 ? [`• and ${more} more`] : []), "Once a comment is handled, tap Mark as done so nobody wonders what is still open."].join("\n") };
+      return { head: "✅ Open changes need resolving", body: [...assets.map(assetBullet), ...(more > 0 ? [`• and ${more} more`] : []), "Once a change is handled, tap Mark as done so nobody wonders what is still open."].join("\n") };
     }
     case "reviews.waiting": {
       const items = (Array.isArray(p.items) ? p.items as { title: string; format: string; number: number; days: number }[] : []);

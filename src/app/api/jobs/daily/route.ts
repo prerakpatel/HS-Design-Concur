@@ -6,11 +6,13 @@ import { slotName } from "@/lib/project";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendEmail, appUrl, emailConfigured } from "@/lib/email";
 import { notificationText, notificationHref, openLink } from "@/lib/labels";
+import { slackActionsEnabled, sendSlackBlocks } from "@/lib/slack-dm";
+import { reminderBlocks, MAX_REMINDER_ITEMS } from "@/lib/slack-blocks";
 import { notify, subjectFor, approverIds, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
 import { pruneAllSlots, sweepTmpUploads } from "@/lib/uploads/prune";
 import { matchSlackIds } from "@/lib/slack";
-import { mentionIds, groupMentionIds } from "@/lib/rich-text";
+import { mentionIds, groupMentionIds, plainText } from "@/lib/rich-text";
 import { postRelease } from "@/lib/changelog";
 import { RELEASES } from "@/config/changelog";
 import { privateProjects } from "@/lib/project-people";
@@ -109,26 +111,33 @@ export async function GET(req: Request) {
     report.unsent = (report.unsent as number) + 1;
   }
 
-  // 1d. Comments that name a person (not a group) and are still open a day later: remind that person to mark them
-  // done, so nothing sits open by mistake. One in-app / push / email reminder per person per day, plus one chat post
-  // per organization listing who has comments waiting.
-  type OpenComment = { id: string; author_id: string; body: string; mentions: string[] | null; versions: { number: number; slots: { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } } } };
-  const { data: openRaw } = await db.from("comments").select("id,author_id,body,mentions,versions!inner(number,slots!inner(id,event_id,label,formats(name),events!inner(title,status,org_id,deleted_at)))").eq("is_draft", false).is("addressed_at", null).is("confirmed_at", null).lte("created_at", new Date(Date.now() - REVIEW_WAIT_HOURS * HOUR_MS).toISOString()).limit(2000);
-  const openComments = ((openRaw ?? []) as unknown as OpenComment[]).filter((c) => (c.mentions?.length ?? 0) > 0 && c.versions.slots.events.status === "active" && !c.versions.slots.events.deleted_at);
+  // 1d. Change requests still open a day later: remind the person they were given to (the assignee, else the people
+  // named) to mark them done, so nothing sits open by mistake. A plain comment has no "Mark as done", so it is never
+  // owed. One in-app / push / email reminder per person per day, plus one chat post per organization listing which
+  // assets have open change requests.
+  type OpenComment = { id: string; author_id: string; body: string; mentions: string[] | null; assignee_id: string | null; versions: { number: number; slots: { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } } } };
+  const { data: openRaw } = await db.from("comments").select("id,author_id,body,mentions,assignee_id,versions!inner(number,slots!inner(id,event_id,label,formats(name),events!inner(title,status,org_id,deleted_at)))").eq("is_draft", false).eq("needs_change", true).is("addressed_at", null).is("confirmed_at", null).lte("created_at", new Date(Date.now() - REVIEW_WAIT_HOURS * HOUR_MS).toISOString()).limit(2000);
+  const openComments = ((openRaw ?? []) as unknown as OpenComment[]).filter((c) => ((c.mentions?.length ?? 0) > 0 || c.assignee_id) && c.versions.slots.events.status === "active" && !c.versions.slots.events.deleted_at);
   const groupIds = [...new Set(openComments.flatMap((c) => groupMentionIds(c.body)))];
   const { data: gm } = groupIds.length ? await db.from("group_members").select("group_id,user_id").in("group_id", groupIds) : { data: [] as { group_id: string; user_id: string }[] };
   const groupMembers = new Map<string, string[]>();
   for (const m of gm ?? []) groupMembers.set(m.group_id, [...(groupMembers.get(m.group_id) ?? []), m.user_id]);
-  const { data: activeUsers } = await db.from("users").select("id").eq("status", "active");
+  const { data: activeUsers } = await db.from("users").select("id,slack_user_id").eq("status", "active");
   const active = new Set((activeUsers ?? []).map((u) => u.id as string));
+  const slackIdOf = new Map((activeUsers ?? []).filter((u) => u.slack_user_id).map((u) => [u.id as string, u.slack_user_id as string]));
+  const { data: orgRows } = await db.from("organisations").select("id,slug");
+  const slugOf = new Map((orgRows ?? []).map((o) => [o.id as string, o.slug as string]));
+  const slackButtons = slackActionsEnabled();
+  report.slackReminders = 0;
   // person → org → open comments they were named in (never because a group they are in was named)
   const owed = new Map<string, Map<string, OpenComment[]>>();
   for (const c of openComments) {
     const viaGroup = new Set(groupIds.length ? groupMentionIds(c.body).flatMap((g) => groupMembers.get(g) ?? []) : []);
     const named = new Set(mentionIds(c.body));
-    for (const id of c.mentions ?? []) {
+    // The change was given to its assignee; without one, to whoever was named.
+    for (const id of c.assignee_id ? [c.assignee_id] : (c.mentions ?? [])) {
       if (id === c.author_id || !active.has(id)) continue;
-      if (viaGroup.has(id) && !named.has(id)) continue;
+      if (!c.assignee_id && viaGroup.has(id) && !named.has(id)) continue;
       const orgs = owed.get(id) ?? new Map<string, OpenComment[]>();
       const org = c.versions.slots.events.org_id;
       orgs.set(org, [...(orgs.get(org) ?? []), c]); owed.set(id, orgs);
@@ -136,7 +145,7 @@ export async function GET(req: Request) {
   }
   report.openComments = 0;
   // Chat gets no names: one post per organization saying which assets still have open comments.
-  const assetsByOrg = new Map<string, Map<string, { eventId: string; slotId: string; title: string; format: string; open: number }>>();
+  const assetsByOrg = new Map<string, Map<string, { eventId: string; slotId: string; title: string; format: string; open: number; url: string }>>();
   const seenComment = new Set<string>();
   for (const [person, orgs] of owed) {
     const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "comments.pending").contains("payload", { day: today }).limit(1);
@@ -145,10 +154,18 @@ export async function GET(req: Request) {
     const first = all[0].versions.slots;
     const places = [...new Map(all.map((c) => [c.versions.slots.id, `${c.versions.slots.events.title} · ${slotName(c.versions.slots.formats.name, c.versions.slots.label)}`])).values()];
     await notify(db, [person], "comments.pending", { count: all.length, day: today, href: `/events/${first.event_id}/slots/${first.id}`, title: places.slice(0, 3).join(" · ") + (places.length > 3 ? ` · +${places.length - 3} more` : ""), places: places.length });
+    // A personal Slack message with a Mark as done button per change (only once Slack buttons are set up, and only for
+    // people whose Slack account is known). Google Chat has no personal messages from a webhook: it gets the links below.
+    const slackId = slackIdOf.get(person);
+    if (slackButtons && slackId) {
+      const items = all.slice(0, MAX_REMINDER_ITEMS).map((c) => { const sl = c.versions.slots; return { commentId: c.id, title: sl.events.title, format: slotName(sl.formats.name, sl.label), excerpt: plainText(c.body), url: appUrl(openLink(`/events/${sl.event_id}/slots/${sl.id}`, slugOf.get(sl.events.org_id))) }; });
+      const sent = await sendSlackBlocks(slackId, `${all.length} change${all.length === 1 ? " is" : "s are"} waiting on you in Design & Concur`, reminderBlocks(items, all.length - items.length, appUrl("/inbox")));
+      if ("error" in sent) console.error("[slack reminder]", sent.error); else report.slackReminders = (report.slackReminders as number) + 1;
+    }
     for (const [org, list] of orgs) for (const c of list) {
       if (seenComment.has(c.id)) continue; seenComment.add(c.id);
       const sl = c.versions.slots; const m = assetsByOrg.get(org) ?? new Map();
-      m.set(sl.id, { eventId: sl.event_id, slotId: sl.id, title: sl.events.title, format: slotName(sl.formats.name, sl.label), open: (m.get(sl.id)?.open ?? 0) + 1 }); assetsByOrg.set(org, m);
+      m.set(sl.id, { eventId: sl.event_id, slotId: sl.id, title: sl.events.title, format: slotName(sl.formats.name, sl.label), open: (m.get(sl.id)?.open ?? 0) + 1, url: appUrl(openLink(`/events/${sl.event_id}/slots/${sl.id}`, slugOf.get(org))) }); assetsByOrg.set(org, m);
     }
     report.openComments = (report.openComments as number) + all.length;
   }

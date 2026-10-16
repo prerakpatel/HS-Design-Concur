@@ -73,6 +73,7 @@ export const ICON_NAMES = [
   "person_add",
   "photo_library",
   "priority_high",
+  "radio_button_unchecked",
   "replay",
   "rule",
   "schedule",

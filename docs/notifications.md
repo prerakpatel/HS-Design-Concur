@@ -30,6 +30,24 @@ Repeat for a second channel if ACC has its own (one webhook URL per channel).
 9. Vercel → the project → **Settings → Environment Variables** → add `SLACK_BOT_TOKEN` = that token, all environments, mark it sensitive → **Save** → **Deployments → ⋯ → Redeploy**.
 10. In the app: **Settings → Organizations → Match Slack members now**. It reports anyone whose Slack email differs from their sign-in email; those few paste their ID on their Profile (Slack: profile → ⋮ → **Copy member ID**). Comments keep their formatting in Slack: bold, italics, bullets, links and mentions; underline and colours have no Slack equivalent and are dropped.
 
+## A4 · Buttons in Slack: "Mark as done" in a personal message (15 minutes, once)
+
+Once a day, anyone with change requests still open gets **one personal Slack message from the app**, with a **Mark as done**
+button for each. Pressing it marks the change done in Design & Concur and turns the line into a green tick. The channel
+posts are not changed (they list the assets, each as a link). Google Chat cannot do this from a webhook, so it only gets the links.
+
+It needs a person's Slack member ID to be known (Settings → Users; most are found automatically from their email).
+
+1. Open your Slack app at https://api.slack.com/apps → **OAuth & Permissions** → Bot Token Scopes. Make sure `chat:write` is there and
+   add `im:write` (to message people directly). Slack asks you to **Reinstall to Workspace**: do it. The bot token stays the same.
+2. **Basic Information** → App Credentials → **Signing Secret** → Show → copy it.
+3. In Vercel → Settings → Environment Variables, add `SLACK_SIGNING_SECRET` (Production) with that value. Redeploy once so it takes effect.
+4. In the Slack app → **Interactivity & Shortcuts** → switch **On** → Request URL `https://hsdesign.vercel.app/api/slack/actions` → Save.
+5. Test, as a Core Admin whose Slack ID is set: open `https://hsdesign.vercel.app/api/slack/test-dm` in the browser. You get one direct message
+   from the app with a **Test button**. Press it: it should turn into "✅ Connected". Nobody else is messaged.
+
+Until step 3 is done, nobody is sent these messages (so the buttons never appear before they can work).
+
 ## A3 · Project channels (5 minutes, once)
 
 Any project can have its own chat; a project with guests (People → add someone outside the organisation) should,
