@@ -1,5 +1,5 @@
 "use client";
-// icons: mic, close
+// icons: mic
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/material-icon";
@@ -97,17 +97,20 @@ export function FloatingMic({ attention, onTap, onHold, raised }: DockProps & { 
 }
 
 /**
- * His hello at the top of Projects, once: him peeking over the card, one line on what to say, and a button that opens
- * his screen listening. Dismissed, it stays away until he learns something new (ASSISTANT_HELLO_VERSION).
+ * His hello at the top of Projects, once: him leaning out of the card, one line on what to say, and two choices: try
+ * it (opens his screen listening) or later. Either way it stays away until he learns something new
+ * (ASSISTANT_HELLO_VERSION).
  */
-export function HelloCard({ slot, peek, onTry, onDismiss }: { slot: HTMLElement; peek: string; onTry: () => void; onDismiss: () => void }) {
+export function HelloCard({ slot, bust, onTry, onLater }: { slot: HTMLElement; bust: string; onTry: () => void; onLater: () => void }) {
   return createPortal(
-    <div className="buddy-art relative mb-6 mt-9 rounded-2xl border border-border bg-card p-4 pr-12">
-      <img src={peek} alt="" aria-hidden className="pointer-events-none absolute bottom-full left-1/2 w-[92px] -translate-x-1/2 select-none" draggable={false} />
-      <button type="button" aria-label="Dismiss" onClick={onDismiss} className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><Icon name="close" /></button>
+    <div className="buddy-art relative mb-6 mt-6 rounded-2xl border border-border bg-card p-4 pr-28">
+      <img src={bust} alt="" aria-hidden className="pointer-events-none absolute -top-6 right-2 w-[104px] select-none" draggable={false} />
       <p className="font-medium">Vichar is here.</p>
       <p className="mt-0.5 text-[13px] leading-[18px] text-muted-foreground">Say what you need: a new project with its formats, a format on one that exists, or a note for a designer. He drafts it; you tap.</p>
-      <button type="button" onClick={onTry} className="mt-3 inline-flex h-9 items-center gap-2 rounded-full bg-brand px-4 text-sm font-medium text-brand-foreground hover:bg-brand-hover"><Icon name="mic" fill className="!text-[18px]" />Try it</button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" onClick={onTry} className="inline-flex h-9 items-center gap-2 rounded-full bg-brand px-4 text-sm font-medium text-brand-foreground hover:bg-brand-hover"><Icon name="mic" fill className="!text-[18px]" />Try it</button>
+        <button type="button" onClick={onLater} className="inline-flex h-9 items-center rounded-full bg-brand-soft px-4 text-sm font-medium text-brand-soft-foreground hover:bg-brand-soft/70">I’ll try later</button>
+      </div>
     </div>,
     slot,
   );

@@ -16,8 +16,8 @@ export const ASSISTANT_NAME = "Vichar";
  */
 export const ASSISTANT_ART = {
   still: "/assistant/vichar/neutral.webp",
-  /** Him peeking over an edge (eyes and hands, transparent background): over the top of his hello card. */
-  peek: "/assistant/vichar/peek.webp",
+  /** Head and shoulders cut out of the still, fading out at the chest: he leans out of his hello card. */
+  bust: "/assistant/vichar/bust.webp",
   clips: { thinking: "/assistant/vichar/clips/thinking.mp4", writing: "/assistant/vichar/clips/writing.mp4" },
 };
 

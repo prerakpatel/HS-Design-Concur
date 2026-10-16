@@ -35,7 +35,7 @@ export function MobileNav({ user, assistant = false }: { user: { initials: strin
       {/* The bar's surface on its own layer, so the notch can be cut out of it and its edge drawn, without clipping what rises above it. */}
       <div aria-hidden className={"absolute inset-0" + (assistant ? " dc-nav-shadow" : "")}>
         <div className={"absolute inset-0 overflow-hidden border-t border-border " + (assistant ? "dc-nav-notch bg-card" : "bg-card/95 backdrop-blur")}>
-          {assistant && <svg className="absolute left-1/2 top-0 -translate-x-1/2" width="120" height="48" viewBox="0 0 120 48"><path d="M 15.01 0 A 3 3 0 0 0 18.01 3.07 A 42 42 0 1 0 101.99 3.07 A 3 3 0 0 0 104.99 0" fill="none" stroke="var(--border)" strokeWidth="2" /></svg>}
+          {assistant && <svg className="absolute left-1/2 top-0 -translate-x-1/2" width="120" height="48" viewBox="0 0 120 48"><path d="M 17.01 0 A 3 3 0 0 0 20.01 3.07 A 40 40 0 1 0 99.99 3.07 A 3 3 0 0 0 102.99 0" fill="none" stroke="var(--border)" strokeWidth="2" /></svg>}
         </div>
       </div>
       {/* Spread like a native bar: the outer tabs sit 16px from the sides, the rest spaced evenly between. */}

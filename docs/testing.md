@@ -167,7 +167,7 @@ Use a spare test account, not a real teammate.
 Only its owner and the people the owner switches on see it. Test in the sandbox organisation.
 - [ ] Settings → People: you (owner) see an **Assistant** switch on each person; another Core Admin does not.
 - [ ] On a phone a raised mic labelled Vichar sits centred in a notch in the middle of the bottom bar (tap the label: the button dribbles); Inbox (with its count) is in the bar and the bell is gone from the top. On a design page the mic floats bottom right over a faint gradient; on desktop bottom-right.
-- [ ] Projects shows his hello card once (him peeking over it); Try it opens his screen listening; × keeps it away.
+- [ ] Projects shows his hello card once (him leaning out of it); Try it opens his screen listening; I'll try later keeps it away.
 - [ ] In his screen the thread scrolls under the frosted top and blurs away; the pill fills with bars from the right while listening; tapping your bubble puts the words back in the pill (it grows for long text) and sending redoes the draft from there.
 - [ ] Focusing any field on the phone no longer zooms the page.
 - [ ] Tap it: his screen takes over the phone and he listens (the pill under his face says so, the writing clip plays, the bars at the bottom move with your voice). Stop drops it; the arrow sends. Gujarati in your bubble is in Noto Serif Gujarati.

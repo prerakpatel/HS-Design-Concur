@@ -57,8 +57,8 @@ Projects → Past. Tap the label alone and the button dribbles like a dropped ba
 without the bar (a design, project setup) and on desktop the same mic floats bottom right, on phones over a faint rise
 of the page colour so it stands off what scrolls beneath.
 
-He shows up at moments rather than living on the chrome: a hello card at the top of Projects, once (him peeking over
-its top edge, one line, a Try button that opens his screen listening; dismissed, it stays away until
+He shows up at moments rather than living on the chrome: a hello card at the top of Projects, once (him leaning out of
+it, one line, Try it opens his screen listening, I'll try later puts it away; either way it stays away until
 `ASSISTANT_HELLO_VERSION` is bumped), and his screen itself.
 
 **Tap** the mic and his screen takes over the phone and he listens straight away. The top is frosted glass: his face,
@@ -76,7 +76,7 @@ anything that still needs you, a tick on what got done.
 
 His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART` in the config): one still, cropped to his head
 wherever he appears; short looping clips zoomed to his bust that play in his avatar (`clips/writing.mp4` while he
-listens, `clips/thinking.mp4` while he works); and `peek`, him over the top of the hello card. Idle never moves.
+listens, `clips/thinking.mp4` while he works); and `bust`, head and shoulders fading out at the chest, leaning out of the hello card. Idle never moves.
 
 Text is the rounded cut of Google Sans Flex (headings keep the straight one); Gujarati letters fall through to
 Noto Serif Gujarati. Both are loaded in the root layout for the whole app. Fields are kept at 16px on phones so the
