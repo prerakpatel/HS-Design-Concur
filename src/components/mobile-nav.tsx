@@ -34,13 +34,14 @@ export function MobileNav({ user, assistant = false }: { user: { initials: strin
     <nav className="fixed inset-x-0 bottom-0 z-40 md:hidden">
       {/* The bar's surface on its own layer, so the notch can be cut out of it and its edge drawn, without clipping what rises above it. */}
       <div aria-hidden className={"absolute inset-0 overflow-hidden border-t border-border bg-card/95 backdrop-blur" + (assistant ? " dc-nav-notch" : "")}>
-        {assistant && <svg className="absolute left-1/2 top-0 -translate-x-1/2" width="80" height="48" viewBox="0 0 80 48"><circle cx="40" cy="4" r="35" fill="none" stroke="var(--border)" strokeWidth="1" /></svg>}
+        {assistant && <svg className="absolute left-1/2 top-0 -translate-x-1/2" width="120" height="48" viewBox="0 0 120 48"><path d="M 17.19 0 A 8 8 0 0 0 25.15 7.26 A 35 35 0 1 0 94.85 7.26 A 8 8 0 0 0 102.81 0" fill="none" stroke="var(--border)" strokeWidth="2" /></svg>}
       </div>
       {assistant && <div id="dc-nav-peek" className="absolute inset-x-0 top-0" />}
-      <ul className="relative mx-auto flex max-w-md items-stretch justify-around px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2.5">
+      {/* Spread like a native bar: the outer tabs sit 16px from the sides, the rest spaced evenly between. */}
+      <ul className="relative mx-auto flex max-w-md items-stretch justify-between px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2.5">
         {tabs.map((t, i) => { const active = pathname === t.href || pathname.startsWith(t.href + "/"); return (
-          <li key={t.href} className={"flex-1" + (assistant && i >= tabs.length / 2 ? " order-2" : "")}>
-            <Link href={t.href} className={"flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium " + (active ? "text-foreground" : "text-muted-foreground")}>
+          <li key={t.href} className={"flex w-10 shrink-0 justify-center" + (assistant && i >= tabs.length / 2 ? " order-2" : "")}>
+            <Link href={t.href} className={"flex flex-col items-center gap-1 whitespace-nowrap py-1.5 text-[12px] font-medium " + (active ? "text-foreground" : "text-muted-foreground")}>
               <span className={"relative flex h-8 w-14 items-center justify-center rounded-full " + (active ? "bg-sidebar-accent" : "")}>
                 {t.href === "/profile" ? <UserAvatar initials={user.initials} src={user.avatar} size={24} className={active ? "ring-2 ring-foreground" : ""} /> : <Icon name={t.icon} size={24} fill={active} />}
                 {t.href === "/inbox" && <CountBubble count={unread} className="absolute -right-1 -top-1 ring-2 ring-card" />}
@@ -48,7 +49,7 @@ export function MobileNav({ user, assistant = false }: { user: { initials: strin
             </Link>
           </li>
         ); })}
-        {assistant && <li id="dc-nav-assistant" className="order-1 flex flex-1 justify-center" />}
+        {assistant && <li id="dc-nav-assistant" className="order-1 flex w-10 shrink-0 justify-center" />}
       </ul>
     </nav>
   );

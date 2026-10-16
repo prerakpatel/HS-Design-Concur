@@ -57,19 +57,19 @@ const NAV_PEEK_ID = "dc-nav-peek";
 /**
  * In the phone's bottom bar: a raised mic in the middle, in a notch cut out of the bar, labelled like the tabs. Tap
  * and his screen takes over and he listens; hold to open it without listening. He peeks over the bar on the right,
- * hands on its edge; tap him and the mic dribbles, so the curious find the way in.
+ * hands on its edge; tap him and his button dribbles, so the curious find the way in.
  */
 export function NavDock({ slot, peek, attention, onTap, onHold }: DockProps & { slot: HTMLElement }) {
   const press = usePress(onTap, onHold);
   const [dribble, setDribble] = useState(0);
   const column = (
     <button type="button" aria-label="Talk to the assistant" {...press}
-      className="relative flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium text-muted-foreground"
+      className="relative flex flex-col items-center gap-1 whitespace-nowrap py-1.5 text-[12px] font-medium text-muted-foreground"
       style={{ touchAction: "manipulation", WebkitTouchCallout: "none" }}>
       {/* The icon row the tabs share; the mic rises out of it over the bar's edge, into the notch. */}
       <span className="relative flex h-8 w-14 items-center justify-center">
-        <span className="buddy-dock absolute -top-10 flex size-14 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-md active:scale-95">
-          <span key={dribble} className={cn("flex", dribble > 0 && "buddy-dribble")}><Icon name="mic" fill size={24} className="!text-[28px]" /></span>
+        <span key={dribble} className={cn("buddy-dock absolute -top-10 flex size-14 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-md ring-4 ring-brand-soft active:scale-95", dribble > 0 && "buddy-dribble")}>
+          <Icon name="mic" fill size={24} className="!text-[28px]" />
           {attention && <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-card" />}
         </span>
       </span>
@@ -79,7 +79,7 @@ export function NavDock({ slot, peek, attention, onTap, onHold }: DockProps & { 
   const peekSlot = slot.ownerDocument.getElementById(NAV_PEEK_ID);
   const peeking = peek && peekSlot && createPortal(
     <button type="button" aria-label="That's Vichar. Tap the mic to talk to him." onClick={() => setDribble((n) => n + 1)}
-      className="absolute bottom-0 right-[7%] block w-[116px] select-none active:translate-y-0.5" style={{ WebkitTouchCallout: "none" }}>
+      className="absolute -bottom-px right-[6%] block w-[98px] select-none active:translate-y-0.5" style={{ WebkitTouchCallout: "none" }}>
       <img src={peek} alt="" className="block w-full" draggable={false} />
     </button>,
     peekSlot,
