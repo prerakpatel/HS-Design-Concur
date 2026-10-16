@@ -26,7 +26,7 @@ export function AppShell({ org, orgs, user, slots, sidebarOpen = true, changelog
       <PushPrompt />
       <InstallNudge />
       {assistant && <AssistantMount {...assistant} />}
-      <AppSidebar org={org} orgs={orgs} user={user} slots={slots} whatsNewUnseen={changelog.unseen} />
+      <AppSidebar org={org} orgs={orgs} user={user} slots={slots} whatsNewUnseen={changelog.unseen} assistant={!!assistant} />
       <Suspense><WhatsNewDialog state={changelog} /></Suspense>
       <SidebarInset className="min-h-dvh min-w-0 bg-background">
         <MobileTopBar org={org} orgs={orgs} inbox={!assistant} />

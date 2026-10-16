@@ -14,6 +14,7 @@ import { setCurrentOrg } from "@/app/actions/org";
 import { WhatsNewButton } from "@/components/whats-new";
 import { signOut } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
+import { ASSISTANT_ART } from "@/config/assistant";
 import type { Organization } from "@/lib/types";
 
 const NAV = [
@@ -24,7 +25,7 @@ const NAV = [
 ];
 
 /** Desktop sidebar. Fixed to the viewport; collapses to a 64px icon rail (button at the bottom, the edge, or ⌘/Ctrl+B). */
-export function AppSidebar({ org, orgs, user, slots, whatsNewUnseen }: { org: Organization; orgs: Organization[]; user: { name: string; role: string; initials: string; avatar?: string | null }; slots: { used: number; max: number }; whatsNewUnseen: boolean }) {
+export function AppSidebar({ org, orgs, user, slots, whatsNewUnseen, assistant = false }: { org: Organization; orgs: Organization[]; user: { name: string; role: string; initials: string; avatar?: string | null }; slots: { used: number; max: number }; whatsNewUnseen: boolean; /** A Vichar row for the people who have him (src/components/assistant/assistant.tsx). */ assistant?: boolean }) {
   const pathname = usePathname();
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
@@ -61,6 +62,15 @@ export function AppSidebar({ org, orgs, user, slots, whatsNewUnseen }: { org: Or
               </SidebarMenuButton>
             </SidebarMenuItem>
           ); })}
+          {assistant && (
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Vichar (⌘J)" onClick={() => window.dispatchEvent(new CustomEvent("dc:vichar"))} className="relative h-10 gap-3 rounded-lg px-3 text-sm font-medium text-sidebar-foreground group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!">
+                <span className="relative block size-5 shrink-0 overflow-hidden rounded-full bg-white ring-1 ring-border" aria-hidden><img src={ASSISTANT_ART.still} alt="" className="absolute left-1/2 top-0 w-[164%] max-w-none -translate-x-1/2" draggable={false} /></span>
+                <span className="group-data-[collapsible=icon]:hidden">Vichar</span>
+                <kbd className="ml-auto rounded-md bg-sidebar-accent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground group-data-[collapsible=icon]:hidden">⌘J</kbd>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="gap-3 p-3">

@@ -171,6 +171,7 @@ Only its owner and the people the owner switches on see it. Test in the sandbox 
 - [ ] The first time his screen opens on a design page, project setup, or a project, one line under his pill says what to say there; not again after that.
 - [ ] In his screen the thread scrolls under the frosted top and blurs away; the pill fills with bars from the right while listening; tapping your bubble puts the words back in the pill (it grows for long text) and sending redoes the draft from there.
 - [ ] Focusing any field on the phone no longer zooms the page.
+- [ ] Desktop: the sidebar has a Vichar row; it (or ⌘J) opens him as a panel on the right, the page shifts over, the thread survives moving between projects, and the floating mic hides while the panel is open.
 - [ ] Tap it: his screen takes over the phone and he listens (the pill under his face says so, the writing clip plays, the bars at the bottom move with your voice). Stop drops it; the arrow sends. Gujarati in your bubble is in Noto Serif Gujarati.
 - [ ] Start over (top left) asks first; the card has one button and a link to the form, no Cancel.
 - [ ] Hold it: his screen opens without listening. Type "new project for Sharad Purnima and Annakut with a print card 8.5 by 5.5,

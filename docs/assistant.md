@@ -57,6 +57,10 @@ Projects → Past. Tap the label alone and the button dribbles like a dropped ba
 without the bar (a design, project setup) and on desktop the same mic floats bottom right, on phones over a faint rise
 of the page colour so it stands off what scrolls beneath.
 
+**Desktop.** Typing first, mic available. A Vichar row in the sidebar (his face, ⌘J / Ctrl+J) opens him as a
+380px panel docked on the right: a compact header, the same thread and pill. The page makes room beside it and stays
+usable, and the thread persists across pages, so "add a Telegram flyer to this one" works while looking at it.
+
 **First time.** His walk-through (`src/components/assistant/tour.tsx`): two practice turns and a send-off. The
 person reads a sample line, or says it their own way, hears themselves transcribed for real, and sees the card the
 sample would make, marked as practice. The brain is not called, so trying him costs nothing. "Now for real" leaves

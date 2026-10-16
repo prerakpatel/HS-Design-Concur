@@ -1,6 +1,6 @@
 "use client";
 // icons: mic, stop, arrow_upward, keyboard, close, edit
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer";
@@ -48,6 +48,12 @@ const whereOf = (path: string): Where => {
   return { page: path === "/events" || path === "/" ? "projects" : "other", eventId: null, slotId: null, path };
 };
 
+/** Wide screens get him as a panel docked on the right instead of the whole screen. */
+const WIDE = "(min-width: 768px)";
+const useWide = () => useSyncExternalStore((cb) => { const m = matchMedia(WIDE); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); }, () => matchMedia(WIDE).matches, () => false);
+/** The sidebar's Vichar row (src/components/app-sidebar.tsx) asks for him with this event; ⌘J / Ctrl+J does the same. */
+export const VICHAR_EVENT = "dc:vichar";
+
 /** The sound while he listens: one bar every so often, the newest at the right, as many as the pill can show. */
 const WAVE_BARS = 64;
 const WAVE_EVERY_MS = 70;
@@ -88,6 +94,16 @@ export function Assistant(p: AssistantProps) {
   const [tour, setTour] = useState<TourState | null>(null);
   const tourRef = useRef<TourState | null>(null); tourRef.current = tour;
   const [nudge, setNudge] = useState<string | null>(null);
+  const wide = useWide();
+  // On a wide screen the page makes room beside his panel (src/app/globals.css).
+  useEffect(() => { document.documentElement.classList.toggle("dc-vichar-open", open && wide); return () => document.documentElement.classList.remove("dc-vichar-open"); }, [open, wide]);
+  // The sidebar row and the keyboard shortcut.
+  useEffect(() => {
+    const onEvent = () => setOpen((o) => !o);
+    const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") { e.preventDefault(); setOpen((o) => !o); } };
+    window.addEventListener(VICHAR_EVENT, onEvent); window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener(VICHAR_EVENT, onEvent); window.removeEventListener("keydown", onKey); };
+  }, []);
   const pressAt = useRef(0);
   const endRef = useRef<HTMLDivElement>(null);
   const rec = useRecorder(!!p.ears, p.keyterms);
@@ -184,15 +200,10 @@ export function Assistant(p: AssistantProps) {
 
   const retry = <div className="flex gap-2"><Button size="sm" variant="secondary" className="h-9 rounded-full" onClick={listen} disabled={working}><Icon name="mic" fill className="!text-[16px]" />Try again</Button><Button size="sm" variant="ghost" className="h-9 rounded-full" onClick={() => inputRef.current?.focus()}><Icon name="keyboard" className="!text-[16px]" />Type it</Button></div>;
 
-  return (
-    <>
-      {navSlot ? <NavDock slot={navSlot} {...dock} /> : !open && <FloatingMic {...dock} raised={where.page === "asset" || where.page === "wizard"} />}
-      {hello && helloSlot && <HelloCard slot={helloSlot} bust={ASSISTANT_ART.bust} onTry={() => { dismissHello(); startTour(); }} onLater={dismissHello} />}
-      <Drawer open={open} onOpenChange={(o) => { setOpen(o); if (!o) { rec.cancel(); if (tour) setTour(null); if (last?.role === "done") reset(); } }}>
-        {/* His screen: the whole phone; on a wide screen a tall sheet in the middle. */}
-        <DrawerContent data-vichar className="relative h-[100dvh] max-h-[100dvh] rounded-none border-0 data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:max-h-[100dvh] data-[vaul-drawer-direction=bottom]:rounded-none [&>div:first-child]:hidden! md:mx-auto md:h-[85dvh] md:max-h-[85dvh] md:max-w-xl md:rounded-t-3xl md:data-[vaul-drawer-direction=bottom]:max-h-[85dvh] md:data-[vaul-drawer-direction=bottom]:rounded-t-3xl">
-          {/* The top is frosted glass: him, his name (or what he is doing) under his chin, the way out and Start over in the corners.
-              The thread scrolls under it and fades out as it goes, so what was said earlier blurs away behind him. */}
+  /* The pieces of his screen, shared by the phone (the whole screen) and the wide-screen panel. */
+  const top = (
+          /* The top is frosted glass: him, his name (or what he is doing) under his chin, the way out and Start over in the corners.
+              The thread scrolls under it and fades out as it goes, so what was said earlier blurs away behind him. */
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
             <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+164px)] bg-gradient-to-b from-card from-45% via-card/85 via-70% to-transparent" />
             <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+164px)] backdrop-blur-md [mask-image:linear-gradient(to_bottom,black_40%,transparent)]" />
@@ -207,8 +218,9 @@ export function Assistant(p: AssistantProps) {
               {nudge && !tour && <p className="buddy-art mt-3 max-w-[300px] text-center text-[13px] leading-[18px] text-muted-foreground">{nudge}</p>}
             </div>
           </div>
-
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-3 pt-[calc(max(env(safe-area-inset-top),16px)+160px)]">
+  );
+  const thread = (pad: string) => (
+          <div className={cn("min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-3", pad)}>
             {tour && <Tour tour={tour} formats={p.formats} formatNames={formatNames} busy={listening || rec.state === "transcribing"} onSay={listen} onType={() => inputRef.current?.focus()} onNext={tourNext} onSkip={endTour} onFinish={() => { endTour(); listen(); }} />}
             {!tour && entries.length === 0 && (
               <div className="space-y-2 rounded-2xl bg-subtle p-4 text-sm leading-5">
@@ -255,8 +267,9 @@ export function Assistant(p: AssistantProps) {
             {listening && rec.live && <p className="text-right text-[15px] leading-6 text-muted-foreground">{rec.live}</p>}
             <div ref={endRef} />
           </div>
-
-          {/* One pill: type (it grows with the words), or the mic. While he listens it fills with the sound from the right, a stop to drop it, the arrow to send. */}
+  );
+  const composer = (
+          /* One pill: type (it grows with the words), or the mic. While he listens it fills with the sound from the right, a stop to drop it, the arrow to send. */
           <form className="shrink-0 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2" onSubmit={(e) => { e.preventDefault(); submit(); }}>
             {editing != null && !listening && <div className="mb-1.5 flex items-center justify-between px-3 text-xs text-muted-foreground"><span>Fixing what you said · he will redo it from there</span><button type="button" className="underline-offset-4 hover:underline" onClick={cancelEdit}>Cancel</button></div>}
             <div className="flex min-h-14 items-end gap-2 rounded-[28px] border border-border bg-background pl-4 pr-1.5 focus-within:border-foreground/40">
@@ -284,8 +297,37 @@ export function Assistant(p: AssistantProps) {
               )}
             </div>
           </form>
+  );
+
+  return (
+    <>
+      {navSlot ? <NavDock slot={navSlot} {...dock} /> : !open && <FloatingMic {...dock} raised={where.page === "asset" || where.page === "wizard"} />}
+      {hello && helloSlot && <HelloCard slot={helloSlot} bust={ASSISTANT_ART.bust} onTry={() => { dismissHello(); startTour(); }} onLater={dismissHello} />}
+      {wide ? open && (
+        /* Docked on the right of a wide screen: a compact header, the same thread and pill; the page stays usable beside it. */
+        <aside data-vichar className="fixed inset-y-0 right-0 z-40 flex w-[380px] flex-col border-l border-border bg-card shadow-[-8px_0_24px_rgb(0_0_0/0.05)]" aria-label={p.name}>
+          <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-3">
+            <Face still={ASSISTANT_ART.still} clip={clip} size={36} className="ring-2 ring-border" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-semibold leading-5">{p.name}</p>
+              <p className="truncate text-xs text-muted-foreground" aria-live="polite">{status === p.name ? (nudge && !tour ? nudge : "Say or type what you need.") : status}</p>
+            </div>
+            {entries.length > 0 && !tour && <Button variant="secondary" size="sm" className="h-8 rounded-full" onClick={() => setConfirmReset(true)} disabled={working || listening}>Start over</Button>}
+            <Button variant="ghost" size="icon-sm" className="rounded-full" onClick={() => setOpen(false)} aria-label="Close"><Icon name="close" /></Button>
+          </div>
+          {thread("pt-4")}
+          {composer}
+        </aside>
+      ) : (
+      <Drawer open={open} onOpenChange={(o) => { setOpen(o); if (!o) { rec.cancel(); if (tour) setTour(null); if (last?.role === "done") reset(); } }}>
+        {/* His screen: the whole phone; on a wide screen a tall sheet in the middle. */}
+        <DrawerContent data-vichar className="relative h-[100dvh] max-h-[100dvh] rounded-none border-0 data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:max-h-[100dvh] data-[vaul-drawer-direction=bottom]:rounded-none [&>div:first-child]:hidden! md:mx-auto md:h-[85dvh] md:max-h-[85dvh] md:max-w-xl md:rounded-t-3xl md:data-[vaul-drawer-direction=bottom]:max-h-[85dvh] md:data-[vaul-drawer-direction=bottom]:rounded-t-3xl">
+{top}
+          {thread("pt-[calc(max(env(safe-area-inset-top),16px)+160px)]")}
+          {composer}
         </DrawerContent>
       </Drawer>
+      )}
       <Dialog open={confirmReset} onOpenChange={setConfirmReset}>
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader><DialogTitle>Start over?</DialogTitle><DialogDescription>This drops the draft. Nothing has been created from it.</DialogDescription></DialogHeader>
