@@ -103,7 +103,7 @@ export function FloatingMic({ attention, onTap, onHold, raised }: DockProps & { 
 export function HelloCard({ slot, peek, onTry, onDismiss }: { slot: HTMLElement; peek: string; onTry: () => void; onDismiss: () => void }) {
   return createPortal(
     <div className="buddy-art relative mb-6 mt-9 rounded-2xl border border-border bg-card p-4 pr-12">
-      <img src={peek} alt="" aria-hidden className="pointer-events-none absolute bottom-full right-16 w-[92px] select-none" draggable={false} />
+      <img src={peek} alt="" aria-hidden className="pointer-events-none absolute bottom-full left-1/2 w-[92px] -translate-x-1/2 select-none" draggable={false} />
       <button type="button" aria-label="Dismiss" onClick={onDismiss} className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><Icon name="close" /></button>
       <p className="font-medium">Vichar is here.</p>
       <p className="mt-0.5 text-[13px] leading-[18px] text-muted-foreground">Say what you need: a new project with its formats, a format on one that exists, or a note for a designer. He drafts it; you tap.</p>
