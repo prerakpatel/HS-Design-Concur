@@ -140,6 +140,13 @@ Do these in the **Test sandbox**. Use the designer account (member) and the Core
 - [ ] On someone else's plain comment there is no ⋮ menu (nothing to do with it). On a change request addressed to you it shows **Mark as done**; on your own comment it shows Edit and Delete.
 - [ ] A plain comment that mentions someone never appears in "Open comments need resolving": only change requests that are not done yet do. Marking the last one done removes the asset from the next post.
 
+### Slack buttons (after the Slack setup in docs/notifications.md → A4)
+- [ ] Open `/api/slack/test-dm` as a Core Admin with a Slack ID: a direct message arrives; pressing **Test button** turns it into "✅ Connected".
+- [ ] Someone with an open change request (older than a day) gets one personal message the next morning with a **Mark as done** button per change.
+- [ ] Press **Mark as done**: the line turns into "✅ ~…~ · marked done", and in the app the change shows as Resolved. Press it again: harmless.
+- [ ] Mark the last one done in the app instead, then press a button for it in Slack: the message says "no longer open"/done, nothing breaks.
+- [ ] The channel post "Open changes need resolving" lists each asset as a link (in Slack and in Google Chat).
+
 ### What should NOT happen
 - [ ] Nothing posted in the real Slack or Google Chat channels. If anything did, stop and check the sandbox organisation's Settings → Organizations has no webhook.
 

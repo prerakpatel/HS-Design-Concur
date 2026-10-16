@@ -6,11 +6,13 @@ import { slotName } from "@/lib/project";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendEmail, appUrl, emailConfigured } from "@/lib/email";
 import { notificationText, notificationHref, openLink } from "@/lib/labels";
+import { slackActionsEnabled, sendSlackBlocks } from "@/lib/slack-dm";
+import { reminderBlocks, MAX_REMINDER_ITEMS } from "@/lib/slack-blocks";
 import { notify, subjectFor, approverIds, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
 import { pruneAllSlots, sweepTmpUploads } from "@/lib/uploads/prune";
 import { matchSlackIds } from "@/lib/slack";
-import { mentionIds, groupMentionIds } from "@/lib/rich-text";
+import { mentionIds, groupMentionIds, plainText } from "@/lib/rich-text";
 import { postRelease } from "@/lib/changelog";
 import { RELEASES } from "@/config/changelog";
 import { privateProjects } from "@/lib/project-people";
@@ -120,8 +122,13 @@ export async function GET(req: Request) {
   const { data: gm } = groupIds.length ? await db.from("group_members").select("group_id,user_id").in("group_id", groupIds) : { data: [] as { group_id: string; user_id: string }[] };
   const groupMembers = new Map<string, string[]>();
   for (const m of gm ?? []) groupMembers.set(m.group_id, [...(groupMembers.get(m.group_id) ?? []), m.user_id]);
-  const { data: activeUsers } = await db.from("users").select("id").eq("status", "active");
+  const { data: activeUsers } = await db.from("users").select("id,slack_user_id").eq("status", "active");
   const active = new Set((activeUsers ?? []).map((u) => u.id as string));
+  const slackIdOf = new Map((activeUsers ?? []).filter((u) => u.slack_user_id).map((u) => [u.id as string, u.slack_user_id as string]));
+  const { data: orgRows } = await db.from("organisations").select("id,slug");
+  const slugOf = new Map((orgRows ?? []).map((o) => [o.id as string, o.slug as string]));
+  const slackButtons = slackActionsEnabled();
+  report.slackReminders = 0;
   // person → org → open comments they were named in (never because a group they are in was named)
   const owed = new Map<string, Map<string, OpenComment[]>>();
   for (const c of openComments) {
@@ -138,7 +145,7 @@ export async function GET(req: Request) {
   }
   report.openComments = 0;
   // Chat gets no names: one post per organization saying which assets still have open comments.
-  const assetsByOrg = new Map<string, Map<string, { eventId: string; slotId: string; title: string; format: string; open: number }>>();
+  const assetsByOrg = new Map<string, Map<string, { eventId: string; slotId: string; title: string; format: string; open: number; url: string }>>();
   const seenComment = new Set<string>();
   for (const [person, orgs] of owed) {
     const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "comments.pending").contains("payload", { day: today }).limit(1);
@@ -147,10 +154,18 @@ export async function GET(req: Request) {
     const first = all[0].versions.slots;
     const places = [...new Map(all.map((c) => [c.versions.slots.id, `${c.versions.slots.events.title} · ${slotName(c.versions.slots.formats.name, c.versions.slots.label)}`])).values()];
     await notify(db, [person], "comments.pending", { count: all.length, day: today, href: `/events/${first.event_id}/slots/${first.id}`, title: places.slice(0, 3).join(" · ") + (places.length > 3 ? ` · +${places.length - 3} more` : ""), places: places.length });
+    // A personal Slack message with a Mark as done button per change (only once Slack buttons are set up, and only for
+    // people whose Slack account is known). Google Chat has no personal messages from a webhook: it gets the links below.
+    const slackId = slackIdOf.get(person);
+    if (slackButtons && slackId) {
+      const items = all.slice(0, MAX_REMINDER_ITEMS).map((c) => { const sl = c.versions.slots; return { commentId: c.id, title: sl.events.title, format: slotName(sl.formats.name, sl.label), excerpt: plainText(c.body), url: appUrl(openLink(`/events/${sl.event_id}/slots/${sl.id}`, slugOf.get(sl.events.org_id))) }; });
+      const sent = await sendSlackBlocks(slackId, `${all.length} change${all.length === 1 ? " is" : "s are"} waiting on you in Design & Concur`, reminderBlocks(items, all.length - items.length, appUrl("/inbox")));
+      if ("error" in sent) console.error("[slack reminder]", sent.error); else report.slackReminders = (report.slackReminders as number) + 1;
+    }
     for (const [org, list] of orgs) for (const c of list) {
       if (seenComment.has(c.id)) continue; seenComment.add(c.id);
       const sl = c.versions.slots; const m = assetsByOrg.get(org) ?? new Map();
-      m.set(sl.id, { eventId: sl.event_id, slotId: sl.id, title: sl.events.title, format: slotName(sl.formats.name, sl.label), open: (m.get(sl.id)?.open ?? 0) + 1 }); assetsByOrg.set(org, m);
+      m.set(sl.id, { eventId: sl.event_id, slotId: sl.id, title: sl.events.title, format: slotName(sl.formats.name, sl.label), open: (m.get(sl.id)?.open ?? 0) + 1, url: appUrl(openLink(`/events/${sl.event_id}/slots/${sl.id}`, slugOf.get(org))) }); assetsByOrg.set(org, m);
     }
     report.openComments = (report.openComments as number) + all.length;
   }
