@@ -138,9 +138,9 @@ function Wave({ wave, className }: { wave: { still: string; anim: string; delayM
  */
 export function HelloCard({ slot, wave, onTry, onLater }: { slot: HTMLElement; wave: { still: string; anim: string; delayMs: number; durationMs: number }; onTry: () => void; onLater: () => void }) {
   return createPortal(
-    <div className="buddy-art relative mb-6 mt-7 rounded-2xl border border-border bg-card p-4 pr-[130px]">
-      {/* His cut edge flush with the screen’s right edge on phones (the page’s 20px gutter plus the artwork’s own 5px margin), tucked inside the card on wider screens; the box is sized so he stands about 190px tall. */}
-      <Wave wave={wave} className="-right-[25px] -top-5 w-[142px] md:right-3" />
+    <div className="buddy-art relative mb-6 mt-7 rounded-2xl border border-border bg-card p-4 pr-[112px]">
+      {/* His cut edge flush with the screen’s right edge on phones (the page’s 20px gutter plus the artwork’s own 4px margin), tucked inside the card on wider screens; the box is sized so he stands about 160px tall. */}
+      <Wave wave={wave} className="-right-6 -top-5 w-[121px] md:right-3" />
       <p className="font-medium">Vichar is here.</p>
       <p className="mt-0.5 text-[13px] leading-[18px] text-muted-foreground">Say what you need: a new project with its formats, a format on one that exists, or a note for a designer. He drafts it; you tap.</p>
       <div className="mt-3 flex flex-wrap gap-2">
