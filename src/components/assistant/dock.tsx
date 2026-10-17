@@ -112,18 +112,16 @@ export function FloatingMic({ attention, onTap, onHold, raised }: DockProps & { 
 /** Played once per page load; a client-side return to Projects shows the still. A refresh plays it again. */
 let waved = false;
 
-/** How long the still takes to come in over the animation's last frame. */
-const WAVE_FADE_MS = 300;
 type WaveArt = { still: string; anim: string; delayMs: number; durationMs: number };
 
 /**
- * Him waving: the animation plays once (after a pause, so the page has settled), then the sharp still dissolves in
- * over its last frame, which stays underneath until the still is fully in. Without an animation, or for people who
- * prefer less motion, just the still. Plays once per page load unless `force`d; `onDone` fires once the still is in.
- * Positioning comes from `className`.
+ * Him waving: the animation plays once (after a pause, so the page has settled) and stays on its own last frame; the
+ * file is set to play once, so the browser holds that frame. Without an animation, for people who prefer less motion,
+ * or on a client-side return after it has played, just the still. Plays once per page load unless `force`d; `onDone`
+ * fires once it has finished (or at once when only the still shows). Positioning comes from `className`.
  */
 function Wave({ wave, className, force = false, onDone }: { wave: WaveArt; className?: string; force?: boolean; onDone?: () => void }) {
-  const [phase, setPhase] = useState<"wait" | "anim" | "fade" | "still">(() => {
+  const [phase, setPhase] = useState<"wait" | "anim" | "done" | "still">(() => {
     if (!wave.durationMs || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches)) return "still";
     if (!force) { if (waved) return "still"; waved = true; }
     return "wait";
@@ -138,17 +136,16 @@ function Wave({ wave, className, force = false, onDone }: { wave: WaveArt; class
   useEffect(() => {
     const t = timing.current;
     if (phase === "wait") { const img = new Image(); img.src = src; const id = setTimeout(() => setPhase("anim"), t.delayMs); return () => clearTimeout(id); }
-    if (phase === "anim") { const id = setTimeout(() => setPhase("fade"), t.durationMs + 100); return () => clearTimeout(id); } // a little slack for decoding
-    if (phase === "fade") { const id = setTimeout(() => setPhase("still"), WAVE_FADE_MS); return () => clearTimeout(id); }
+    if (phase === "anim") { const id = setTimeout(() => setPhase("done"), t.durationMs + 100); return () => clearTimeout(id); } // a little slack for decoding
     done.current?.();
   }, [phase, src]);
-  const over = phase === "anim" || phase === "fade";
+  const playing = phase === "anim" || phase === "done";
   return (
     <span className={cn("pointer-events-none select-none", className)} aria-hidden>
-      {over && <img src={src} alt="" className="block w-full" draggable={false} />}
-      {/* The still sits over the animation and comes in once it has played; the animation is let go after that. It is
-          already at opacity 0 while waiting, so nothing fades when the animation starts: the only fade is the one at the end. */}
-      <img src={wave.still} alt="" draggable={false} className={cn("block w-full transition-opacity", over && "absolute inset-0", phase === "anim" || phase === "wait" ? "opacity-0" : "opacity-100", phase === "wait" && "invisible")} style={{ transitionDuration: `${WAVE_FADE_MS}ms` }} />
+      {/* The animation is kept once it has played: its last frame is the picture. While waiting, the still holds the space unseen. */}
+      {playing
+        ? <img src={src} alt="" className="block w-full" draggable={false} />
+        : <img src={wave.still} alt="" className={cn("block w-full", phase === "wait" && "invisible")} draggable={false} />}
     </span>
   );
 }

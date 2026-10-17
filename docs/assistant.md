@@ -88,12 +88,12 @@ anything that still needs you, a tick on what got done.
 His artwork lives in `public/assistant/vichar/` (`ASSISTANT_ART` in the config): one still, cropped to his head
 wherever he appears; short looping clips zoomed to his bust that play in his avatar (`clips/writing.mp4` while he
 listens, `clips/thinking.mp4` while he works); and `wave`, him leaning in from the screen's edge, waving, over the hello
-card: a transparent still and an animated WebP that plays once per page load, after a pause, and dissolves into the
-still, which is the animation's last frame exported sharp (`wave-anim-lastframe.webp`); a client-side return to
-Projects shows the still alone, a refresh plays it again. Idle never moves. One easter egg: a tiny chair sits at the
+card: an animated WebP that plays once per page load, after a pause, and stays on its own last frame, and a transparent
+still, that frame exported sharp (`wave-anim-lastframe.webp`), for a client-side return to Projects or for people who
+prefer less motion; a refresh plays it again. Idle never moves. One easter egg: a tiny chair sits at the
 top right of the phone's header; tap it three times (with the card gone and his layer down) and he peeks in beside it,
 small, feet on the header's edge, waves, and slowly slides back out. The animation must be set to play once
-(loop count 1 in the file), or it restarts under the still while it dissolves in.
+(loop count 1 in the file), or it never settles.
 
 Text is the rounded cut of Google Sans Flex (headings keep the straight one); Gujarati letters fall through to
 Noto Serif Gujarati. Both are loaded in the root layout for the whole app. Fields are kept at 16px on phones so the

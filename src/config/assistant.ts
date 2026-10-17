@@ -17,10 +17,10 @@ export const ASSISTANT_NAME = "Vichar";
 export const ASSISTANT_ART = {
   still: "/assistant/vichar/neutral.webp",
   /**
-   * Him leaning in from the right edge of the screen, waving (transparent), over his hello card: the still, and the
-   * animated WebP that plays once per page load (after `delayMs`, for `durationMs`: 150 frames at 30 fps, 5 s) and dissolves into
-   * the still, which is its last frame exported sharp. Both are 460×640 with him framed the same. `durationMs` 0 would
-   * show the still alone.
+   * Him leaning in from the right edge of the screen, waving (transparent), over his hello card: the animated WebP
+   * that plays once per page load (after `delayMs`, for `durationMs`: 150 frames at 30 fps, 5 s) and stays on its last
+   * frame, and the still (that frame exported sharp) for a client-side return or less motion. Both are 460×640 with him
+   * framed the same. `durationMs` 0 would show the still alone.
    */
   wave: { still: "/assistant/vichar/wave-anim-lastframe.webp", anim: "/assistant/vichar/wave-anim.webp", delayMs: 1500, durationMs: 5000 },
   clips: { thinking: "/assistant/vichar/clips/thinking.mp4", writing: "/assistant/vichar/clips/writing.mp4" },
