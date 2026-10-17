@@ -128,21 +128,24 @@ function Wave({ wave, className, force = false, onDone }: { wave: WaveArt; class
     if (!force) { if (waved) return "still"; waved = true; }
     return "wait";
   });
+  // A finished once-only animation is not played again for the same URL (the browser hands back the finished decode),
+  // so a forced play gets a URL of its own.
+  const [src] = useState(() => force ? `${wave.anim}?p=${Date.now().toString(36)}` : wave.anim);
+  const timing = useRef(wave);
   const done = useRef(onDone);
-  useEffect(() => { done.current = onDone; });
+  useEffect(() => { timing.current = wave; done.current = onDone; });
+  // One timer per phase, so moving on never cancels the next step.
   useEffect(() => {
-    if (phase !== "wait") return;
-    const img = new Image(); img.src = wave.anim; // fetched during the pause, so it starts on time
-    const start = setTimeout(() => setPhase("anim"), wave.delayMs);
-    const fade = setTimeout(() => setPhase("fade"), wave.delayMs + wave.durationMs + 100); // a little slack for decoding
-    const end = setTimeout(() => setPhase("still"), wave.delayMs + wave.durationMs + 100 + WAVE_FADE_MS);
-    return () => { clearTimeout(start); clearTimeout(fade); clearTimeout(end); };
-  }, [phase, wave]);
-  useEffect(() => { if (phase === "still") done.current?.(); }, [phase]);
+    const t = timing.current;
+    if (phase === "wait") { const img = new Image(); img.src = src; const id = setTimeout(() => setPhase("anim"), t.delayMs); return () => clearTimeout(id); }
+    if (phase === "anim") { const id = setTimeout(() => setPhase("fade"), t.durationMs + 100); return () => clearTimeout(id); } // a little slack for decoding
+    if (phase === "fade") { const id = setTimeout(() => setPhase("still"), WAVE_FADE_MS); return () => clearTimeout(id); }
+    done.current?.();
+  }, [phase, src]);
   const over = phase === "anim" || phase === "fade";
   return (
     <span className={cn("pointer-events-none select-none", className)} aria-hidden>
-      {over && <img src={wave.anim} alt="" className="block w-full" draggable={false} />}
+      {over && <img src={src} alt="" className="block w-full" draggable={false} />}
       {/* The still sits over the animation and comes in once it has played; the animation is let go after that. It is
           already at opacity 0 while waiting, so nothing fades when the animation starts: the only fade is the one at the end. */}
       <img src={wave.still} alt="" draggable={false} className={cn("block w-full transition-opacity", over && "absolute inset-0", phase === "anim" || phase === "wait" ? "opacity-0" : "opacity-100", phase === "wait" && "invisible")} style={{ transitionDuration: `${WAVE_FADE_MS}ms` }} />
