@@ -16,8 +16,12 @@ export const ASSISTANT_NAME = "Vichar";
  */
 export const ASSISTANT_ART = {
   still: "/assistant/vichar/neutral.webp",
-  /** Him leaning in from the right edge of the screen, waving (transparent): over his hello card. */
-  wave: "/assistant/vichar/wave.webp",
+  /**
+   * Him leaning in from the right edge of the screen, waving (transparent), over his hello card: the still, and the
+   * animated WebP that plays once per page load (after `delayMs`, for `durationMs`) and dissolves into the still, so
+   * the frame people look at is the sharp one. Until the animation is there, `durationMs` 0 shows the still alone.
+   */
+  wave: { still: "/assistant/vichar/wave.webp", anim: "/assistant/vichar/wave-anim.webp", delayMs: 1500, durationMs: 0 },
   clips: { thinking: "/assistant/vichar/clips/thinking.mp4", writing: "/assistant/vichar/clips/writing.mp4" },
 };
 

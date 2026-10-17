@@ -96,16 +96,44 @@ export function FloatingMic({ attention, onTap, onHold, raised }: DockProps & { 
   );
 }
 
+/** Played once per page load; a client-side return to Projects shows the still. A refresh plays it again. */
+let waved = false;
+
+/**
+ * Him on the hello card: the animation plays once (after a pause, so the page has settled), then the sharp still
+ * dissolves in over its last frame. Without an animation, or for people who prefer less motion, just the still.
+ */
+function Wave({ wave, className }: { wave: { still: string; anim: string; delayMs: number; durationMs: number }; className?: string }) {
+  const [phase, setPhase] = useState<"wait" | "anim" | "still">(() => {
+    if (waved || !wave.durationMs || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches)) return "still";
+    waved = true; return "wait";
+  });
+  useEffect(() => {
+    if (phase !== "wait") return;
+    const img = new Image(); img.src = wave.anim; // fetched during the pause, so it starts on time
+    const start = setTimeout(() => setPhase("anim"), wave.delayMs);
+    const end = setTimeout(() => setPhase("still"), wave.delayMs + wave.durationMs);
+    return () => { clearTimeout(start); clearTimeout(end); };
+  }, [phase, wave]);
+  return (
+    <span className={cn("pointer-events-none absolute select-none", className)} aria-hidden>
+      {phase === "anim" && <img src={wave.anim} alt="" className="block w-full" draggable={false} />}
+      {/* The still arrives over the animation's last frame and the animation is let go once it is in. */}
+      <img src={wave.still} alt="" draggable={false} className={cn("block w-full transition-opacity duration-300", phase === "anim" ? "absolute inset-0 opacity-0" : "opacity-100", phase === "wait" && "invisible")} />
+    </span>
+  );
+}
+
 /**
  * His hello at the top of Projects, once: him leaning in from the right edge of the screen, waving, one line on what
  * to say, and two choices: try it (opens his screen listening) or later. Either way it stays away until he learns
  * something new (ASSISTANT_HELLO_VERSION).
  */
-export function HelloCard({ slot, wave, onTry, onLater }: { slot: HTMLElement; wave: string; onTry: () => void; onLater: () => void }) {
+export function HelloCard({ slot, wave, onTry, onLater }: { slot: HTMLElement; wave: { still: string; anim: string; delayMs: number; durationMs: number }; onTry: () => void; onLater: () => void }) {
   return createPortal(
     <div className="buddy-art relative mb-6 mt-7 rounded-2xl border border-border bg-card p-4 pr-[116px]">
       {/* Flush with the screen’s right edge on phones (the page’s 20px gutter), tucked inside the card on wider screens. */}
-      <img src={wave} alt="" aria-hidden className="pointer-events-none absolute -right-5 -top-3 w-[110px] select-none md:right-3" draggable={false} />
+      <Wave wave={wave} className="-right-5 -top-3 w-[110px] md:right-3" />
       <p className="font-medium">Vichar is here.</p>
       <p className="mt-0.5 text-[13px] leading-[18px] text-muted-foreground">Say what you need: a new project with its formats, a format on one that exists, or a note for a designer. He drafts it; you tap.</p>
       <div className="mt-3 flex flex-wrap gap-2">
