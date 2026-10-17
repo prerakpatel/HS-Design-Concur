@@ -9,7 +9,11 @@ import { CountBubble, useUnreadCount } from "@/components/unread-count";
 import { setCurrentOrg } from "@/app/actions/org";
 import type { Organization } from "@/lib/types";
 
-/** Phones: the organisation switcher on the left (one tap) and the bell on the right. Hidden on task screens, which have their own bar. */
+/**
+ * Phones: the organisation switcher on the left (one tap) and the bell on the right. Hidden on task screens, which have
+ * their own bar. With the assistant the bell moves to the bottom bar and the right side is left for his chair; the
+ * assistant fills both slots itself (src/components/assistant/dock.tsx), so nobody else sees anything there.
+ */
 export function MobileTopBar({ org, orgs, inbox = true }: { org: Organization; orgs: Organization[]; /** The bell; off when the bottom bar carries Inbox instead. */ inbox?: boolean }) {
   const pathname = usePathname();
   const unread = useUnreadCount();
@@ -35,6 +39,8 @@ export function MobileTopBar({ org, orgs, inbox = true }: { org: Organization; o
         <Icon name="notifications" size={24} fill={pathname.startsWith("/inbox")} />
         <CountBubble count={unread} className="absolute right-0.5 top-0.5 ring-2 ring-background" />
       </Link>}
+      {!inbox && <span id="dc-top-chair" className="-mr-1 empty:hidden" />}
+      <span id="dc-top-peek" className="pointer-events-none absolute bottom-0 right-0" />
     </header>
   );
 }

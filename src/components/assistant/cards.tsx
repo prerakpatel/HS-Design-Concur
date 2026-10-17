@@ -66,7 +66,7 @@ export function CardActions({ primary, onPrimary, pending, alt }: { primary: str
 }
 
 export function Say({ children, tone = "normal" }: { children: React.ReactNode; tone?: "normal" | "muted" }) {
-  return <p className={cn("text-[15px] leading-6", tone === "muted" && "text-muted-foreground")}>{children}</p>;
+  return <p className={cn("max-w-[92%] rounded-2xl rounded-bl-md border border-border bg-card px-4 py-2.5 text-[15px] leading-6 shadow-sm", tone === "muted" && "text-muted-foreground")}>{children}</p>;
 }
 
 export function OptionButtons({ options, onPick, disabled }: { options: string[]; onPick: (o: string) => void; disabled: boolean }) {

@@ -24,6 +24,8 @@ export const ASSISTANT_ART = {
    */
   wave: { still: "/assistant/vichar/wave-anim-lastframe.webp", anim: "/assistant/vichar/wave-anim.webp", delayMs: 1500, durationMs: 5092 },
   clips: { thinking: "/assistant/vichar/clips/thinking.mp4", writing: "/assistant/vichar/clips/writing.mp4" },
+  /** His chair, a tiny one at the top right of the phone's header: tap it three times and he peeks in (the easter egg). */
+  chair: "/assistant/vichar/chair.webp",
 };
 
 /** Bump when he learns something worth a hello: the card at the top of Projects comes back once for everyone. */

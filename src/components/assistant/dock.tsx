@@ -9,6 +9,9 @@ import { cn } from "@/lib/utils";
 export const NAV_SLOT_ID = "dc-nav-assistant";
 /** Where the Projects page leaves room for his hello card (src/app/(app)/events/page.tsx). */
 export const HELLO_SLOT_ID = "dc-assistant-hello";
+/** The phone header's right side, for his chair, and its bottom right corner, for him peeking in (src/components/mobile-top-bar.tsx). */
+export const CHAIR_SLOT_ID = "dc-top-chair";
+export const PEEK_SLOT_ID = "dc-top-peek";
 
 /** An element the page leaves for him, read after the page is on screen (it comes and goes with the route). */
 export function useSlot(id: string, pathname: string): HTMLElement | null {
@@ -54,17 +57,21 @@ export interface DockProps {
 /**
  * In the phone's bottom bar: a raised mic in the middle, in a notch cut out of the bar, labelled like the tabs. Tap
  * and his screen takes over and he listens; hold to open it without listening. Tap the label alone and the button
- * dribbles, a nudge for the curious; three taps and he peeks in (Peek).
+ * dribbles, a nudge for the curious.
  */
-export function NavDock({ slot, attention, onTap, onHold, onSecret }: DockProps & { slot: HTMLElement; /** His name tapped three times in a row. */ onSecret?: () => void }) {
+/** Three taps within a second and a half. */
+function useTripleTap(onThird: () => void) {
+  const taps = useRef<number[]>([]);
+  return () => {
+    const now = Date.now(); taps.current = [...taps.current.filter((t) => now - t < 1500), now];
+    if (taps.current.length >= 3) { taps.current = []; onThird(); }
+  };
+}
+
+export function NavDock({ slot, attention, onTap, onHold }: DockProps & { slot: HTMLElement }) {
   const press = usePress(onTap, onHold);
   const [dribble, setDribble] = useState(0);
-  const taps = useRef<number[]>([]);
-  const label = () => {
-    setDribble((n) => n + 1);
-    const now = Date.now(); taps.current = [...taps.current.filter((t) => now - t < 1500), now];
-    if (taps.current.length >= 3) { taps.current = []; onSecret?.(); }
-  };
+  const label = () => setDribble((n) => n + 1);
   const column = (
     <span className="flex flex-col items-center gap-1 whitespace-nowrap py-1.5 text-[12px] font-medium text-muted-foreground">
       {/* The icon row the tabs share stays empty; the button is placed against the bar itself, so it sits exactly in the notch. */}
@@ -121,7 +128,8 @@ function Wave({ wave, className, force = false, onDone }: { wave: WaveArt; class
     if (!force) { if (waved) return "still"; waved = true; }
     return "wait";
   });
-  const done = useRef(onDone); done.current = onDone;
+  const done = useRef(onDone);
+  useEffect(() => { done.current = onDone; });
   useEffect(() => {
     if (phase !== "wait") return;
     const img = new Image(); img.src = wave.anim; // fetched during the pause, so it starts on time
@@ -143,16 +151,31 @@ function Wave({ wave, className, force = false, onDone }: { wave: WaveArt; class
 }
 
 /**
- * The easter egg: tap his name under the mic three times and he pops in from the screen's right edge, just above the
- * bar, waves, and slowly slides back out. `onEnd` once he is gone.
+ * The easter egg's switch: a tiny chair at the top right of the phone's header. Tap it three times and he peeks in
+ * beside it (Peek).
  */
-export function Peek({ wave, onEnd }: { wave: WaveArt; onEnd: () => void }) {
+export function Chair({ slot, src, onSecret }: { slot: HTMLElement; src: string; onSecret: () => void }) {
+  const tap = useTripleTap(onSecret);
+  return createPortal(
+    <button type="button" onClick={tap} aria-label="A small chair" className="flex size-10 items-center justify-center rounded-full active:bg-muted">
+      <img src={src} alt="" className="size-7 select-none" draggable={false} />
+    </button>,
+    slot,
+  );
+}
+
+/**
+ * Him peeking in from the screen's right edge, small, his feet on the header's bottom edge: the wave at once, a short
+ * pause, then he slowly slides back out. `onEnd` once he is gone.
+ */
+export function Peek({ slot, wave, onEnd }: { slot: HTMLElement; wave: WaveArt; onEnd: () => void }) {
   const [leaving, setLeaving] = useState(false);
   useEffect(() => { if (!leaving) return; const t = setTimeout(onEnd, 1200); return () => clearTimeout(t); }, [leaving, onEnd]);
-  return (
-    <div aria-hidden className={cn("pointer-events-none fixed right-0 bottom-[calc(max(env(safe-area-inset-bottom),12px)+78px)] z-30 w-[121px] transition-transform duration-1000 ease-in", leaving && "translate-x-full")}>
+  return createPortal(
+    <span aria-hidden className={cn("block w-14 transition-transform duration-1000 ease-in", leaving && "translate-x-full")}>
       <Wave wave={{ ...wave, delayMs: 0 }} force onDone={() => setTimeout(() => setLeaving(true), 500)} className="relative block w-full" />
-    </div>
+    </span>,
+    slot,
   );
 }
 

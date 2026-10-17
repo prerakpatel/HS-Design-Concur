@@ -72,7 +72,7 @@ He shows up at moments rather than living on the chrome: a hello card at the top
 the screen's edge, waving, one line, Try it starts the walk-through; I'll try later snoozes it for three days, twice at most, with Undo in a toast;
 finishing or skipping the walk-through retires it; everything is forgotten when `ASSISTANT_HELLO_VERSION` is bumped), and his screen itself.
 
-**Tap** the mic and his screen takes over the phone and he listens straight away. The top is frosted glass: his face,
+**Tap** the mic and he listens straight away. On a phone he is a layer over the page: the page dims and its lower third frosts over, the thread scrolls over it and the pill sits in the frost, so whatever the person was looking at (a design, a project) stays recognisable behind him. The chevron, a tap on the dimmed page or Escape puts him aside without losing the thread; the page is usable again and a pill above the bar brings him back. Close (×) ends the conversation. The top is frosted glass: his face,
 a pill under his chin that says what he is doing (Listening… / Working out the words… / Thinking… / Doing it…), the
 way out and Start over in the corners; the thread scrolls under it and blurs away as it goes. At the bottom one pill:
 type (it grows with the words; Enter sends, Shift+Enter breaks a line) or hold the mic. While he listens the pill
@@ -90,8 +90,9 @@ wherever he appears; short looping clips zoomed to his bust that play in his ava
 listens, `clips/thinking.mp4` while he works); and `wave`, him leaning in from the screen's edge, waving, over the hello
 card: a transparent still and an animated WebP that plays once per page load, after a pause, and dissolves into the
 still, which is the animation's last frame exported sharp (`wave-anim-lastframe.webp`); a client-side return to
-Projects shows the still alone, a refresh plays it again. Idle never moves. One easter egg: once the card is gone, tap
-his name under the mic three times and he peeks in above the bar, waves, and slowly slides back out. The animation must be set to play once
+Projects shows the still alone, a refresh plays it again. Idle never moves. One easter egg: a tiny chair sits at the
+top right of the phone's header; tap it three times (with the card gone and his layer down) and he peeks in beside it,
+small, feet on the header's edge, waves, and slowly slides back out. The animation must be set to play once
 (loop count 1 in the file), or it restarts under the still while it dissolves in.
 
 Text is the rounded cut of Google Sans Flex (headings keep the straight one); Gujarati letters fall through to

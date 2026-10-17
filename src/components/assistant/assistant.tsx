@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
@@ -11,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/user-error";
 import { assistantTurn, assistantCreateProjects, assistantAddFormats, assistantComment, assistantUpdateProject } from "@/app/actions/assistant";
 import type { CommentDraft, Outcome, Person, Turn, Where } from "@/lib/assistant/schema";
-import { NavDock, FloatingMic, HelloCard, Peek, Face, useSlot, NAV_SLOT_ID, HELLO_SLOT_ID } from "@/components/assistant/dock";
+import { NavDock, FloatingMic, HelloCard, Chair, Peek, Face, useSlot, NAV_SLOT_ID, HELLO_SLOT_ID, CHAIR_SLOT_ID, PEEK_SLOT_ID } from "@/components/assistant/dock";
 import { ASSISTANT_ART, ASSISTANT_HELLO_VERSION } from "@/config/assistant";
 import { useRecorder } from "@/components/assistant/use-recorder";
 import { CardActions, CommentCard, DoneCard, OptionButtons, ProjectCard, ProjectUpdateCard, Say } from "@/components/assistant/cards";
@@ -95,14 +94,14 @@ function useKeyboardFit(on: boolean) {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!on || !vv) return;
+    const el = ref.current; if (!el) return;
     const fit = () => {
-      const el = ref.current; if (!el) return;
       const up = window.innerHeight - vv.height > 100; // the keyboard, not the browser's own bars coming and going
       el.style.height = up ? `${vv.height}px` : ""; el.style.top = up ? `${vv.offsetTop}px` : ""; el.style.bottom = up ? "auto" : "";
       if (up) window.scrollTo(0, 0);
     };
     vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); fit();
-    return () => { vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit); const el = ref.current; if (el) { el.style.height = ""; el.style.top = ""; el.style.bottom = ""; } };
+    return () => { vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit); el.style.height = ""; el.style.top = ""; el.style.bottom = ""; };
   }, [on]);
   return ref;
 }
@@ -122,8 +121,10 @@ export function Assistant(p: AssistantProps) {
   const [confirmReset, setConfirmReset] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [hello, setHello] = useState(() => !helloDismissed());
-  /** The easter egg is on: he is peeking in above the bar. */
+  /** The easter egg is on: he is peeking in beside his chair. */
   const [peek, setPeek] = useState(false);
+  /** On a phone his layer is put aside (the page is usable, a pill brings him back) without losing the thread. */
+  const [min, setMin] = useState(false);
   const [tour, setTour] = useState<TourState | null>(null);
   const tourRef = useRef<TourState | null>(null); tourRef.current = tour;
   const [nudge, setNudge] = useState<string | null>(null);
@@ -134,10 +135,10 @@ export function Assistant(p: AssistantProps) {
   // The sidebar row and the keyboard shortcut.
   useEffect(() => {
     const onEvent = () => setOpen((o) => !o);
-    const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") { e.preventDefault(); setOpen((o) => !o); } };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && open && !wide) { setMin(true); return; } if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") { e.preventDefault(); setOpen((o) => !o); } };
     window.addEventListener(VICHAR_EVENT, onEvent); window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener(VICHAR_EVENT, onEvent); window.removeEventListener("keydown", onKey); };
-  }, []);
+  }, [open, wide]);
   const pressAt = useRef(0);
   const endRef = useRef<HTMLDivElement>(null);
   const rec = useRecorder(!!p.ears, p.keyterms);
@@ -202,6 +203,16 @@ export function Assistant(p: AssistantProps) {
   // His disc: tap and his screen takes over and he listens straight away; hold to open it for typing.
   const navSlot = useSlot(NAV_SLOT_ID, pathname);
   const helloSlot = useSlot(HELLO_SLOT_ID, pathname);
+  const chairSlot = useSlot(CHAIR_SLOT_ID, pathname);
+  const peekSlot = useSlot(PEEK_SLOT_ID, pathname);
+  useEffect(() => { if (!open) setMin(false); }, [open]);
+  // The page under his layer stays put while he is up; aside, it scrolls as usual.
+  useEffect(() => {
+    if (!open || wide || min) return;
+    const prev = document.body.style.overflow; document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open, wide, min]);
+  const close = () => { setOpen(false); rec.cancel(); if (tour) setTour(null); if (last?.role === "done") reset(); };
   const tap = () => { if (open) { setOpen(false); return; } if (!tourDone() && entries.length === 0) { startTour(); return; } setOpen(true); if (!working && rec.state === "idle") listen(); };
   const attention = !open && !!last && (last.role === "done" || lastOutcome?.kind === "question" || !!lastOutcome?.projects.some((x) => x.gaps.length) || !!lastOutcome?.comments.some((c) => c.unresolved.length));
   const dock = { attention, onTap: tap, onHold: () => setOpen(true) };
@@ -245,23 +256,21 @@ export function Assistant(p: AssistantProps) {
           /* The top is frosted glass: him, his name (or what he is doing) under his chin, the way out and Start over in the corners.
               The thread scrolls under it and fades out as it goes, so what was said earlier blurs away behind him. */
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
-            <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+164px)] bg-gradient-to-b from-card from-45% via-card/85 via-70% to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+164px)] bg-gradient-to-b from-black/45 from-30% via-black/25 via-65% to-transparent" />
             <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+164px)] backdrop-blur-md [mask-image:linear-gradient(to_bottom,black_40%,transparent)]" />
             <div className="relative flex flex-col items-center pt-[max(env(safe-area-inset-top),16px)]">
               {entries.length > 0 && !tour && <Button variant="secondary" size="sm" className="pointer-events-auto absolute left-5 top-[max(env(safe-area-inset-top),16px)] h-8 rounded-full bg-card/70 backdrop-blur-md hover:bg-card" onClick={() => setConfirmReset(true)} disabled={working || listening}>Start over</Button>}
-              <Button variant="secondary" size="icon-sm" className="pointer-events-auto absolute right-5 top-[max(env(safe-area-inset-top),16px)] rounded-full bg-card/70 backdrop-blur-md hover:bg-card" onClick={() => setOpen(false)} aria-label="Close"><Icon name="close" /></Button>
+              <Button variant="secondary" size="icon-sm" className="pointer-events-auto absolute right-[60px] top-[max(env(safe-area-inset-top),16px)] rounded-full bg-card/70 backdrop-blur-md hover:bg-card" onClick={() => setMin(true)} aria-label="Put aside"><Icon name="expand_more" /></Button>
+              <Button variant="secondary" size="icon-sm" className="pointer-events-auto absolute right-5 top-[max(env(safe-area-inset-top),16px)] rounded-full bg-card/70 backdrop-blur-md hover:bg-card" onClick={close} aria-label="Close"><Icon name="close" /></Button>
               <Face still={ASSISTANT_ART.still} clip={clip} size={88} className="mt-3 ring-2 ring-border" />
-              <div className="buddy-art -mt-4 rounded-full border-2 border-border bg-card px-3.5 py-1.5 text-sm shadow-md" aria-live="polite">
-                <DrawerTitle className="text-sm font-normal">{status}</DrawerTitle>
-              </div>
-              <DrawerDescription className="sr-only">Say or type what you need. Projects, formats, comments.</DrawerDescription>
-              {nudge && !tour && <p className="buddy-art mt-3 max-w-[300px] text-center text-[13px] leading-[18px] text-muted-foreground">{nudge}</p>}
+              <div className="buddy-art -mt-4 rounded-full border-2 border-border bg-card px-3.5 py-1.5 text-sm shadow-md" aria-live="polite">{status}</div>
+              {nudge && !tour && <p className="buddy-art mt-3 max-w-[300px] text-center text-[13px] leading-[18px] text-white/85 [text-shadow:0_1px_2px_rgb(0_0_0/0.4)]">{nudge}</p>}
             </div>
           </div>
   );
   const thread = (pad: string) => (
-          <div className={cn("min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-3", pad)}>
-            {tour && <Tour tour={tour} formats={p.formats} formatNames={formatNames} busy={listening || rec.state === "transcribing"} onSay={listen} onType={() => inputRef.current?.focus()} onNext={tourNext} onSkip={endTour} onFinish={() => { endTour(); listen(); }} />}
+          <div className={cn("min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-5 pb-3", pad)} onClick={(e) => { if (!wide && e.target === e.currentTarget) setMin(true); }}>
+            {tour && <div className="rounded-3xl border border-border bg-card p-4 shadow-sm [&>div>p:first-child]:max-w-none [&>div>p:first-child]:border-0 [&>div>p:first-child]:bg-transparent [&>div>p:first-child]:p-0 [&>div>p:first-child]:shadow-none"><Tour tour={tour} formats={p.formats} formatNames={formatNames} busy={listening || rec.state === "transcribing"} onSay={listen} onType={() => inputRef.current?.focus()} onNext={tourNext} onSkip={endTour} onFinish={() => { endTour(); listen(); }} /></div>}
             {!tour && entries.length === 0 && (
               <div className="space-y-2 rounded-2xl bg-subtle p-4 text-sm leading-5">
                 <p className="text-muted-foreground">Try:</p>
@@ -273,7 +282,7 @@ export function Assistant(p: AssistantProps) {
             {!tour && entries.map((e, i) => {
               if (e.role === "user") return (
                 <div key={i} className="flex flex-col items-end">
-                  {i === lastUserAt && !working && editing == null && <span className="mb-0.5 text-[11px] text-muted-foreground">Tap to edit</span>}
+                  {i === lastUserAt && !working && editing == null && <span className="mb-0.5 text-[11px] text-muted-foreground md:text-muted-foreground [.dc-dim_&]:text-white/80">Tap to edit</span>}
                   <button type="button" title="Tap to fix what I heard" onClick={() => !working && edit(i, e.text)} className={cn("max-w-[90%] rounded-2xl rounded-br-md bg-brand-soft px-4 py-2.5 text-left text-[15px] leading-6 text-brand-soft-foreground", editing === i && "ring-2 ring-brand/50")}>
                     {e.text}<Icon name="edit" fill className="ml-1.5 align-[-3px] !text-[16px] opacity-60" />
                   </button>
@@ -341,9 +350,10 @@ export function Assistant(p: AssistantProps) {
 
   return (
     <>
-      {navSlot ? <NavDock slot={navSlot} {...dock} onSecret={() => { if (!hello && !open) setPeek(true); }} /> : !open && <FloatingMic {...dock} raised={where.page === "asset" || where.page === "wizard"} />}
+      {navSlot ? <NavDock slot={navSlot} {...dock} onTap={() => { setMin(false); dock.onTap(); }} onHold={() => { setMin(false); dock.onHold(); }} /> : (!open || min) && <FloatingMic {...dock} onTap={() => { setMin(false); dock.onTap(); }} onHold={() => { setMin(false); dock.onHold(); }} raised={where.page === "asset" || where.page === "wizard"} />}
       {hello && helloSlot && <HelloCard slot={helloSlot} wave={ASSISTANT_ART.wave} onTry={() => { dismissHello(); startTour(); }} onLater={snoozeHello} />}
-      {peek && !open && <Peek wave={ASSISTANT_ART.wave} onEnd={() => setPeek(false)} />}
+      {chairSlot && !wide && <Chair slot={chairSlot} src={ASSISTANT_ART.chair} onSecret={() => { if (!hello && !(open && !min)) setPeek(true); }} />}
+      {peek && peekSlot && <Peek slot={peekSlot} wave={ASSISTANT_ART.wave} onEnd={() => setPeek(false)} />}
       {wide ? open && (
         /* Docked on the right of a wide screen: a compact header, the same thread and pill; the page stays usable beside it. */
         <aside data-vichar className="fixed inset-y-0 right-0 z-40 flex w-[380px] flex-col border-l border-border bg-card shadow-[-8px_0_24px_rgb(0_0_0/0.05)]" aria-label={p.name}>
@@ -360,14 +370,24 @@ export function Assistant(p: AssistantProps) {
           {composer}
         </aside>
       ) : (
-      <Drawer open={open} onOpenChange={(o) => { setOpen(o); if (!o) { rec.cancel(); if (tour) setTour(null); if (last?.role === "done") reset(); } }}>
-        {/* His screen: the whole phone; on a wide screen a tall sheet in the middle. */}
-        <DrawerContent ref={sheetRef} data-vichar className="h-[100dvh] max-h-[100dvh] rounded-none border-0 data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:max-h-[100dvh] data-[vaul-drawer-direction=bottom]:rounded-none [&>div:first-child]:hidden! md:mx-auto md:h-[85dvh] md:max-h-[85dvh] md:max-w-xl md:rounded-t-3xl md:data-[vaul-drawer-direction=bottom]:max-h-[85dvh] md:data-[vaul-drawer-direction=bottom]:rounded-t-3xl">
-{top}
-          {thread("pt-[calc(max(env(safe-area-inset-top),16px)+160px)]")}
-          {composer}
-        </DrawerContent>
-      </Drawer>
+      open && (min ? (
+        /* Put aside: the page is his person's again; the pill, above the bar, brings him back with the thread intact. */
+        <button type="button" onClick={() => setMin(false)} aria-label="Back to Vichar" className="buddy-art fixed right-4 bottom-[calc(max(env(safe-area-inset-bottom),12px)+84px)] z-40 flex h-12 items-center gap-2 rounded-full border border-border bg-card pl-1.5 pr-4 text-sm font-medium shadow-lg">
+          <Face still={ASSISTANT_ART.still} clip={clip} size={36} className="ring-2 ring-border" />{listening ? "Listening…" : working ? "Working…" : "Continue"}
+        </button>
+      ) : (
+        /* His layer on a phone: the page dims and its lower third frosts over; the thread scrolls over the page, the pill sits in the frost.
+            Whatever the person was looking at stays visible behind him. A tap on the page, or the chevron, puts him aside. */
+        <div ref={sheetRef} data-vichar role="dialog" aria-modal="true" aria-label={p.name} className="dc-dim fixed inset-0 z-50 flex flex-col">
+          <div className="absolute inset-0 bg-black/40 animate-in fade-in-0 duration-200" onClick={() => setMin(true)} />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[38%] bg-card/80 backdrop-blur-xl [mask-image:linear-gradient(to_top,black_55%,transparent)]" />
+          <div className="relative flex min-h-0 flex-1 flex-col animate-in fade-in-0 slide-in-from-bottom-6 duration-300">
+            {top}
+            {thread("pt-[calc(max(env(safe-area-inset-top),16px)+160px)]")}
+            {composer}
+          </div>
+        </div>
+      ))
       )}
       <Dialog open={confirmReset} onOpenChange={setConfirmReset}>
         <DialogContent className="max-w-sm rounded-2xl">
