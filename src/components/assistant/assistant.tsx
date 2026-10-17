@@ -253,18 +253,20 @@ export function Assistant(p: AssistantProps) {
 
   /* The pieces of his screen, shared by the phone (the whole screen) and the wide-screen panel. */
   const top = (
-          /* The top is frosted glass: him, his name (or what he is doing) under his chin, the way out and Start over in the corners.
-              The thread scrolls under it and fades out as it goes, so what was said earlier blurs away behind him. */
+          /* One compact row over the dimmed page: his face, what he is doing, Start over when there is something to drop, and two
+              plain icons: the chevron puts him aside (the page is usable, a pill brings him back), the cross ends it. */
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
-            <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+164px)] bg-gradient-to-b from-black/45 from-30% via-black/25 via-65% to-transparent" />
-            <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+164px)] backdrop-blur-md [mask-image:linear-gradient(to_bottom,black_40%,transparent)]" />
-            <div className="relative flex flex-col items-center pt-[max(env(safe-area-inset-top),16px)]">
-              {entries.length > 0 && !tour && <Button variant="secondary" size="sm" className="pointer-events-auto absolute left-5 top-[max(env(safe-area-inset-top),16px)] h-8 rounded-full bg-card/70 backdrop-blur-md hover:bg-card" onClick={() => setConfirmReset(true)} disabled={working || listening}>Start over</Button>}
-              <Button variant="secondary" size="icon-sm" className="pointer-events-auto absolute right-[60px] top-[max(env(safe-area-inset-top),16px)] rounded-full bg-card/70 backdrop-blur-md hover:bg-card" onClick={() => setMin(true)} aria-label="Put aside"><Icon name="expand_more" /></Button>
-              <Button variant="secondary" size="icon-sm" className="pointer-events-auto absolute right-5 top-[max(env(safe-area-inset-top),16px)] rounded-full bg-card/70 backdrop-blur-md hover:bg-card" onClick={close} aria-label="Close"><Icon name="close" /></Button>
-              <Face still={ASSISTANT_ART.still} clip={clip} size={88} className="mt-3 ring-2 ring-border" />
-              <div className="buddy-art -mt-4 rounded-full border-2 border-border bg-card px-3.5 py-1.5 text-sm shadow-md" aria-live="polite">{status}</div>
-              {nudge && !tour && <p className="buddy-art mt-3 max-w-[300px] text-center text-[13px] leading-[18px] text-white/85 [text-shadow:0_1px_2px_rgb(0_0_0/0.4)]">{nudge}</p>}
+            <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+100px)] bg-gradient-to-b from-black/50 from-25% via-black/25 via-60% to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-[calc(max(env(safe-area-inset-top),16px)+100px)] backdrop-blur-md [mask-image:linear-gradient(to_bottom,black_35%,transparent)]" />
+            <div className="relative flex items-center gap-3 px-5 pt-[calc(max(env(safe-area-inset-top),16px)+4px)] text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.35)]">
+              <Face still={ASSISTANT_ART.still} clip={clip} size={44} className="shadow-md ring-2 ring-white/80" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-semibold leading-5">{p.name}</p>
+                <p className="truncate text-[13px] leading-[18px] text-white/85" aria-live="polite">{status === p.name ? (nudge && !tour ? nudge : "Say or type what you need.") : status}</p>
+              </div>
+              {entries.length > 0 && !tour && <button type="button" className="pointer-events-auto rounded-full bg-white/15 px-3 py-1.5 text-[13px] font-medium backdrop-blur-sm disabled:opacity-50" onClick={() => setConfirmReset(true)} disabled={working || listening}>Start over</button>}
+              <button type="button" className="pointer-events-auto -mr-1 flex size-10 items-center justify-center" onClick={() => setMin(true)} aria-label="Put aside" title="Put aside"><Icon name="expand_more" size={24} className="!text-[28px]" /></button>
+              <button type="button" className="pointer-events-auto -mr-2 flex size-10 items-center justify-center" onClick={close} aria-label="Close" title="Close"><Icon name="close" size={24} className="!text-[26px]" /></button>
             </div>
           </div>
   );
@@ -320,7 +322,7 @@ export function Assistant(p: AssistantProps) {
   const composer = (
           /* One pill: type (it grows with the words), or the mic. While he listens it fills with the sound from the right, a stop to drop it, the arrow to send. */
           <form className="shrink-0 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-            {editing != null && !listening && <div className="mb-1.5 flex items-center justify-between px-3 text-xs text-muted-foreground"><span>Fixing what you said · he will redo it from there</span><button type="button" className="underline-offset-4 hover:underline" onClick={cancelEdit}>Cancel</button></div>}
+            {editing != null && !listening && <div className="mb-1.5 flex items-center justify-between px-3 text-xs text-muted-foreground [.dc-dim_&]:text-foreground"><span>Fixing what you said · he will redo it from there</span><button type="button" className="underline-offset-4 hover:underline" onClick={cancelEdit}>Cancel</button></div>}
             <div className="flex min-h-14 items-end gap-2 rounded-[28px] border border-border bg-background pl-4 pr-1.5 focus-within:border-foreground/40">
               {listening ? (
                 <>
@@ -380,10 +382,10 @@ export function Assistant(p: AssistantProps) {
             Whatever the person was looking at stays visible behind him. A tap on the page, or the chevron, puts him aside. */
         <div ref={sheetRef} data-vichar role="dialog" aria-modal="true" aria-label={p.name} className="dc-dim fixed inset-0 z-50 flex flex-col">
           <div className="absolute inset-0 bg-black/40 animate-in fade-in-0 duration-200" onClick={() => setMin(true)} />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[38%] bg-card/80 backdrop-blur-xl [mask-image:linear-gradient(to_top,black_55%,transparent)]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[38%] bg-card/55 backdrop-blur-xl [mask-image:linear-gradient(to_top,black_55%,transparent)]" />
           <div className="relative flex min-h-0 flex-1 flex-col animate-in fade-in-0 slide-in-from-bottom-6 duration-300">
             {top}
-            {thread("pt-[calc(max(env(safe-area-inset-top),16px)+160px)]")}
+            {thread("pt-[calc(max(env(safe-area-inset-top),16px)+80px)]")}
             {composer}
           </div>
         </div>

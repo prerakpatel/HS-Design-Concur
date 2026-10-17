@@ -165,14 +165,14 @@ export function Chair({ slot, src, onSecret }: { slot: HTMLElement; src: string;
 }
 
 /**
- * Him peeking in from the screen's right edge, small, his feet on the header's bottom edge: the wave at once, a short
- * pause, then he slowly slides back out. `onEnd` once he is gone.
+ * Him peeking in from the screen's right edge beside his chair, hanging a little below the header so his hair is not
+ * cut by the top of the page: the wave at once, a short pause, then he slowly slides back out. `onEnd` once he is gone.
  */
 export function Peek({ slot, wave, onEnd }: { slot: HTMLElement; wave: WaveArt; onEnd: () => void }) {
   const [leaving, setLeaving] = useState(false);
   useEffect(() => { if (!leaving) return; const t = setTimeout(onEnd, 1200); return () => clearTimeout(t); }, [leaving, onEnd]);
   return createPortal(
-    <span aria-hidden className={cn("block w-14 transition-transform duration-1000 ease-in", leaving && "translate-x-full")}>
+    <span aria-hidden className={cn("block w-[72px] translate-y-11 transition-transform duration-1000 ease-in", leaving && "translate-x-full")}>
       <Wave wave={{ ...wave, delayMs: 0 }} force onDone={() => setTimeout(() => setLeaving(true), 500)} className="relative block w-full" />
     </span>,
     slot,

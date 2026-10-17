@@ -37,8 +37,24 @@ export function CommentCard({ c, people, onChange }: { c: CommentDraft; people: 
   return (
     <div className={card}>
       <p className="font-medium leading-5">{c.slotName}<span className="font-normal text-muted-foreground"> · {c.eventTitle}</span></p>
-      <p className="text-[13px] text-muted-foreground">{c.change ? `${c.items.length === 1 ? "Change request" : `${c.items.length} change requests`}` : `${c.items.length === 1 ? "Comment" : `${c.items.length} comments`}`}{named.length ? ` for ${named.map((p) => p.name).join(", ")}` : ""}</p>
+      <p className="text-[13px] text-muted-foreground">{c.change ? `${c.items.length === 1 ? "Change request" : `${c.items.length} change requests`}` : `${c.items.length === 1 ? "Comment" : `${c.items.length} comments`}`}</p>
       <ul className="space-y-1.5 text-sm">{c.items.map((t, i) => <li key={i} className="flex gap-2"><span className="text-muted-foreground">{i + 1}.</span><span>{t}</span></li>)}</ul>
+      {/* Who it is for, as @mentions, the way comments carry them: take one off, or tag someone else on the project. */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {named.map((p) => (
+          <span key={p.id} className="inline-flex h-7 items-center gap-0.5 rounded-full bg-brand-soft pl-2.5 pr-1 text-[13px] font-medium text-brand-soft-foreground">@{p.name}
+            <button type="button" aria-label={`Remove ${p.name}`} className="flex size-5 items-center justify-center rounded-full hover:bg-brand/15" onClick={() => onChange({ ...c, mentionUserIds: c.mentionUserIds.filter((id) => id !== p.id) })}><Icon name="close" className="!text-[14px]" /></button>
+          </span>
+        ))}
+        {people.some((p) => !c.mentionUserIds.includes(p.id)) && (
+          <label className="relative inline-flex h-7 items-center rounded-full border border-dashed border-border px-2.5 text-[13px] text-muted-foreground">@ tag someone
+            <select aria-label="Tag a person" className="absolute inset-0 cursor-pointer opacity-0" value="" onChange={(e) => { const id = e.target.value; if (id) onChange({ ...c, mentionUserIds: [...c.mentionUserIds, id] }); }}>
+              <option value="" disabled>Tag a person</option>
+              {people.filter((p) => !c.mentionUserIds.includes(p.id)).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
       {c.unresolved.map((name) => (
         <div key={name} className="space-y-1.5">
           <Gap>Who is {name}? Nobody on this project goes by that.</Gap>

@@ -18,11 +18,11 @@ export const ASSISTANT_ART = {
   still: "/assistant/vichar/neutral.webp",
   /**
    * Him leaning in from the right edge of the screen, waving (transparent), over his hello card: the still, and the
-   * animated WebP that plays once per page load (after `delayMs`, for `durationMs`: 76 frames at 15 fps, 5.1 s) and dissolves into
-   * the still, which is its last frame exported sharp (460×640; the animation is the same frame at 360×501). `durationMs` 0 would
+   * animated WebP that plays once per page load (after `delayMs`, for `durationMs`: 150 frames at 30 fps, 5 s) and dissolves into
+   * the still, which is its last frame exported sharp. Both are 460×640 with him framed the same. `durationMs` 0 would
    * show the still alone.
    */
-  wave: { still: "/assistant/vichar/wave-anim-lastframe.webp", anim: "/assistant/vichar/wave-anim.webp", delayMs: 1500, durationMs: 5092 },
+  wave: { still: "/assistant/vichar/wave-anim-lastframe.webp", anim: "/assistant/vichar/wave-anim.webp", delayMs: 1500, durationMs: 5000 },
   clips: { thinking: "/assistant/vichar/clips/thinking.mp4", writing: "/assistant/vichar/clips/writing.mp4" },
   /** His chair, a tiny one at the top right of the phone's header: tap it three times and he peeks in (the easter egg). */
   chair: "/assistant/vichar/chair.webp",
