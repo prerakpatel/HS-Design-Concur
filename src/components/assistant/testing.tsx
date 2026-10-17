@@ -1,17 +1,20 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { STICKY_KEY } from "@/components/assistant/tour";
 
 const KEYS = ["dc.vichar.hello", "dc.vichar.tour", "dc.vichar.nudges"];
+const CHANGED = "dc:vichar-sticky";
+const readSticky = () => { try { return localStorage.getItem(STICKY_KEY) === "1"; } catch { return false; } };
+const subscribe = (fn: () => void) => { window.addEventListener("storage", fn); window.addEventListener(CHANGED, fn); return () => { window.removeEventListener("storage", fn); window.removeEventListener(CHANGED, fn); }; };
 
 /** Settings → Vichar, while he is being tested: bring his first-time pieces back, or keep them coming back. Goes away when he ships. */
 export function VicharTesting() {
-  const [sticky, setSticky] = useState(false);
-  useEffect(() => { try { setSticky(localStorage.getItem(STICKY_KEY) === "1"); } catch { /* private mode */ } }, []);
-  const again = () => { try { for (const k of KEYS) localStorage.removeItem(k); sessionStorage.removeItem("dc.vichar.thread"); } catch { /* private mode */ } window.location.assign("/events"); };
-  const keep = (on: boolean) => { setSticky(on); try { if (on) localStorage.setItem(STICKY_KEY, "1"); else localStorage.removeItem(STICKY_KEY); } catch { /* private mode */ } };
+  const sticky = useSyncExternalStore(subscribe, readSticky, () => false);
+  // A full load on purpose: his first-time state is read once when the app loads.
+  const again = () => { try { for (const k of KEYS) localStorage.removeItem(k); sessionStorage.removeItem("dc.vichar.thread"); } catch { /* private mode */ } window.location.href = "/events"; };
+  const keep = (on: boolean) => { try { if (on) localStorage.setItem(STICKY_KEY, "1"); else localStorage.removeItem(STICKY_KEY); } catch { /* private mode */ } window.dispatchEvent(new Event(CHANGED)); };
   return (
     <section className="max-w-xl space-y-5 rounded-2xl border border-border p-5">
       <div>
