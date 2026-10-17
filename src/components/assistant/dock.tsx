@@ -124,8 +124,9 @@ function Wave({ wave, className }: { wave: { still: string; anim: string; delayM
   return (
     <span className={cn("pointer-events-none absolute select-none", className)} aria-hidden>
       {over && <img src={wave.anim} alt="" className="block w-full" draggable={false} />}
-      {/* The still sits over the animation and comes in once it has played; the animation is let go after that. */}
-      <img src={wave.still} alt="" draggable={false} className={cn("block w-full transition-opacity", over && "absolute inset-0", phase === "anim" ? "opacity-0" : "opacity-100", phase === "wait" && "invisible")} style={{ transitionDuration: `${WAVE_FADE_MS}ms` }} />
+      {/* The still sits over the animation and comes in once it has played; the animation is let go after that. It is
+          already at opacity 0 while waiting, so nothing fades when the animation starts: the only fade is the one at the end. */}
+      <img src={wave.still} alt="" draggable={false} className={cn("block w-full transition-opacity", over && "absolute inset-0", phase === "anim" || phase === "wait" ? "opacity-0" : "opacity-100", phase === "wait" && "invisible")} style={{ transitionDuration: `${WAVE_FADE_MS}ms` }} />
     </span>
   );
 }
