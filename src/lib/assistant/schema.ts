@@ -38,7 +38,7 @@ export const CommentDraftSchema = z.object({
   slotId: z.string(),
   slotName: z.string(),
   change: z.boolean().describe("true when the person wants something fixed (a change request the designer must address); false for a plain comment."),
-  mentionUserIds: z.array(z.string()).describe("Ids of the people to @mention, from the project's people."),
+  mentionUserIds: z.array(z.string()).describe("Ids of the people to @mention, from the project's people. The person the work is for ('assign this to Chirantan', 'tell Chirantan') comes first: a change request is theirs to mark done."),
   unresolved: z.array(z.string()).describe("Names the person said that match nobody on the project."),
   items: z.array(z.string()).describe("One entry per point the person made, each a complete sentence in the person's words (cleaned up). Each becomes its own comment."),
 });

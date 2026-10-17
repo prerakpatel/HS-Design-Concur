@@ -108,3 +108,16 @@ dollars.
 ## Not yet
 
 Assign, send for review, approve, reopen, add a person, navigate by voice; spoken replies; guests; artwork.
+
+## While he is being tested
+
+Settings → Vichar (only for people he is switched on for) brings the hello card and the walk-through back, once or on
+every load of this device. A tap on him on the hello card makes him wave again. The tab goes when he ships.
+
+## Comments
+
+A comment card shows the newest design of the format (a short-lived link to its preview, with its version and where
+it stands), the lines he heard, and who they are for as @mentions. For a change request the first @mention is the
+person who does it: the posted comment is assigned to them, so it shows up as theirs to mark done, the same as a
+change request made on the design itself. Nothing is posted until the person taps. Pinned, inline comments stay a
+thing you do on the design.

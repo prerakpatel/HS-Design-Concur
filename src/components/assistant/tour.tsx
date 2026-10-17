@@ -16,11 +16,14 @@ export type TourStep = 1 | 2 | 3;
 export interface TourState { step: TourStep; said: string | null }
 
 const TOUR_KEY = "dc.vichar.tour";
-export const tourDone = () => { try { return localStorage.getItem(TOUR_KEY) === ASSISTANT_HELLO_VERSION; } catch { return true; } };
+/** While he is being tested: the hello card and the walk-through come back on every load on this device (Settings → Vichar). */
+export const STICKY_KEY = "dc.vichar.sticky";
+export const vicharSticky = () => { try { return localStorage.getItem(STICKY_KEY) === "1"; } catch { return false; } };
+export const tourDone = () => { if (vicharSticky()) return false; try { return localStorage.getItem(TOUR_KEY) === ASSISTANT_HELLO_VERSION; } catch { return true; } };
 export const markTourDone = () => { try { localStorage.setItem(TOUR_KEY, ASSISTANT_HELLO_VERSION); } catch { /* private mode */ } };
 
 const SAMPLES: Record<1 | 2, string> = {
-  1: "New project for Sharad Purnima with a print card 8.5 by 5.5, WhatsApp and Instagram.",
+  1: "New project for Sharad Purnima on 8 November with a print card 8.5 by 5.5, WhatsApp and Instagram.",
   2: "Tell the designer the text is cut off at the sides and to check the spelling of mahaprasad.",
 };
 
@@ -28,7 +31,7 @@ const SAMPLES: Record<1 | 2, string> = {
 function practiceProject(formats: { key: string; name: string }[]): ProjectDraft {
   const pick = (re: RegExp, i: number) => formats.find((f) => re.test(f.name))?.key ?? formats[i]?.key ?? "print";
   const print = pick(/print|card/i, 0), wa = pick(/whatsapp/i, 1), ig = pick(/instagram/i, 2);
-  return { title: "Sharad Purnima 2026", eventDate: null, venueName: null, description: null, notes: null, formats: [{ formatKey: print, label: null, size: { w: 8.5, h: 5.5 }, notes: null }, { formatKey: wa, label: null, size: null, notes: null }, { formatKey: ig, label: null, size: null, notes: null }], primaryFormatKey: print, gaps: ["Date: say it, or set it on the review step."] };
+  return { title: "Sharad Purnima 2026", eventDate: "2026-11-08", venueName: null, description: null, notes: null, formats: [{ formatKey: print, label: null, size: { w: 8.5, h: 5.5 }, notes: null }, { formatKey: wa, label: null, size: null, notes: null }, { formatKey: ig, label: null, size: null, notes: null }], primaryFormatKey: print, gaps: ["Venue: say it, or set it on the review step."] };
 }
 const practiceComment: CommentDraft = { eventId: "practice", eventTitle: "Sharad Purnima", slotId: "practice", slotName: "Print card", change: true, mentionUserIds: [], unresolved: [], items: ["The text is cut off at the sides.", "Check the spelling of mahaprasad."] };
 

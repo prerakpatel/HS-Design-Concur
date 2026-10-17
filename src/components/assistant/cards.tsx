@@ -2,7 +2,9 @@
 // icons: check, check_circle, open_in_new, warning
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/material-icon";
+import { assistantSnapshot } from "@/app/actions/assistant";
 import { cn } from "@/lib/utils";
 import type { CommentDraft, Outcome, Person, ProjectDraft, ProjectUpdate } from "@/lib/assistant/schema";
 
@@ -32,17 +34,33 @@ export function ProjectCard({ p, formatNames }: { p: ProjectDraft; formatNames: 
   );
 }
 
+type Snapshot = Awaited<ReturnType<typeof assistantSnapshot>>;
+
 export function CommentCard({ c, people, onChange }: { c: CommentDraft; people: Person[]; onChange: (next: CommentDraft) => void }) {
   const named = c.mentionUserIds.map((id) => people.find((p) => p.id === id)).filter((p): p is Person => !!p);
+  // The design the comments will land on, so the person sees what they are talking about without leaving him.
+  const [snap, setSnap] = useState<Snapshot | undefined>(undefined);
+  useEffect(() => {
+    if (c.slotId === "practice") return;
+    let on = true;
+    assistantSnapshot(c.slotId).then((r) => { if (on) setSnap(r); }).catch(() => { if (on) setSnap(null); });
+    return () => { on = false; };
+  }, [c.slotId]);
   return (
     <div className={card}>
       <p className="font-medium leading-5">{c.slotName}<span className="font-normal text-muted-foreground"> · {c.eventTitle}</span></p>
+      {snap && (
+        <figure className="overflow-hidden rounded-xl border border-border bg-subtle">
+          <img src={snap.url} alt="" className="mx-auto max-h-56 w-auto max-w-full object-contain" />
+          <figcaption className="px-3 py-1.5 text-[12px] text-muted-foreground">v{snap.number} · {snap.decision === "approved" ? "approved" : snap.decision === "changes_requested" ? "changes requested" : snap.sent ? "in review" : "not sent for review yet"} · these go on this one</figcaption>
+        </figure>
+      )}
       <p className="text-[13px] text-muted-foreground">{c.change ? `${c.items.length === 1 ? "Change request" : `${c.items.length} change requests`}` : `${c.items.length === 1 ? "Comment" : `${c.items.length} comments`}`}</p>
       <ul className="space-y-1.5 text-sm">{c.items.map((t, i) => <li key={i} className="flex gap-2"><span className="text-muted-foreground">{i + 1}.</span><span>{t}</span></li>)}</ul>
       {/* Who it is for, as @mentions, the way comments carry them: take one off, or tag someone else on the project. */}
       <div className="flex flex-wrap items-center gap-1.5">
-        {named.map((p) => (
-          <span key={p.id} className="inline-flex h-7 items-center gap-0.5 rounded-full bg-brand-soft pl-2.5 pr-1 text-[13px] font-medium text-brand-soft-foreground">@{p.name}
+        {named.map((p, i) => (
+          <span key={p.id} className="inline-flex h-7 items-center gap-0.5 rounded-full bg-brand-soft pl-2.5 pr-1 text-[13px] font-medium text-brand-soft-foreground">@{p.name}{c.change && i === 0 && <span className="pl-1 font-normal text-brand-soft-foreground/70">· does it</span>}
             <button type="button" aria-label={`Remove ${p.name}`} className="flex size-5 items-center justify-center rounded-full hover:bg-brand/15" onClick={() => onChange({ ...c, mentionUserIds: c.mentionUserIds.filter((id) => id !== p.id) })}><Icon name="close" className="!text-[14px]" /></button>
           </span>
         ))}

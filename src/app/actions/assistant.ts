@@ -9,6 +9,7 @@ import { insertDraftProject, requestFormats } from "@/lib/create-project";
 import { assignSlot, publishDraft } from "@/app/actions/events";
 import { wizardStatus } from "@/lib/wizard-status";
 import { addComment } from "@/app/actions/reviews";
+import { signedUrl } from "@/lib/files";
 import { DEFAULT_VENUE } from "@/config/orgs";
 import type { CommentDraft, Outcome, Person, ProjectDraft, ProjectUpdate, Turn, Where, FormatPick } from "@/lib/assistant/schema";
 
@@ -137,3 +138,12 @@ export async function assistantComment(draft: CommentDraft): Promise<{ posted: n
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** The newest design of a format, for the comment card: a short-lived link to its preview, which version it is, and where it stands. */
+export async function assistantSnapshot(slotId: string): Promise<{ url: string; number: number; sent: boolean; decision: string } | null> {
+  const ctx = await requireAssistant();
+  const { data: v } = await ctx.supabase.from("versions").select("id,number,sent_at,decision,version_sides(side,preview_path,thumb_path)").eq("slot_id", slotId).order("number", { ascending: false }).limit(1).maybeSingle();
+  const front = v?.version_sides?.find((x: { side: string }) => x.side === "front");
+  const url = await signedUrl(ctx.supabase, front?.preview_path ?? front?.thumb_path, 900);
+  return v && url ? { url, number: v.number, sent: !!v.sent_at, decision: v.decision } : null;
+}

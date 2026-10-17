@@ -185,10 +185,13 @@ export function Peek({ slot, wave, onEnd }: { slot: HTMLElement; wave: WaveArt; 
  * something new (ASSISTANT_HELLO_VERSION).
  */
 export function HelloCard({ slot, wave, onTry, onLater }: { slot: HTMLElement; wave: WaveArt; onTry: () => void; onLater: () => void }) {
+  const [replay, setReplay] = useState(0);
   return createPortal(
     <div className="buddy-art relative mb-6 mt-7 rounded-2xl border border-border bg-card p-4 pr-[112px]">
-      {/* His cut edge flush with the screen’s right edge on phones (the page’s 20px gutter plus the artwork’s own 4px margin), tucked inside the card on wider screens; his bottom edge on the card’s; about 160px tall. */}
-      <Wave wave={wave} className="absolute -right-6 bottom-0 w-[121px] md:right-3" />
+      {/* His cut edge flush with the screen’s right edge on phones (the page’s 20px gutter plus the artwork’s own 4px margin), tucked inside the card on wider screens; his bottom edge on the card’s; about 160px tall. A tap on him and he waves again. */}
+      <button type="button" aria-label="Wave again" onClick={() => setReplay((n) => n + 1)} className="absolute -right-6 bottom-0 w-[121px] md:right-3">
+        <Wave key={replay} wave={replay ? { ...wave, delayMs: 0 } : wave} force={replay > 0} className="relative block w-full" />
+      </button>
       <p className="font-medium">Vichar is here.</p>
       <p className="mt-0.5 text-[13px] leading-[18px] text-muted-foreground">Say what you need: a new project with its formats, a format on one that exists, or a note for a designer. He drafts it; you tap.</p>
       <div className="mt-3 flex flex-wrap gap-2">

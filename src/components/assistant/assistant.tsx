@@ -14,7 +14,7 @@ import { NavDock, FloatingMic, HelloCard, Chair, Peek, Face, useSlot, NAV_SLOT_I
 import { ASSISTANT_ART, ASSISTANT_HELLO_VERSION } from "@/config/assistant";
 import { useRecorder } from "@/components/assistant/use-recorder";
 import { CardActions, CommentCard, DoneCard, OptionButtons, ProjectCard, ProjectUpdateCard, Say } from "@/components/assistant/cards";
-import { Tour, tourDone, markTourDone, type TourState } from "@/components/assistant/tour";
+import { Tour, tourDone, markTourDone, type TourState, vicharSticky } from "@/components/assistant/tour";
 
 export interface AssistantProps {
   name: string;
@@ -69,7 +69,7 @@ const HELLO_SNOOZES = 2;
 type HelloState = { v: string; done?: boolean; snoozes?: number; until?: number };
 const readHello = (): HelloState => { try { const h = JSON.parse(localStorage.getItem(HELLO_KEY) ?? "null") as HelloState | null; return h && h.v === ASSISTANT_HELLO_VERSION ? h : { v: ASSISTANT_HELLO_VERSION }; } catch { return { v: ASSISTANT_HELLO_VERSION, done: true }; } };
 const writeHello = (h: HelloState) => { try { localStorage.setItem(HELLO_KEY, JSON.stringify(h)); } catch { /* private mode */ } };
-const helloDismissed = () => { const h = readHello(); return !!h.done || (h.until ?? 0) > Date.now(); };
+const helloDismissed = () => { if (vicharSticky()) return false; const h = readHello(); return !!h.done || (h.until ?? 0) > Date.now(); };
 /** A line under his pill the first time his screen opens on a kind of page: what this page is good for. */
 const NUDGES: Partial<Record<Where["page"], string>> = {
   asset: "Here you can say: tell someone what to change on this design.",
