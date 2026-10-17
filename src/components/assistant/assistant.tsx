@@ -85,6 +85,28 @@ const nudgesSeen = (): string[] => { try { return JSON.parse(localStorage.getIte
  * you tap it. Say or type what you want; he answers with a card; you tap. Each thread is one task: the button that
  * does it, or Cancel, ends it.
  */
+/**
+ * iOS does not shrink the page for the keyboard: it scrolls the page instead, which drags a full-screen sheet off the
+ * top and leaves the composer stranded mid-screen. While the keyboard is up, size the sheet to the visible part of the
+ * screen and keep the page at the top, so the composer sits just above the keys.
+ */
+function useKeyboardFit(on: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!on || !vv) return;
+    const fit = () => {
+      const el = ref.current; if (!el) return;
+      const up = window.innerHeight - vv.height > 100; // the keyboard, not the browser's own bars coming and going
+      el.style.height = up ? `${vv.height}px` : ""; el.style.top = up ? `${vv.offsetTop}px` : ""; el.style.bottom = up ? "auto" : "";
+      if (up) window.scrollTo(0, 0);
+    };
+    vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); fit();
+    return () => { vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit); const el = ref.current; if (el) { el.style.height = ""; el.style.top = ""; el.style.bottom = ""; } };
+  }, [on]);
+  return ref;
+}
+
 export function Assistant(p: AssistantProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -106,6 +128,7 @@ export function Assistant(p: AssistantProps) {
   const tourRef = useRef<TourState | null>(null); tourRef.current = tour;
   const [nudge, setNudge] = useState<string | null>(null);
   const wide = useWide();
+  const sheetRef = useKeyboardFit(open && !wide);
   // On a wide screen the page makes room beside his panel (src/app/globals.css).
   useEffect(() => { document.documentElement.classList.toggle("dc-vichar-open", open && wide); return () => document.documentElement.classList.remove("dc-vichar-open"); }, [open, wide]);
   // The sidebar row and the keyboard shortcut.
@@ -127,7 +150,7 @@ export function Assistant(p: AssistantProps) {
   const listening = rec.state === "listening";
   const working = rec.state === "transcribing" || thinking || busy;
 
-  useEffect(() => { endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" }); }, [entries, thinking, rec.state]);
+  useEffect(() => { endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" }); }, [entries, thinking, rec.state, editing]);
 
   // The loudness, sampled while he listens and drawn as bars that fill the pill from the right.
   const level = useRef(0); level.current = rec.level;
@@ -140,7 +163,7 @@ export function Assistant(p: AssistantProps) {
 
   const reset = () => { setEntries([]); setPeople([]); setText(""); setEditing(null); setConfirmReset(false); persist(null); };
   /** Tap what you said and it comes back into the pill to fix; sending replays the thread from there. */
-  const edit = (i: number, words: string) => { setEditing(i); setText(words); inputRef.current?.focus(); };
+  const edit = (i: number, words: string) => { setEditing(i); setText(words); inputRef.current?.focus({ preventScroll: true }); };
   const cancelEdit = () => { setEditing(null); setText(""); };
   const dismissHello = () => { setHello(false); writeHello({ v: ASSISTANT_HELLO_VERSION, done: true }); };
   const snoozeHello = () => {
@@ -339,7 +362,7 @@ export function Assistant(p: AssistantProps) {
       ) : (
       <Drawer open={open} onOpenChange={(o) => { setOpen(o); if (!o) { rec.cancel(); if (tour) setTour(null); if (last?.role === "done") reset(); } }}>
         {/* His screen: the whole phone; on a wide screen a tall sheet in the middle. */}
-        <DrawerContent data-vichar className="h-[100dvh] max-h-[100dvh] rounded-none border-0 data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:max-h-[100dvh] data-[vaul-drawer-direction=bottom]:rounded-none [&>div:first-child]:hidden! md:mx-auto md:h-[85dvh] md:max-h-[85dvh] md:max-w-xl md:rounded-t-3xl md:data-[vaul-drawer-direction=bottom]:max-h-[85dvh] md:data-[vaul-drawer-direction=bottom]:rounded-t-3xl">
+        <DrawerContent ref={sheetRef} data-vichar className="h-[100dvh] max-h-[100dvh] rounded-none border-0 data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:max-h-[100dvh] data-[vaul-drawer-direction=bottom]:rounded-none [&>div:first-child]:hidden! md:mx-auto md:h-[85dvh] md:max-h-[85dvh] md:max-w-xl md:rounded-t-3xl md:data-[vaul-drawer-direction=bottom]:max-h-[85dvh] md:data-[vaul-drawer-direction=bottom]:rounded-t-3xl">
 {top}
           {thread("pt-[calc(max(env(safe-area-inset-top),16px)+160px)]")}
           {composer}
