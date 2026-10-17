@@ -99,12 +99,16 @@ export function FloatingMic({ attention, onTap, onHold, raised }: DockProps & { 
 /** Played once per page load; a client-side return to Projects shows the still. A refresh plays it again. */
 let waved = false;
 
+/** How long the still takes to come in over the animation's last frame. */
+const WAVE_FADE_MS = 300;
+
 /**
  * Him on the hello card: the animation plays once (after a pause, so the page has settled), then the sharp still
- * dissolves in over its last frame. Without an animation, or for people who prefer less motion, just the still.
+ * dissolves in over its last frame, which stays underneath until the still is fully in. Without an animation, or for
+ * people who prefer less motion, just the still.
  */
 function Wave({ wave, className }: { wave: { still: string; anim: string; delayMs: number; durationMs: number }; className?: string }) {
-  const [phase, setPhase] = useState<"wait" | "anim" | "still">(() => {
+  const [phase, setPhase] = useState<"wait" | "anim" | "fade" | "still">(() => {
     if (waved || !wave.durationMs || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches)) return "still";
     waved = true; return "wait";
   });
@@ -112,14 +116,16 @@ function Wave({ wave, className }: { wave: { still: string; anim: string; delayM
     if (phase !== "wait") return;
     const img = new Image(); img.src = wave.anim; // fetched during the pause, so it starts on time
     const start = setTimeout(() => setPhase("anim"), wave.delayMs);
-    const end = setTimeout(() => setPhase("still"), wave.delayMs + wave.durationMs);
-    return () => { clearTimeout(start); clearTimeout(end); };
+    const fade = setTimeout(() => setPhase("fade"), wave.delayMs + wave.durationMs + 100); // a little slack for decoding
+    const end = setTimeout(() => setPhase("still"), wave.delayMs + wave.durationMs + 100 + WAVE_FADE_MS);
+    return () => { clearTimeout(start); clearTimeout(fade); clearTimeout(end); };
   }, [phase, wave]);
+  const over = phase === "anim" || phase === "fade";
   return (
     <span className={cn("pointer-events-none absolute select-none", className)} aria-hidden>
-      {phase === "anim" && <img src={wave.anim} alt="" className="block w-full" draggable={false} />}
-      {/* The still arrives over the animation's last frame and the animation is let go once it is in. */}
-      <img src={wave.still} alt="" draggable={false} className={cn("block w-full transition-opacity duration-300", phase === "anim" ? "absolute inset-0 opacity-0" : "opacity-100", phase === "wait" && "invisible")} />
+      {over && <img src={wave.anim} alt="" className="block w-full" draggable={false} />}
+      {/* The still sits over the animation and comes in once it has played; the animation is let go after that. */}
+      <img src={wave.still} alt="" draggable={false} className={cn("block w-full transition-opacity", over && "absolute inset-0", phase === "anim" ? "opacity-0" : "opacity-100", phase === "wait" && "invisible")} style={{ transitionDuration: `${WAVE_FADE_MS}ms` }} />
     </span>
   );
 }
