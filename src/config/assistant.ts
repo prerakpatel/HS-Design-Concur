@@ -18,10 +18,11 @@ export const ASSISTANT_ART = {
   still: "/assistant/vichar/neutral.webp",
   /**
    * Him leaning in from the right edge of the screen, waving (transparent), over his hello card: the still, and the
-   * animated WebP that plays once per page load (after `delayMs`, for `durationMs`: 61 frames at 66ms) and dissolves
-   * into the still, so the frame people look at is the sharp one. `durationMs` 0 would show the still alone.
+   * animated WebP that plays once per page load (after `delayMs`, for `durationMs`: 150 frames, 5 s) and dissolves into
+   * the still, which is its last frame exported sharp. Both are 460×640 with him framed the same. `durationMs` 0 would
+   * show the still alone.
    */
-  wave: { still: "/assistant/vichar/wave.webp", anim: "/assistant/vichar/wave-anim.webp", delayMs: 1500, durationMs: 4026 },
+  wave: { still: "/assistant/vichar/wave-anim-lastframe.webp", anim: "/assistant/vichar/wave-anim.webp", delayMs: 1500, durationMs: 5000 },
   clips: { thinking: "/assistant/vichar/clips/thinking.mp4", writing: "/assistant/vichar/clips/writing.mp4" },
 };
 
