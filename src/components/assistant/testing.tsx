@@ -12,7 +12,8 @@ const subscribe = (fn: () => void) => { window.addEventListener("storage", fn); 
 /** Settings → Vichar, while he is being tested: bring his first-time pieces back, or keep them coming back. Goes away when he ships. */
 export function VicharTesting() {
   const sticky = useSyncExternalStore(subscribe, readSticky, () => false);
-  // A full load on purpose: his first-time state is read once when the app loads.
+  // A full load on purpose: his first-time state is read once when the app loads, so a client-side navigation would not show the card.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
   const again = () => { try { for (const k of KEYS) localStorage.removeItem(k); sessionStorage.removeItem("dc.vichar.thread"); } catch { /* private mode */ } window.location.href = "/events"; };
   const keep = (on: boolean) => { try { if (on) localStorage.setItem(STICKY_KEY, "1"); else localStorage.removeItem(STICKY_KEY); } catch { /* private mode */ } window.dispatchEvent(new Event(CHANGED)); };
   return (
