@@ -90,7 +90,8 @@ wherever he appears; short looping clips zoomed to his bust that play in his ava
 listens, `clips/thinking.mp4` while he works); and `wave`, him leaning in from the screen's edge, waving, over the hello
 card: a transparent still and an animated WebP that plays once per page load, after a pause, and dissolves into the
 still, which is the animation's last frame exported sharp (`wave-anim-lastframe.webp`); a client-side return to
-Projects shows the still alone, a refresh plays it again. Idle never moves. The animation must be set to play once
+Projects shows the still alone, a refresh plays it again. Idle never moves. One easter egg: once the card is gone, tap
+his name under the mic three times and he peeks in above the bar, waves, and slowly slides back out. The animation must be set to play once
 (loop count 1 in the file), or it restarts under the still while it dissolves in.
 
 Text is the rounded cut of Google Sans Flex (headings keep the straight one); Gujarati letters fall through to

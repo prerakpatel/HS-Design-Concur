@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/user-error";
 import { assistantTurn, assistantCreateProjects, assistantAddFormats, assistantComment, assistantUpdateProject } from "@/app/actions/assistant";
 import type { CommentDraft, Outcome, Person, Turn, Where } from "@/lib/assistant/schema";
-import { NavDock, FloatingMic, HelloCard, Face, useSlot, NAV_SLOT_ID, HELLO_SLOT_ID } from "@/components/assistant/dock";
+import { NavDock, FloatingMic, HelloCard, Peek, Face, useSlot, NAV_SLOT_ID, HELLO_SLOT_ID } from "@/components/assistant/dock";
 import { ASSISTANT_ART, ASSISTANT_HELLO_VERSION } from "@/config/assistant";
 import { useRecorder } from "@/components/assistant/use-recorder";
 import { CardActions, CommentCard, DoneCard, OptionButtons, ProjectCard, ProjectUpdateCard, Say } from "@/components/assistant/cards";
@@ -100,6 +100,8 @@ export function Assistant(p: AssistantProps) {
   const [confirmReset, setConfirmReset] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [hello, setHello] = useState(() => !helloDismissed());
+  /** The easter egg is on: he is peeking in above the bar. */
+  const [peek, setPeek] = useState(false);
   const [tour, setTour] = useState<TourState | null>(null);
   const tourRef = useRef<TourState | null>(null); tourRef.current = tour;
   const [nudge, setNudge] = useState<string | null>(null);
@@ -316,8 +318,9 @@ export function Assistant(p: AssistantProps) {
 
   return (
     <>
-      {navSlot ? <NavDock slot={navSlot} {...dock} /> : !open && <FloatingMic {...dock} raised={where.page === "asset" || where.page === "wizard"} />}
+      {navSlot ? <NavDock slot={navSlot} {...dock} onSecret={() => { if (!hello && !open) setPeek(true); }} /> : !open && <FloatingMic {...dock} raised={where.page === "asset" || where.page === "wizard"} />}
       {hello && helloSlot && <HelloCard slot={helloSlot} wave={ASSISTANT_ART.wave} onTry={() => { dismissHello(); startTour(); }} onLater={snoozeHello} />}
+      {peek && !open && <Peek wave={ASSISTANT_ART.wave} onEnd={() => setPeek(false)} />}
       {wide ? open && (
         /* Docked on the right of a wide screen: a compact header, the same thread and pill; the page stays usable beside it. */
         <aside data-vichar className="fixed inset-y-0 right-0 z-40 flex w-[380px] flex-col border-l border-border bg-card shadow-[-8px_0_24px_rgb(0_0_0/0.05)]" aria-label={p.name}>

@@ -54,11 +54,17 @@ export interface DockProps {
 /**
  * In the phone's bottom bar: a raised mic in the middle, in a notch cut out of the bar, labelled like the tabs. Tap
  * and his screen takes over and he listens; hold to open it without listening. Tap the label alone and the button
- * dribbles, a nudge for the curious.
+ * dribbles, a nudge for the curious; three taps and he peeks in (Peek).
  */
-export function NavDock({ slot, attention, onTap, onHold }: DockProps & { slot: HTMLElement }) {
+export function NavDock({ slot, attention, onTap, onHold, onSecret }: DockProps & { slot: HTMLElement; /** His name tapped three times in a row. */ onSecret?: () => void }) {
   const press = usePress(onTap, onHold);
   const [dribble, setDribble] = useState(0);
+  const taps = useRef<number[]>([]);
+  const label = () => {
+    setDribble((n) => n + 1);
+    const now = Date.now(); taps.current = [...taps.current.filter((t) => now - t < 1500), now];
+    if (taps.current.length >= 3) { taps.current = []; onSecret?.(); }
+  };
   const column = (
     <span className="flex flex-col items-center gap-1 whitespace-nowrap py-1.5 text-[12px] font-medium text-muted-foreground">
       {/* The icon row the tabs share stays empty; the button is placed against the bar itself, so it sits exactly in the notch. */}
@@ -70,7 +76,7 @@ export function NavDock({ slot, attention, onTap, onHold }: DockProps & { slot: 
         <Icon name="mic" fill size={24} className="!text-[30px]" />
         {attention && <span className="absolute top-0 right-0 size-3 rounded-full bg-warning ring-2 ring-card" />}
       </button>
-      <button type="button" className="-mt-1 px-2 pt-1" onClick={() => setDribble((n) => n + 1)} aria-label="Vichar">Vichar</button>
+      <button type="button" className="-mt-1 px-2 pt-1" onClick={label} aria-label="Vichar">Vichar</button>
     </span>
   );
   return createPortal(column, slot);
@@ -101,17 +107,21 @@ let waved = false;
 
 /** How long the still takes to come in over the animation's last frame. */
 const WAVE_FADE_MS = 300;
+type WaveArt = { still: string; anim: string; delayMs: number; durationMs: number };
 
 /**
- * Him on the hello card: the animation plays once (after a pause, so the page has settled), then the sharp still
- * dissolves in over its last frame, which stays underneath until the still is fully in. Without an animation, or for
- * people who prefer less motion, just the still.
+ * Him waving: the animation plays once (after a pause, so the page has settled), then the sharp still dissolves in
+ * over its last frame, which stays underneath until the still is fully in. Without an animation, or for people who
+ * prefer less motion, just the still. Plays once per page load unless `force`d; `onDone` fires once the still is in.
+ * Positioning comes from `className`.
  */
-function Wave({ wave, className }: { wave: { still: string; anim: string; delayMs: number; durationMs: number }; className?: string }) {
+function Wave({ wave, className, force = false, onDone }: { wave: WaveArt; className?: string; force?: boolean; onDone?: () => void }) {
   const [phase, setPhase] = useState<"wait" | "anim" | "fade" | "still">(() => {
-    if (waved || !wave.durationMs || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches)) return "still";
-    waved = true; return "wait";
+    if (!wave.durationMs || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches)) return "still";
+    if (!force) { if (waved) return "still"; waved = true; }
+    return "wait";
   });
+  const done = useRef(onDone); done.current = onDone;
   useEffect(() => {
     if (phase !== "wait") return;
     const img = new Image(); img.src = wave.anim; // fetched during the pause, so it starts on time
@@ -120,9 +130,10 @@ function Wave({ wave, className }: { wave: { still: string; anim: string; delayM
     const end = setTimeout(() => setPhase("still"), wave.delayMs + wave.durationMs + 100 + WAVE_FADE_MS);
     return () => { clearTimeout(start); clearTimeout(fade); clearTimeout(end); };
   }, [phase, wave]);
+  useEffect(() => { if (phase === "still") done.current?.(); }, [phase]);
   const over = phase === "anim" || phase === "fade";
   return (
-    <span className={cn("pointer-events-none absolute select-none", className)} aria-hidden>
+    <span className={cn("pointer-events-none select-none", className)} aria-hidden>
       {over && <img src={wave.anim} alt="" className="block w-full" draggable={false} />}
       {/* The still sits over the animation and comes in once it has played; the animation is let go after that. It is
           already at opacity 0 while waiting, so nothing fades when the animation starts: the only fade is the one at the end. */}
@@ -132,15 +143,29 @@ function Wave({ wave, className }: { wave: { still: string; anim: string; delayM
 }
 
 /**
+ * The easter egg: tap his name under the mic three times and he pops in from the screen's right edge, just above the
+ * bar, waves, and slowly slides back out. `onEnd` once he is gone.
+ */
+export function Peek({ wave, onEnd }: { wave: WaveArt; onEnd: () => void }) {
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => { if (!leaving) return; const t = setTimeout(onEnd, 1200); return () => clearTimeout(t); }, [leaving, onEnd]);
+  return (
+    <div aria-hidden className={cn("pointer-events-none fixed right-0 bottom-[calc(max(env(safe-area-inset-bottom),12px)+78px)] z-30 w-[121px] transition-transform duration-1000 ease-in", leaving && "translate-x-full")}>
+      <Wave wave={{ ...wave, delayMs: 0 }} force onDone={() => setTimeout(() => setLeaving(true), 500)} className="relative block w-full" />
+    </div>
+  );
+}
+
+/**
  * His hello at the top of Projects, once: him leaning in from the right edge of the screen, waving, one line on what
  * to say, and two choices: try it (opens his screen listening) or later. Either way it stays away until he learns
  * something new (ASSISTANT_HELLO_VERSION).
  */
-export function HelloCard({ slot, wave, onTry, onLater }: { slot: HTMLElement; wave: { still: string; anim: string; delayMs: number; durationMs: number }; onTry: () => void; onLater: () => void }) {
+export function HelloCard({ slot, wave, onTry, onLater }: { slot: HTMLElement; wave: WaveArt; onTry: () => void; onLater: () => void }) {
   return createPortal(
     <div className="buddy-art relative mb-6 mt-7 rounded-2xl border border-border bg-card p-4 pr-[112px]">
-      {/* His cut edge flush with the screen’s right edge on phones (the page’s 20px gutter plus the artwork’s own 4px margin), tucked inside the card on wider screens; the box is sized so he stands about 160px tall. */}
-      <Wave wave={wave} className="-right-6 -top-5 w-[121px] md:right-3" />
+      {/* His cut edge flush with the screen’s right edge on phones (the page’s 20px gutter plus the artwork’s own 4px margin), tucked inside the card on wider screens; his bottom edge on the card’s; about 160px tall. */}
+      <Wave wave={wave} className="absolute -right-6 bottom-0 w-[121px] md:right-3" />
       <p className="font-medium">Vichar is here.</p>
       <p className="mt-0.5 text-[13px] leading-[18px] text-muted-foreground">Say what you need: a new project with its formats, a format on one that exists, or a note for a designer. He drafts it; you tap.</p>
       <div className="mt-3 flex flex-wrap gap-2">
