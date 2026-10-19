@@ -8,11 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { errorMessage } from "@/lib/user-error";
 
 /** "Are you sure?" gate for approve / reopen / delete (PRD §6.2). Runs a server action after confirmation. */
-export function ConfirmButton({ action, title, description, label, confirmLabel, variant = "default", size = "default", withReason, reasonLabel, onDone, className }: {
+export function ConfirmButton({ action, title, description, label, confirmLabel, variant = "default", size = "default", withReason, reasonLabel, onDone, className, success }: {
   action: (reason: string) => Promise<unknown>;
   title: string; description: string; label: string; confirmLabel?: string;
   variant?: "default" | "outline" | "secondary" | "ghost" | "destructive"; size?: "default" | "sm" | "lg";
-  withReason?: boolean; reasonLabel?: string; onDone?: () => void; className?: string;
+  withReason?: boolean; reasonLabel?: string; onDone?: () => void; className?: string; /** Shown as a toast once the action went through. */ success?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -28,10 +28,10 @@ export function ConfirmButton({ action, title, description, label, confirmLabel,
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
             <Button type="button" variant={variant === "destructive" ? "destructive" : "default"} disabled={pending || (withReason && !reason.trim())} onClick={() => start(async () => {
-              try { await action(reason); setOpen(false); setReason(""); onDone?.(); router.refresh(); }
+              try { await action(reason); setOpen(false); setReason(""); if (success) toast.success(success); onDone?.(); router.refresh(); }
               catch (e) {
                 // An action that ends in redirect() rejects with NEXT_REDIRECT after it has already succeeded; the page is navigating away.
-                if ((e as { message?: string } | null)?.message === "NEXT_REDIRECT") { setOpen(false); return; }
+                if ((e as { message?: string } | null)?.message === "NEXT_REDIRECT") { setOpen(false); if (success) toast.success(success); return; }
                 toast.error(errorMessage(e));
               }
             })}>{pending ? "Working…" : (confirmLabel ?? label)}</Button>

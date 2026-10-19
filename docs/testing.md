@@ -163,6 +163,17 @@ Use a spare test account, not a real teammate.
 
 **Do not run the daily job (`/api/jobs/daily`) to test.** It covers every organisation, so it would send real reminders and digests to the real channels.
 
+## Assets waiting for an upload (daily reminder)
+Needs a day's wait, so this is checked by reading the result on the day after, not by running the daily job (it posts to real channels).
+- [ ] Request an asset in a real project and leave it empty. The next morning (at least a day later) its assignee has an in-app item "N requested assets are still waiting for an upload" and, with Slack linked, a personal Slack message with a bulleted list.
+- [ ] If that person also had open changes, there is one Slack message, with a divider and "📥 Waiting on your assets" at the bottom.
+- [ ] An empty asset with no assignee shows up in the organization's channel as a bulleted list of projects, on alternate days, and never as one post per project.
+- [ ] Marking a change done in a combined Slack message turns only the top part into "All done"; the assets part stays.
+- [ ] Uploading to the asset removes it from the next reminder.
+
+## Delete shows a confirmation
+- [ ] Delete a test event: a "Event deleted" toast appears and there is no "session ended" error.
+
 ## Clean up
 Delete the test events (event menu → Delete). Soft-deleted events and their files are removed after
 `DELETE_RESTORE_DAYS`. The sandbox itself can stay.

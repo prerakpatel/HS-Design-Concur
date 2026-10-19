@@ -85,6 +85,13 @@ Everyone chooses on their **Inbox** page: *as things happen* (default), *once a 
 
 The daily job also creates these notifications (emailed to people on *as things happen*, included in the daily digest for others): due-date reminders, "your draft is deleted in 7 days", "your draft was deleted", and the 1 November phone-preset reminder for Designers and Core Admins.
 
+### Assets waiting for an upload
+
+An asset that was requested, is in an active event, and has had nothing uploaded for a day or more is a "waiting" asset.
+- **Assigned:** the assignee gets one in-app / push item a day and, if their Slack account is linked, a short personal Slack message listing their assets. When that person is also getting the "open changes" Slack message that day, the list is added to the end of it under a divider instead of a second message.
+- **Not assigned (or the assignee no longer has access):** one bulleted list of the *projects* (with how many assets each) goes to the organization's channel, on alternate days. A project with its own chat or guests gets its list in that chat only. When the "open changes" post is going to the same chat that day, the list is added to it under a divider.
+- Google Chat cannot send personal messages from a webhook, so it only gets the channel post.
+
 ### Details
 
 A Vercel Cron job calls `/api/jobs/daily` at 13:00 UTC every day (`vercel.json`). It creates due-date reminders (3 days before and on the day), sends daily digests, and will run retention (archive / purge / draft sweep) once step 6 lands. It authenticates with `CRON_SECRET`, already set on Vercel. It needs `SUPABASE_SECRET_KEY` on Vercel to read across users.
