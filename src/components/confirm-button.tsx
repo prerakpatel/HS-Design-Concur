@@ -29,7 +29,11 @@ export function ConfirmButton({ action, title, description, label, confirmLabel,
             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
             <Button type="button" variant={variant === "destructive" ? "destructive" : "default"} disabled={pending || (withReason && !reason.trim())} onClick={() => start(async () => {
               try { await action(reason); setOpen(false); setReason(""); onDone?.(); router.refresh(); }
-              catch (e) { toast.error(errorMessage(e)); }
+              catch (e) {
+                // An action that ends in redirect() rejects with NEXT_REDIRECT after it has already succeeded; the page is navigating away.
+                if ((e as { message?: string } | null)?.message === "NEXT_REDIRECT") { setOpen(false); return; }
+                toast.error(errorMessage(e));
+              }
             })}>{pending ? "Working…" : (confirmLabel ?? label)}</Button>
           </DialogFooter>
         </DialogContent>
