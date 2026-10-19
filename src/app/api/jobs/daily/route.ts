@@ -7,7 +7,8 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { sendEmail, appUrl, emailConfigured } from "@/lib/email";
 import { notificationText, notificationHref, openLink } from "@/lib/labels";
 import { slackActionsEnabled, sendSlackBlocks } from "@/lib/slack-dm";
-import { reminderBlocks, MAX_REMINDER_ITEMS } from "@/lib/slack-blocks";
+import { reminderBlocks, waitingBlocks, MAX_REMINDER_ITEMS } from "@/lib/slack-blocks";
+import { splitWaiting, waitingProjects, type WaitingSlot, type WaitingProject } from "@/lib/assets-waiting";
 import { notify, subjectFor, approverIds, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
 import { pruneAllSlots, sweepTmpUploads } from "@/lib/uploads/prune";
@@ -129,6 +130,17 @@ export async function GET(req: Request) {
   const slugOf = new Map((orgRows ?? []).map((o) => [o.id as string, o.slug as string]));
   const slackButtons = slackActionsEnabled();
   report.slackReminders = 0;
+  // Requested assets nothing has been uploaded to for a day or more. Their assignee is nudged personally (carried inside
+  // the change-request message below when they are getting one anyway); the ones nobody is assigned to are listed, by
+  // project, in the organization's chat on alternate days (under a divider when another reminder goes there too).
+  const { data: waitRaw } = await db.from("slots").select("id,event_id,label,assignee_id,formats(name),events!inner(title,status,org_id,deleted_at)").eq("requested", true).eq("state", "requested").lte("updated_at", new Date(Date.now() - DAY_MS).toISOString());
+  const waitingSlots: WaitingSlot[] = ((waitRaw ?? []) as unknown as { id: string; event_id: string; label: string | null; assignee_id: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } }[])
+    .filter((w) => w.events.status === "active" && !w.events.deleted_at)
+    .map((w) => ({ slotId: w.id, eventId: w.event_id, orgId: w.events.org_id, title: w.events.title, format: slotName(w.formats.name, w.label), assignee: w.assignee_id, url: appUrl(openLink(`/events/${w.event_id}/slots/${w.id}`, slugOf.get(w.events.org_id))) }));
+  const { byPerson: waitingOf, unassigned: waitingFree } = splitWaiting(waitingSlots, active);
+  const waitingInMessage = new Set<string>();
+  const waitingItems = (list: WaitingSlot[]) => list.slice(0, MAX_REMINDER_ITEMS).map((w) => ({ title: w.title, format: w.format, url: w.url }));
+  report.waitingNudges = 0;
   // person → org → open comments they were named in (never because a group they are in was named)
   const owed = new Map<string, Map<string, OpenComment[]>>();
   for (const c of openComments) {
@@ -159,8 +171,10 @@ export async function GET(req: Request) {
     const slackId = slackIdOf.get(person);
     if (slackButtons && slackId) {
       const items = all.slice(0, MAX_REMINDER_ITEMS).map((c) => { const sl = c.versions.slots; return { commentId: c.id, title: sl.events.title, format: slotName(sl.formats.name, sl.label), excerpt: plainText(c.body), url: appUrl(openLink(`/events/${sl.event_id}/slots/${sl.id}`, slugOf.get(sl.events.org_id))) }; });
-      const sent = await sendSlackBlocks(slackId, `${all.length} change${all.length === 1 ? " is" : "s are"} waiting on you in Design & Concur`, reminderBlocks(items, all.length - items.length, appUrl("/inbox")));
-      if ("error" in sent) console.error("[slack reminder]", sent.error); else report.slackReminders = (report.slackReminders as number) + 1;
+      const mine = waitingOf.get(person) ?? [];
+      const blocks = [...reminderBlocks(items, all.length - items.length, appUrl("/inbox")), ...(mine.length ? waitingBlocks(waitingItems(mine), mine.length - Math.min(mine.length, MAX_REMINDER_ITEMS), appUrl("/inbox"), true) : [])];
+      const sent = await sendSlackBlocks(slackId, `${all.length} change${all.length === 1 ? " is" : "s are"} waiting on you in Design & Concur`, blocks);
+      if ("error" in sent) console.error("[slack reminder]", sent.error); else { report.slackReminders = (report.slackReminders as number) + 1; if (mine.length) waitingInMessage.add(person); }
     }
     for (const [org, list] of orgs) for (const c of list) {
       if (seenComment.has(c.id)) continue; seenComment.add(c.id);
@@ -169,10 +183,33 @@ export async function GET(req: Request) {
     }
     report.openComments = (report.openComments as number) + all.length;
   }
+  // Each person with assets waiting gets one in-app / push item a day; on Slack it is the message above, or one of its own.
+  for (const [person, list] of waitingOf) {
+    const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "assets.waiting").contains("payload", { day: today }).limit(1);
+    if (dup?.length) continue;
+    const places = [...new Set(list.map((w) => w.title))];
+    await notify(db, [person], "assets.waiting", { count: list.length, day: today, href: `/events/${list[0].eventId}/slots/${list[0].slotId}`, title: places.slice(0, 3).join(" · ") + (places.length > 3 ? ` · +${places.length - 3} more` : "") });
+    const slackId = slackIdOf.get(person);
+    if (slackButtons && slackId && !waitingInMessage.has(person)) {
+      const sent = await sendSlackBlocks(slackId, `${list.length} requested asset${list.length === 1 ? " is" : "s are"} waiting for your upload in Design & Concur`, waitingBlocks(waitingItems(list), list.length - Math.min(list.length, MAX_REMINDER_ITEMS), appUrl("/inbox"), false));
+      if ("error" in sent) console.error("[slack waiting]", sent.error);
+    }
+    report.waitingNudges = (report.waitingNudges as number) + 1;
+  }
   // The whole-channel ping goes out on alternate days; the post itself is daily.
   const pingToday = Math.floor(new Date(`${today}T00:00:00Z`).getTime() / DAY_MS) % 2 === 0;
   // As above: a project with its own chat or guests gets its own post there; the rest one post per organization.
-  const privateOpen = await privateProjects([...assetsByOrg.values()].flatMap((m) => [...m.values()].map((a) => a.eventId)));
+  const privateOpen = await privateProjects([...assetsByOrg.values()].flatMap((m) => [...m.values()].map((a) => a.eventId)).concat(waitingFree.map((w) => w.eventId)));
+  // Unassigned waiting assets, per chat: key "<org>" or "<org>|<event>" (a project with its own chat or guests), on ping days only.
+  const waitingPosts = new Map<string, { orgId: string; eventId?: string; projects: WaitingProject[]; total: number }>();
+  if (pingToday) {
+    const groups = new Map<string, WaitingSlot[]>();
+    for (const w of waitingFree) { const k = privateOpen.has(w.eventId) ? `${w.orgId}|${w.eventId}` : w.orgId; groups.set(k, [...(groups.get(k) ?? []), w]); }
+    for (const [k, list] of groups) {
+      const projects = waitingProjects(list, (w) => appUrl(openLink(`/events/${w.eventId}`, slugOf.get(w.orgId))));
+      waitingPosts.set(k, { orgId: list[0].orgId, ...(k.includes("|") ? { eventId: list[0].eventId } : {}), projects: projects.slice(0, 15), total: projects.length });
+    }
+  }
   for (const [orgId, byAsset] of assetsByOrg) {
     const all = [...byAsset.values()];
     const posts = [all.filter((a) => !privateOpen.has(a.eventId)), ...[...new Set(all.map((a) => a.eventId))].filter((id) => privateOpen.has(id)).map((id) => all.filter((a) => a.eventId === id))];
@@ -180,8 +217,15 @@ export async function GET(req: Request) {
       if (!group.length) continue;
       const assets = group.sort((x, y) => y.open - x.open).slice(0, 15);
       const own = privateOpen.has(group[0].eventId);
-      await notify(db, [], "comments.pending", { assets, total: group.length, day: today, orgId, pingAll: pingToday, ...(assets.length === 1 || own ? { eventId: assets[0].eventId } : {}), ...(assets.length === 1 ? { slotId: assets[0].slotId } : {}) }, undefined, { orgId, mention: [] });
+      const key = own ? `${orgId}|${group[0].eventId}` : orgId;
+      const bundle = waitingPosts.get(key); waitingPosts.delete(key);
+      await notify(db, [], "comments.pending", { assets, total: group.length, day: today, orgId, pingAll: pingToday, ...(bundle ? { waiting: bundle.projects, waitingTotal: bundle.total } : {}), ...(assets.length === 1 || own ? { eventId: assets[0].eventId } : {}), ...(assets.length === 1 ? { slotId: assets[0].slotId } : {}) }, undefined, { orgId, mention: [] });
     }
+  }
+  // Anything left has no other reminder to ride along with: a short post of its own.
+  for (const post of waitingPosts.values()) {
+    await notify(db, [], "assets.waiting", { waiting: post.projects, total: post.total, day: today, orgId: post.orgId, ...(post.eventId ? { eventId: post.eventId } : {}) }, undefined, { orgId: post.orgId, mention: [] });
+    report.waitingPosts = ((report.waitingPosts as number) ?? 0) + 1;
   }
 
   // 2. Retention (+ tell the creator and the chat that an event was archived)

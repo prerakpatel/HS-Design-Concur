@@ -31,6 +31,22 @@ export function reminderBlocks(items: ReminderItem[], more: number, openUrl: str
   return blocks;
 }
 
+export interface WaitingItem { title: string; format: string; url: string }
+
+/** The "waiting on assets" part of a personal message: its own message, or under a divider at the end of another reminder. */
+export function waitingBlocks(items: WaitingItem[], more: number, openUrl: string, bundled: boolean): SlackBlock[] {
+  const shown = items.slice(0, MAX_REMINDER_ITEMS);
+  const lines = shown.map((it) => `• <${it.url}|${slackText(`${it.title} · ${it.format}`)}>`);
+  const blocks: SlackBlock[] = [];
+  if (bundled) blocks.push({ type: "divider" });
+  blocks.push(
+    { type: "header", text: { type: "plain_text", text: "📥 Waiting on your assets" } },
+    { type: "section", text: { type: "mrkdwn", text: lines.join("\n") } },
+    { type: "context", elements: [{ type: "mrkdwn", text: `Nothing has been uploaded to ${shown.length === 1 && !more ? "this" : "these"} yet. ${more > 0 ? `and ${more} more · ` : ""}<${openUrl}|Open Design & Concur>` }] },
+  );
+  return blocks;
+}
+
 /** The message after one comment was marked done: its button becomes a struck-through line; with none left, the header says so. */
 export function markDoneBlocks(blocks: SlackBlock[], commentId: string, note = "marked done"): SlackBlock[] {
   const out = blocks.map((b) => {
@@ -39,7 +55,10 @@ export function markDoneBlocks(blocks: SlackBlock[], commentId: string, note = "
     return { type: "section", block_id: b.block_id, text: { type: "mrkdwn", text: `✅ ~${first}~ · ${note}` } } as SlackBlock;
   });
   const waiting = out.some((b) => b.type === "section" && b.accessory?.action_id === MARK_DONE);
-  return waiting ? out : out.map((b) => (b.type === "header" ? { type: "header", text: { type: "plain_text", text: "🎉 All done, thank you" } } : b)).filter((b) => !(b.type === "context" && JSON.stringify(b).includes("Mark as done")));
+  if (waiting) return out;
+  // Only the reminder's own header changes; a "waiting on assets" part added below it stays as it was.
+  const first = out.findIndex((b) => b.type === "header");
+  return out.map((b, i) => (i === first ? { type: "header", text: { type: "plain_text", text: "🎉 All done, thank you" } } : b)).filter((b) => !(b.type === "context" && JSON.stringify(b).includes("Mark as done")));
 }
 
 /** A one-button message an admin can send themselves to check the whole chain works (Core Admins: /api/slack/test-dm). */

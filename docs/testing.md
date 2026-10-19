@@ -198,6 +198,17 @@ Only its owner and the people the owner switches on see it. Test in the sandbox 
 - [ ] Say something it can't do ("change my password"): a card with a link, not a guess.
 - [ ] Nothing is created until a button is tapped; Cancel and Start over leave no trace.
 
+## Assets waiting for an upload (daily reminder)
+Needs a day's wait, so this is checked by reading the result on the day after, not by running the daily job (it posts to real channels).
+- [ ] Request an asset in a real project and leave it empty. The next morning (at least a day later) its assignee has an in-app item "N requested assets are still waiting for an upload" and, with Slack linked, a personal Slack message with a bulleted list.
+- [ ] If that person also had open changes, there is one Slack message, with a divider and "📥 Waiting on your assets" at the bottom.
+- [ ] An empty asset with no assignee shows up in the organization's channel as a bulleted list of projects, on alternate days, and never as one post per project.
+- [ ] Marking a change done in a combined Slack message turns only the top part into "All done"; the assets part stays.
+- [ ] Uploading to the asset removes it from the next reminder.
+
+## Delete shows a confirmation
+- [ ] Delete a test event: a "Event deleted" toast appears and there is no "session ended" error.
+
 ## Clean up
 Delete the test events (event menu → Delete). Soft-deleted events and their files are removed after
 `DELETE_RESTORE_DAYS`. The sandbox itself can stay.

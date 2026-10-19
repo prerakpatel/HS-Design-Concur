@@ -5,13 +5,14 @@ import { Icon } from "@/components/material-icon";
 import { UserAvatar } from "@/components/user-avatar";
 import { CountBubble, useUnreadCount } from "@/components/unread-count";
 
+/** Inbox replaced Archive on main (the count sits on the bell); Archive lives in Projects → Past. */
 const TABS = [
   { href: "/events", label: "Projects", icon: "folder" },
-  { href: "/archive", label: "Archive", icon: "inventory_2" },
+  { href: "/inbox", label: "Inbox", icon: "notifications" },
   { href: "/glossary", label: "Glossary", icon: "menu_book" },
   { href: "/profile", label: "Profile", icon: "account_circle" },
 ];
-/** With the assistant in the middle: Inbox earns the place (it carries a count); Archive lives in Projects → Past. */
+/** With the assistant in the middle: the same four, two each side of his mic. */
 const TABS_WITH_ASSISTANT = [
   { href: "/events", label: "Projects", icon: "folder" },
   { href: "/inbox", label: "Inbox", icon: "notifications" },
