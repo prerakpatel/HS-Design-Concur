@@ -1,22 +1,19 @@
 "use client";
-// icons: expand_more, check, notifications
-import Link from "next/link";
+// icons: expand_more, check
 import { usePathname } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/material-icon";
 import { OrgMark } from "@/components/org-mark";
-import { CountBubble, useUnreadCount } from "@/components/unread-count";
 import { setCurrentOrg } from "@/app/actions/org";
 import type { Organization } from "@/lib/types";
 
 /**
- * Phones: the organisation switcher on the left (one tap) and the bell on the right. Hidden on task screens, which have
- * their own bar. With the assistant the bell moves to the bottom bar and the right side is left for his chair; the
- * assistant fills both slots itself (src/components/assistant/dock.tsx), so nobody else sees anything there.
+ * Phones: the organisation switcher on the left (one tap). Inbox lives in the bottom bar, so there is no bell here; the
+ * right side is left for the assistant's chair and for him peeking in, slots the assistant fills itself
+ * (src/components/assistant/dock.tsx), so nobody else sees anything there. Hidden on task screens, which have their own bar.
  */
-export function MobileTopBar({ org, orgs, inbox = true }: { org: Organization; orgs: Organization[]; /** The bell; off when the bottom bar carries Inbox instead. */ inbox?: boolean }) {
+export function MobileTopBar({ org, orgs }: { org: Organization; orgs: Organization[] }) {
   const pathname = usePathname();
-  const unread = useUnreadCount();
   if (/\/events\/[^/]+\/slots\/|\/preview\/slot(-review|-versions)?$/.test(pathname)) return null;
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur md:hidden">
@@ -35,11 +32,7 @@ export function MobileTopBar({ org, orgs, inbox = true }: { org: Organization; o
           </DropdownMenuContent>
         </DropdownMenu>
       ) : <span className="flex items-center gap-2 text-sm font-semibold"><OrgMark org={org} size={24} />{org.name}</span>}
-      {inbox && <Link href="/inbox" aria-label="Inbox" className={"relative flex size-10 items-center justify-center rounded-full hover:bg-muted " + (pathname.startsWith("/inbox") ? "bg-sidebar-accent" : "")}>
-        <Icon name="notifications" size={24} fill={pathname.startsWith("/inbox")} />
-        <CountBubble count={unread} className="absolute right-0.5 top-0.5 ring-2 ring-background" />
-      </Link>}
-      {!inbox && <span id="dc-top-chair" className="-mr-1 empty:hidden" />}
+      <span id="dc-top-chair" className="-mr-1 empty:hidden" />
       <span id="dc-top-peek" className="pointer-events-none absolute bottom-0 right-0" />
     </header>
   );
