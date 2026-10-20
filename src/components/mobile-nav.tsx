@@ -26,7 +26,7 @@ export function MobileNav({ user }: { user: { initials: string; avatar?: string 
             <Link href={t.href} className={"flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium " + (active ? "text-foreground" : "text-muted-foreground")}>
               <span className={"relative flex h-8 w-14 items-center justify-center rounded-full " + (active ? "bg-sidebar-accent" : "")}>
                 {t.href === "/profile" ? <UserAvatar initials={user.initials} src={user.avatar} size={24} className={active ? "ring-2 ring-foreground" : ""} /> : <Icon name={t.icon} size={24} fill={active} />}
-                {t.href === "/inbox" && <CountBubble count={unread} className="absolute right-2.5 top-0 ring-2 ring-card" />}
+                {t.href === "/inbox" && <CountBubble count={unread} className="absolute right-1 -top-0.5 ring-2 ring-card" />}
               </span>{t.label}
             </Link>
           </li>
