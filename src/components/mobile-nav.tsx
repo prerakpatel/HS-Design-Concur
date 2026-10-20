@@ -48,7 +48,7 @@ export function MobileNav({ user, assistant = false }: { user: { initials: strin
                 {/* The count sits on the icon's shoulder, not the pill's corner. */}
                 <span className="relative flex">
                   {t.href === "/profile" ? <UserAvatar initials={user.initials} src={user.avatar} size={28} className={active ? "ring-2 ring-foreground" : ""} /> : <Icon name={t.icon} size={24} fill={active} className="!text-[26px]" />}
-                  {t.href === "/inbox" && <CountBubble count={unread} className="absolute -right-2 -top-1.5 ring-2 ring-card" />}
+                  {t.href === "/inbox" && <CountBubble count={unread} className="absolute -right-3.5 -top-2 ring-2 ring-card" />}
                 </span>
               </span>{t.label}
             </Link>
