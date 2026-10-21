@@ -5,10 +5,11 @@ import { NextResponse } from "next/server";
 import { slotName } from "@/lib/project";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendEmail, appUrl, emailConfigured } from "@/lib/email";
-import { notificationText, notificationHref, openLink } from "@/lib/labels";
+import { notificationText, notificationHref, openLink, chatDate } from "@/lib/labels";
 import { slackActionsEnabled, sendSlackBlocks } from "@/lib/slack-dm";
-import { reminderBlocks, waitingBlocks, MAX_REMINDER_ITEMS } from "@/lib/slack-blocks";
+import { reminderBlocks, waitingBlocks, dueBlocks, MAX_REMINDER_ITEMS } from "@/lib/slack-blocks";
 import { splitWaiting, waitingProjects, type WaitingSlot, type WaitingProject } from "@/lib/assets-waiting";
+import { dueProjects, type DueSlot, type DueProject } from "@/lib/due-reminder";
 import { notify, subjectFor, approverIds, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
 import { pruneAllSlots, sweepTmpUploads } from "@/lib/uploads/prune";
@@ -23,7 +24,8 @@ export const maxDuration = 60;
 
 /**
  * Daily job (Vercel Cron, 13:00 UTC ≈ morning in New York). Runs, in order:
- * 1. Due-date reminders: slots due today or in 3 days → in-app, push and a chat @mention for the designer.
+ * 1. Due-date reminders: assets due today or in 3 days → one personal message per designer (in-app, push, Slack) and one
+ *    short list of projects in the chat (no names).
  *    Then designs waiting ≥ 1 day for a decision → the approvers, once a day until approved or changes requested.
  * 2. Retention (PRD §8): archive + purge a week after the event date, hard-delete after the restore window,
  *    draft warning / sweep, yearly device-preset reminder. See src/lib/retention.ts.
@@ -50,16 +52,14 @@ export async function GET(req: Request) {
     await notify(db, people, "project.ending", { eventId: ev.id, title: ev.title }, undefined, { orgId: ev.org_id });
   }
 
-  // 1. Due-date reminders
-  const { data: due } = await db.from("slots").select("id,due_on,assignee_id,event_id,label,formats(name),events(title,status,org_id,deleted_at)").eq("requested", true).neq("state", "approved").not("assignee_id", "is", null).in("due_on", [today, in3]);
-  for (const s of due ?? []) {
-    const ev = s.events as unknown as { title: string; status: string; org_id: string; deleted_at: string | null }; if (ev.status !== "active" || ev.deleted_at) continue;
-    const payload = { eventId: s.event_id, slotId: s.id, title: ev.title, format: slotName((s.formats as unknown as { name: string }).name, s.label as string | null), when: s.due_on === today ? "today" : "3d", due: s.due_on, assignee: s.assignee_id };
-    const { data: dup } = await db.from("notifications").select("id").eq("user_id", s.assignee_id).eq("kind", "slot.due").contains("payload", { slotId: s.id, when: payload.when, due: s.due_on }).limit(1);
-    if (dup?.length) continue;
-    await notify(db, [s.assignee_id], "slot.due", payload, undefined, { orgId: ev.org_id });
-    report.reminders = (report.reminders as number) + 1;
-  }
+  // 1. Assets due today or in 3 days. Collected here; the people who owe them are told personally in section 1d (one
+  // message, one in-app item), and the organization's chat gets one short list of projects, never names.
+  const { data: dueRaw } = await db.from("slots").select("id,due_on,assignee_id,event_id,label,formats(name),events(title,status,org_id,deleted_at)").eq("requested", true).neq("state", "approved").in("due_on", [today, in3]);
+  type DueRow = { id: string; due_on: string; assignee_id: string | null; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } };
+  const dueRows = ((dueRaw ?? []) as unknown as DueRow[]).filter((d) => d.events.status === "active" && !d.events.deleted_at);
+
+  const { data: orgRows } = await db.from("organisations").select("id,slug");
+  const slugOf = new Map((orgRows ?? []).map((o) => [o.id as string, o.slug as string]));
 
   // 1b. Designs waiting for review for a day or more: one reminder per organization per day to its approvers (one
   // chat post, one push, one in-app item), listing every design, until each is decided.
@@ -126,8 +126,6 @@ export async function GET(req: Request) {
   const { data: activeUsers } = await db.from("users").select("id,slack_user_id").eq("status", "active");
   const active = new Set((activeUsers ?? []).map((u) => u.id as string));
   const slackIdOf = new Map((activeUsers ?? []).filter((u) => u.slack_user_id).map((u) => [u.id as string, u.slack_user_id as string]));
-  const { data: orgRows } = await db.from("organisations").select("id,slug");
-  const slugOf = new Map((orgRows ?? []).map((o) => [o.id as string, o.slug as string]));
   const slackButtons = slackActionsEnabled();
   report.slackReminders = 0;
   // Requested assets nothing has been uploaded to for a day or more. Their assignee is nudged personally (carried inside
@@ -141,6 +139,14 @@ export async function GET(req: Request) {
   const waitingInMessage = new Set<string>();
   const waitingItems = (list: WaitingSlot[]) => list.slice(0, MAX_REMINDER_ITEMS).map((w) => ({ title: w.title, format: w.format, url: w.url }));
   report.waitingNudges = 0;
+  // Due: the assignee (if active) is told personally; all of it also goes into the chat's short list.
+  const dueSlots: DueSlot[] = dueRows.map((d) => ({ slotId: d.id, eventId: d.event_id, orgId: d.events.org_id, title: d.events.title, format: slotName(d.formats.name, d.label), assignee: d.assignee_id, due: d.due_on, when: d.due_on === today ? "today" : "3d", url: appUrl(openLink(`/events/${d.event_id}/slots/${d.id}`, slugOf.get(d.events.org_id))) }));
+  const { byPerson: dueOf } = splitWaiting(dueSlots, active);
+  const dueWhen = (d: DueSlot) => (d.when === "today" ? "due today" : `due ${chatDate(d.due)}`);
+  const dueItems = (list: DueSlot[]) => [...list].sort((a, b) => a.due.localeCompare(b.due)).slice(0, MAX_REMINDER_ITEMS).map((d) => ({ title: d.title, format: d.format, url: d.url, when: dueWhen(d) }));
+  // One in-app / push item per person per day for each of the two kinds; someone already told today is skipped entirely.
+  for (const person of [...dueOf.keys()]) { const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "slots.due").contains("payload", { day: today }).limit(1); if (dup?.length) dueOf.delete(person); }
+  for (const [person] of [...waitingOf]) { const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "assets.waiting").contains("payload", { day: today }).limit(1); if (dup?.length) waitingOf.delete(person); }
   // person → org → open comments they were named in (never because a group they are in was named)
   const owed = new Map<string, Map<string, OpenComment[]>>();
   for (const c of openComments) {
@@ -172,9 +178,9 @@ export async function GET(req: Request) {
     if (slackButtons && slackId) {
       const items = all.slice(0, MAX_REMINDER_ITEMS).map((c) => { const sl = c.versions.slots; return { commentId: c.id, title: sl.events.title, format: slotName(sl.formats.name, sl.label), excerpt: plainText(c.body), url: appUrl(openLink(`/events/${sl.event_id}/slots/${sl.id}`, slugOf.get(sl.events.org_id))) }; });
       const mine = waitingOf.get(person) ?? [];
-      const blocks = [...reminderBlocks(items, all.length - items.length, appUrl("/inbox")), ...(mine.length ? waitingBlocks(waitingItems(mine), mine.length - Math.min(mine.length, MAX_REMINDER_ITEMS), appUrl("/inbox"), true) : [])];
+      const blocks = [...reminderBlocks(items, all.length - items.length, appUrl("/inbox")), ...(dueOf.has(person) ? dueBlocks(dueItems(dueOf.get(person)!), dueOf.get(person)!.length - Math.min(dueOf.get(person)!.length, MAX_REMINDER_ITEMS), appUrl("/inbox"), true) : []), ...(mine.length ? waitingBlocks(waitingItems(mine), mine.length - Math.min(mine.length, MAX_REMINDER_ITEMS), appUrl("/inbox"), true) : [])];
       const sent = await sendSlackBlocks(slackId, `${all.length} change${all.length === 1 ? " is" : "s are"} waiting on you in Design & Concur`, blocks);
-      if ("error" in sent) console.error("[slack reminder]", sent.error); else { report.slackReminders = (report.slackReminders as number) + 1; if (mine.length) waitingInMessage.add(person); }
+      if ("error" in sent) console.error("[slack reminder]", sent.error); else { report.slackReminders = (report.slackReminders as number) + 1; waitingInMessage.add(person); }
     }
     for (const [org, list] of orgs) for (const c of list) {
       if (seenComment.has(c.id)) continue; seenComment.add(c.id);
@@ -183,18 +189,30 @@ export async function GET(req: Request) {
     }
     report.openComments = (report.openComments as number) + all.length;
   }
-  // Each person with assets waiting gets one in-app / push item a day; on Slack it is the message above, or one of its own.
-  for (const [person, list] of waitingOf) {
-    const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "assets.waiting").contains("payload", { day: today }).limit(1);
-    if (dup?.length) continue;
-    const places = [...new Set(list.map((w) => w.title))];
-    await notify(db, [person], "assets.waiting", { count: list.length, day: today, href: `/events/${list[0].eventId}/slots/${list[0].slotId}`, title: places.slice(0, 3).join(" · ") + (places.length > 3 ? ` · +${places.length - 3} more` : "") });
+  // Everyone with something due or waiting gets one in-app / push item a day per kind; on Slack it is the message above
+  // when they had open changes, otherwise one message of its own with both parts.
+  for (const person of new Set([...dueOf.keys(), ...waitingOf.keys()])) {
+    const dueList = dueOf.get(person) ?? []; const list = waitingOf.get(person) ?? [];
+    const names = (xs: { title: string }[]) => { const places = [...new Set(xs.map((x) => x.title))]; return places.slice(0, 3).join(" · ") + (places.length > 3 ? ` · +${places.length - 3} more` : ""); };
+    if (dueList.length) await notify(db, [person], "slots.due", { count: dueList.length, today: dueList.filter((d) => d.when === "today").length, day: today, href: `/events/${dueList[0].eventId}/slots/${dueList[0].slotId}`, title: names(dueList) });
+    if (list.length) await notify(db, [person], "assets.waiting", { count: list.length, day: today, href: `/events/${list[0].eventId}/slots/${list[0].slotId}`, title: names(list) });
     const slackId = slackIdOf.get(person);
     if (slackButtons && slackId && !waitingInMessage.has(person)) {
-      const sent = await sendSlackBlocks(slackId, `${list.length} requested asset${list.length === 1 ? " is" : "s are"} waiting for your upload in Design & Concur`, waitingBlocks(waitingItems(list), list.length - Math.min(list.length, MAX_REMINDER_ITEMS), appUrl("/inbox"), false));
-      if ("error" in sent) console.error("[slack waiting]", sent.error);
+      const blocks = [...(dueList.length ? dueBlocks(dueItems(dueList), dueList.length - Math.min(dueList.length, MAX_REMINDER_ITEMS), appUrl("/inbox"), false) : []), ...(list.length ? waitingBlocks(waitingItems(list), list.length - Math.min(list.length, MAX_REMINDER_ITEMS), appUrl("/inbox"), dueList.length > 0) : [])];
+      const sent = await sendSlackBlocks(slackId, `${dueList.length ? "Assets are due soon" : "Requested assets are waiting for your upload"} in Design & Concur`, blocks);
+      if ("error" in sent) console.error("[slack reminders]", sent.error);
     }
-    report.waitingNudges = (report.waitingNudges as number) + 1;
+    report.reminders = (report.reminders as number) + dueList.length; report.waitingNudges = (report.waitingNudges as number) + (list.length ? 1 : 0);
+  }
+  // The chat hears which projects have assets due (a short list, no names, no @mention): one post per organization, or
+  // in its own chat for a project that has one.
+  const privateDue = await privateProjects(dueSlots.map((d) => d.eventId));
+  const dueGroups = new Map<string, DueSlot[]>();
+  for (const d of dueSlots) { const k = privateDue.has(d.eventId) ? `${d.orgId}|${d.eventId}` : d.orgId; dueGroups.set(k, [...(dueGroups.get(k) ?? []), d]); }
+  for (const [k, list] of dueGroups) {
+    const projects = dueProjects(list, (d) => appUrl(openLink(`/events/${d.eventId}`, slugOf.get(d.orgId))));
+    await notify(db, [], "slots.due", { projects: projects.slice(0, 15) as DueProject[], total: projects.length, day: today, orgId: list[0].orgId, ...(k.includes("|") ? { eventId: list[0].eventId } : {}) }, undefined, { orgId: list[0].orgId, mention: [] });
+    report.duePosts = ((report.duePosts as number) ?? 0) + 1;
   }
   // The whole-channel ping goes out on alternate days; the post itself is daily.
   const pingToday = Math.floor(new Date(`${today}T00:00:00Z`).getTime() / DAY_MS) % 2 === 0;
