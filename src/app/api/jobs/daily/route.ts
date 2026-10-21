@@ -51,9 +51,9 @@ export async function GET(req: Request) {
   }
 
   // 1. Due-date reminders
-  const { data: due } = await db.from("slots").select("id,due_on,assignee_id,event_id,label,formats(name),events(title,status,org_id)").eq("requested", true).neq("state", "approved").not("assignee_id", "is", null).in("due_on", [today, in3]);
+  const { data: due } = await db.from("slots").select("id,due_on,assignee_id,event_id,label,formats(name),events(title,status,org_id,deleted_at)").eq("requested", true).neq("state", "approved").not("assignee_id", "is", null).in("due_on", [today, in3]);
   for (const s of due ?? []) {
-    const ev = s.events as unknown as { title: string; status: string; org_id: string }; if (ev.status !== "active") continue;
+    const ev = s.events as unknown as { title: string; status: string; org_id: string; deleted_at: string | null }; if (ev.status !== "active" || ev.deleted_at) continue;
     const payload = { eventId: s.event_id, slotId: s.id, title: ev.title, format: slotName((s.formats as unknown as { name: string }).name, s.label as string | null), when: s.due_on === today ? "today" : "3d", due: s.due_on, assignee: s.assignee_id };
     const { data: dup } = await db.from("notifications").select("id").eq("user_id", s.assignee_id).eq("kind", "slot.due").contains("payload", { slotId: s.id, when: payload.when, due: s.due_on }).limit(1);
     if (dup?.length) continue;
@@ -63,15 +63,15 @@ export async function GET(req: Request) {
 
   // 1b. Designs waiting for review for a day or more: one reminder per organization per day to its approvers (one
   // chat post, one push, one in-app item), listing every design, until each is decided.
-  const { data: waiting } = await db.from("versions").select("id,number,sent_at,uploaded_by,slots!inner(id,event_id,state,label,formats(name),events(title,status,org_id)),uploader:uploaded_by(name,email)").eq("decision", "pending").not("sent_at", "is", null).lte("sent_at", new Date(Date.now() - REVIEW_WAIT_HOURS * HOUR_MS).toISOString()).eq("slots.state", "in_review");
+  const { data: waiting } = await db.from("versions").select("id,number,sent_at,uploaded_by,slots!inner(id,event_id,state,label,formats(name),events(title,status,org_id,deleted_at)),uploader:uploaded_by(name,email)").eq("decision", "pending").not("sent_at", "is", null).lte("sent_at", new Date(Date.now() - REVIEW_WAIT_HOURS * HOUR_MS).toISOString()).eq("slots.state", "in_review");
   type Waiting = { eventId: string; slotId: string; versionId: string; title: string; format: string; number: number; days: number; by: string | undefined; since: string; uploadedBy: string };
   // Grouped per organization, except projects with their own chat or guests: each of those gets its own reminder in
   // its own chat, so its titles never reach the organization's channels. Key: "<org>" or "<org>|<event>".
   const privateWaiting = await privateProjects((waiting ?? []).map((v) => (v.slots as unknown as { event_id: string }).event_id));
   const waitingByOrg = new Map<string, Waiting[]>();
   for (const v of waiting ?? []) {
-    const slot = v.slots as unknown as { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string } };
-    if (slot.events.status !== "active") continue;
+    const slot = v.slots as unknown as { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } };
+    if (slot.events.status !== "active" || slot.events.deleted_at) continue;
     const up = v.uploader as unknown as { name: string | null; email: string } | null;
     const row: Waiting = { eventId: slot.event_id, slotId: slot.id, versionId: v.id, title: slot.events.title, format: slotName(slot.formats.name, slot.label), number: v.number, days: Math.floor((Date.now() - new Date(v.sent_at).getTime()) / DAY_MS), by: up?.name ?? up?.email, since: v.sent_at, uploadedBy: v.uploaded_by };
     const key = privateWaiting.has(slot.event_id) ? `${slot.events.org_id}|${slot.event_id}` : slot.events.org_id;
@@ -99,13 +99,13 @@ export async function GET(req: Request) {
   }
 
   // 1c. Review-mode comments nobody sent: nudge their author (in-app and push only, never chat), once a day.
-  const { data: unsent } = await db.from("comments").select("author_id,version_id,versions!inner(number,slots!inner(id,event_id,label,formats(name),events(title,status,org_id)))").eq("is_draft", true).lte("created_at", new Date(Date.now() - UNSENT_NUDGE_HOURS * HOUR_MS).toISOString());
+  const { data: unsent } = await db.from("comments").select("author_id,version_id,versions!inner(number,slots!inner(id,event_id,label,formats(name),events(title,status,org_id,deleted_at)))").eq("is_draft", true).lte("created_at", new Date(Date.now() - UNSENT_NUDGE_HOURS * HOUR_MS).toISOString());
   const unsentBy = new Map<string, { author: string; row: NonNullable<typeof unsent>[number]; count: number }>();
   for (const c of unsent ?? []) { const k = `${c.author_id}:${c.version_id}`; const e = unsentBy.get(k); if (e) e.count++; else unsentBy.set(k, { author: c.author_id as string, row: c, count: 1 }); }
   report.unsent = 0;
   for (const [, u] of unsentBy) {
-    const v = u.row.versions as unknown as { number: number; slots: { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string } } };
-    if (v.slots.events.status !== "active") continue;
+    const v = u.row.versions as unknown as { number: number; slots: { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; deleted_at: string | null } } };
+    if (v.slots.events.status !== "active" || v.slots.events.deleted_at) continue;
     const { data: dup } = await db.from("notifications").select("id").eq("user_id", u.author).eq("kind", "comments.unsent").contains("payload", { versionId: u.row.version_id, day: today }).limit(1);
     if (dup?.length) continue;
     await notify(db, [u.author], "comments.unsent", { eventId: v.slots.event_id, slotId: v.slots.id, versionId: u.row.version_id, title: v.slots.events.title, format: slotName(v.slots.formats.name, v.slots.label), number: v.number, count: u.count, day: today });
