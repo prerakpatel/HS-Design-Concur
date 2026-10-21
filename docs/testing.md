@@ -206,6 +206,12 @@ Needs a day's wait, so this is checked by reading the result on the day after, n
 - [ ] Marking a change done in a combined Slack message turns only the top part into "All done"; the assets part stays.
 - [ ] Uploading to the asset removes it from the next reminder.
 
+## Due-date reminder (daily)
+Read the result on a morning when something is due; do not run the daily job to test.
+- [ ] A designer with several assets due the same day gets ONE Slack message (bulleted, linked), not one per asset, and one inbox item.
+- [ ] The channel gets ONE short post for the organization: a line per project with counts, no names, no @mention.
+- [ ] A deleted project is not mentioned anywhere.
+
 ## Delete shows a confirmation
 - [ ] Delete a test event: a "Event deleted" toast appears and there is no "session ended" error.
 

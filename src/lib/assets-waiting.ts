@@ -6,9 +6,9 @@ export interface WaitingSlot { slotId: string; eventId: string; orgId: string; t
 export interface WaitingProject { eventId: string; title: string; count: number; url: string }
 
 /** Items with an active assignee go to that person; everything else (no one, or someone who no longer has access) is unassigned. */
-export function splitWaiting(slots: WaitingSlot[], activeIds: Set<string>): { byPerson: Map<string, WaitingSlot[]>; unassigned: WaitingSlot[] } {
-  const byPerson = new Map<string, WaitingSlot[]>();
-  const unassigned: WaitingSlot[] = [];
+export function splitWaiting<T extends WaitingSlot>(slots: T[], activeIds: Set<string>): { byPerson: Map<string, T[]>; unassigned: T[] } {
+  const byPerson = new Map<string, T[]>();
+  const unassigned: T[] = [];
   for (const s of slots) {
     if (s.assignee && activeIds.has(s.assignee)) byPerson.set(s.assignee, [...(byPerson.get(s.assignee) ?? []), s]);
     else unassigned.push(s);

@@ -47,6 +47,22 @@ export function waitingBlocks(items: WaitingItem[], more: number, openUrl: strin
   return blocks;
 }
 
+export interface DueItem { title: string; format: string; url: string; when: string }
+
+/** The "due" part of a personal message: its own message, or under a divider in another reminder. */
+export function dueBlocks(items: DueItem[], more: number, openUrl: string, bundled: boolean): SlackBlock[] {
+  const shown = items.slice(0, MAX_REMINDER_ITEMS);
+  const lines = shown.map((it) => `• <${it.url}|${slackText(`${it.title} · ${it.format}`)}>: ${slackText(it.when)}`);
+  const blocks: SlackBlock[] = [];
+  if (bundled) blocks.push({ type: "divider" });
+  blocks.push(
+    { type: "header", text: { type: "plain_text", text: "⏰ Due soon" } },
+    { type: "section", text: { type: "mrkdwn", text: lines.join("\n") } },
+    { type: "context", elements: [{ type: "mrkdwn", text: `${more > 0 ? `and ${more} more · ` : ""}<${openUrl}|Open Design & Concur>` }] },
+  );
+  return blocks;
+}
+
 /** The message after one comment was marked done: its button becomes a struck-through line; with none left, the header says so. */
 export function markDoneBlocks(blocks: SlackBlock[], commentId: string, note = "marked done"): SlackBlock[] {
   const out = blocks.map((b) => {

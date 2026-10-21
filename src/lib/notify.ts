@@ -14,7 +14,7 @@ import { projectRouting } from "@/lib/project-people";
 import { serviceOr } from "@/lib/supabase/service";
 
 export type NotificationKind =
-  | "access.requested" | "access.approved" | "slot.assigned" | "slot.due" | "comment.mention" | "comment.posted" | "comments.posted" | "changes.requested" | "comments.unsent" | "reviews.waiting" | "comments.pending" | "assets.waiting"
+  | "access.requested" | "access.approved" | "slot.assigned" | "slot.due" | "slots.due" | "comment.mention" | "comment.posted" | "comments.posted" | "changes.requested" | "comments.unsent" | "reviews.waiting" | "comments.pending" | "assets.waiting"
   | "version.uploaded" | "review.waiting" | "version.changes_requested" | "version.approved" | "versions.approved" | "version.reopened" | "primary.approved"
   | "event.all_approved" | "event.deleted" | "event.published" | "event.archived" | "project.ending"
   | "draft.expiring" | "draft.swept" | "devices.refresh";
@@ -26,7 +26,7 @@ export type NotificationKind =
  */
 const CHAT: Partial<Record<NotificationKind, "mention" | "channel">> = {
   // Access moments stay out of chat on purpose: they would show a newcomer's name and email to the whole channel.
-  "slot.assigned": "mention", "slot.due": "mention",
+  "slot.assigned": "mention", "slot.due": "mention", "slots.due": "mention",
   "comment.mention": "mention", "comment.posted": "channel", "comments.posted": "channel", "changes.requested": "mention", "version.uploaded": "mention", "review.waiting": "mention", "reviews.waiting": "mention", "comments.pending": "mention", "assets.waiting": "mention",
   "version.changes_requested": "mention", "version.approved": "channel", "versions.approved": "mention", "version.reopened": "mention", "primary.approved": "mention",
   "event.all_approved": "mention", "event.published": "mention", "event.archived": "channel", "project.ending": "mention",
@@ -46,6 +46,7 @@ const SUBJECT: Record<NotificationKind, (p: Record<string, unknown>) => string> 
   "comments.unsent": (p) => `You have unsent comments on ${p.format} · ${p.title}`,
   "version.uploaded": (p) => `Ready for review: ${p.format} v${p.number} · ${p.title}`,
   "reviews.waiting": (p) => `${p.count} designs are waiting for review`,
+  "slots.due": (p) => `${p.count} asset${p.count === 1 ? "" : "s"} due${p.today ? ` (${p.today} today)` : ""}`,
   "assets.waiting": (p) => `${p.count} asset${p.count === 1 ? "" : "s"} waiting for your upload`,
   "comments.pending": (p) => `Comments waiting for you to mark as done${p.title ? ` · ${p.title}` : ""}`,
   "review.waiting": (p) => `Still waiting: ${p.format} v${p.number} · ${p.title}`,

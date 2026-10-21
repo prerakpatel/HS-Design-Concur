@@ -3,6 +3,7 @@ import { assetBullet } from "@/lib/chat-bullets";
 import { REMINDER_LEAD_DAYS, DRAFT_SWEEP_DAYS } from "@/config/limits";
 import { APP_TIMEZONE } from "@/config/orgs";
 import type { Format } from "@/lib/types";
+import { dueChatBody, type DueProject } from "@/lib/due-reminder";
 import { waitingChatSection, type WaitingProject } from "@/lib/assets-waiting";
 
 export function formatSize(f: Pick<Format, "width" | "height" | "unit" | "allow_custom_size">, custom?: { w: number | null; h: number | null }) {
@@ -22,6 +23,7 @@ export function notificationText(kind: string, p: Record<string, unknown>): stri
     case "version.uploaded": return `${by} sent ${f} v${p.number} for review`;
     case "review.waiting": return `${f} v${p.number} for ${t} has been waiting ${p.days} day${p.days === 1 ? "" : "s"} for review`;
     case "reviews.waiting": return `${p.count} designs are waiting for your review`;
+    case "slots.due": return `${p.count} asset${p.count === 1 ? " is" : "s are"} due${p.today ? ` (${p.today} today)` : ""}${p.title ? `: ${p.title}` : ""}`;
     case "assets.waiting": return `${p.count} requested asset${p.count === 1 ? " is" : "s are"} still waiting for an upload${p.title ? `: ${p.title}` : ""}`;
     case "comments.pending": return `You have ${p.count} comment${p.count === 1 ? "" : "s"} still open. Mark ${p.count === 1 ? "it" : "them"} as done once handled${p.title ? `: ${p.title}` : ""}`;
     case "version.changes_requested": return `${by} requested changes on ${f} v${p.number}`;
@@ -80,6 +82,10 @@ export function chatLines(kind: string, p: Record<string, unknown>): { head: str
       const assets = (Array.isArray(p.assets) ? p.assets as { title: string; format: string; open: number; url?: string }[] : []);
       const more = Number(p.total ?? assets.length) - assets.length;
       return { head: "✅ Open changes need resolving", body: [...assets.map(assetBullet), ...(more > 0 ? [`• and ${more} more`] : []), "Once a change is handled, tap Mark as done so nobody wonders what is still open.", ...waitingPart(p)].join("\n") };
+    }
+    case "slots.due": {
+      const projects = (Array.isArray(p.projects) ? p.projects as DueProject[] : []);
+      return { head: "⏰ Due soon", body: dueChatBody(projects, Number(p.total ?? projects.length), `in ${REMINDER_LEAD_DAYS} days`) };
     }
     case "assets.waiting": return { head: "📥 Waiting on assets", body: waitingChatSection(waitingList(p), Number(p.total ?? 0), false).split("\n").slice(1).join("\n") };
     case "reviews.waiting": {
