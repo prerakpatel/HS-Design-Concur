@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/lib/glossary/glossary.test.ts src/lib/aspect.test.ts src/lib/rich-text.test.ts src/lib/chat-target.test.ts src/lib/files.test.ts src/lib/on-site-path.test.ts src/lib/zip-stream.test.ts src/lib/pdf-scale.test.ts src/lib/images.test.ts src/lib/chat-fit.test.ts src/lib/slack-blocks.test.ts src/lib/assets-waiting.test.ts src/lib/due-reminder.test.ts",
+    "test": "node --test src/lib/glossary/glossary.test.ts src/lib/aspect.test.ts src/lib/rich-text.test.ts src/lib/chat-target.test.ts src/lib/files.test.ts src/lib/on-site-path.test.ts src/lib/zip-stream.test.ts src/lib/pdf-scale.test.ts src/lib/images.test.ts src/lib/chat-fit.test.ts src/lib/slack-blocks.test.ts src/lib/assets-waiting.test.ts src/lib/due-reminder.test.ts src/lib/take-over.test.ts",
     "screenshots": "node scripts/screenshots.mjs",
     "icons": "node scripts/icon-names.mjs"
   },
