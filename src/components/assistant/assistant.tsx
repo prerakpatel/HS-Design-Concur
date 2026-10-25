@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 import { assistantTurn, assistantCreateProjects, assistantAddFormats, assistantComment, assistantUpdateProject } from "@/app/actions/assistant";
 import type { CommentDraft, Outcome, Person, Turn, Where } from "@/lib/assistant/schema";
 import { NavDock, FloatingMic, HelloCard, Chair, Peek, Face, useSlot, NAV_SLOT_ID, HELLO_SLOT_ID, CHAIR_SLOT_ID, PEEK_SLOT_ID } from "@/components/assistant/dock";
@@ -221,7 +222,7 @@ export function Assistant(p: AssistantProps) {
   const status = listening ? "Listening…" : rec.state === "transcribing" ? "Working out the words…" : thinking ? "Thinking…" : busy ? "Doing it…" : tour ? "Practice" : p.name;
   const clip = listening ? ASSISTANT_ART.clips.writing : working ? ASSISTANT_ART.clips.thinking : null;
 
-  const act = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); } };
+  const act = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); } catch (e) { toastError(e); } finally { setBusy(false); } };
   const createProjects = (o: Outcome) => act(async () => {
     const r = await assistantCreateProjects(o.projects);
     for (const n of r.notes) toast.message(n);
