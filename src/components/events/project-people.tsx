@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Icon } from "@/components/material-icon";
 import { UserAvatar } from "@/components/user-avatar";
 import { addProjectPerson, removeProjectPerson, connectProjectChat, disconnectProjectChat, projectSuggestions } from "@/app/actions/project-people";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 import { cn } from "@/lib/utils";
 import type { ProjectPerson, ChatLink } from "@/lib/project-people";
 
@@ -70,7 +70,7 @@ function AddPerson({ eventId, first, suggestions }: { eventId: string; first: bo
   const [pending, start] = useTransition();
   const submit = () => start(async () => {
     try { const r = await addProjectPerson(eventId, email); setEmail(""); toast.success(r.chat ? "Added. They were told in the project's chat." : "Added. Send them the project link (below) until a chat is connected."); }
-    catch (e) { toast.error(errorMessage(e)); }
+    catch (e) { toastError(e); }
   });
   return (
     <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); if (email.trim()) submit(); }}>
@@ -104,7 +104,7 @@ function PeopleList({ eventId, people, canManage }: { eventId: string; people: P
             </span>
             {canManage && x.listed && (
               <Button type="button" variant="ghost" size="icon-sm" disabled={pending || lastApprover} title={lastApprover ? "One approver stays on the project" : `Remove ${x.name}`} aria-label={`Remove ${x.name}`}
-                onClick={() => start(async () => { try { await removeProjectPerson(eventId, x.email); } catch (e) { toast.error(errorMessage(e)); } })}>
+                onClick={() => start(async () => { try { await removeProjectPerson(eventId, x.email); } catch (e) { toastError(e); } })}>
                 <Icon name="close" className="!text-[18px]" />
               </Button>
             )}
@@ -132,7 +132,7 @@ function ChatSection({ eventId, chat, canManage, slackChannels }: { eventId: str
         <span className="block font-medium">Posting to {chat.label ?? (chat.platform === "gchat" ? "a Google Chat space" : "a Slack channel")}</span>
         <span className="block text-xs text-muted-foreground">This project&rsquo;s updates go only here, never to the main channels.</span>
       </span>
-      {canManage && <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => start(async () => { try { await disconnectProjectChat(eventId); } catch (e) { toast.error(errorMessage(e)); } })}>Disconnect</Button>}
+      {canManage && <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => start(async () => { try { await disconnectProjectChat(eventId); } catch (e) { toastError(e); } })}>Disconnect</Button>}
     </section>
   );
   if (!canManage) return <p className="rounded-xl bg-subtle px-4 py-3 text-sm text-muted-foreground">This project posts to the main channels.</p>;
@@ -149,7 +149,7 @@ function ChatSection({ eventId, chat, canManage, slackChannels }: { eventId: str
       </div>
       <p className="text-xs text-muted-foreground">Without one, this project posts to the main channels. Create a {platform === "gchat" ? "space" : "channel"} with everyone listed above and connect it: from then on its updates go only there. Disconnect it and they go back to the main channels.</p>
       <ol className="list-decimal space-y-1 pl-5 text-sm">{steps.map((s) => <li key={s}>{s}</li>)}</ol>
-      <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); start(async () => { try { await connectProjectChat(eventId, link); setLink(""); toast.success("Connected. A hello was posted there."); } catch (err) { toast.error(errorMessage(err)); } }); }}>
+      <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); start(async () => { try { await connectProjectChat(eventId, link); setLink(""); toast.success("Connected. A hello was posted there."); } catch (err) { toastError(err); } }); }}>
         <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder={platform === "gchat" ? "https://chat.googleapis.com/…" : slackChannels ? "https://…slack.com/archives/C…" : "https://hooks.slack.com/services/…"} aria-label="Chat link" className="h-10" />
         <Button type="submit" disabled={pending || !link.trim()} className="h-10 shrink-0">{pending ? "Connecting…" : "Connect"}</Button>
       </form>

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MAX_UPLOAD_BYTES } from "@/config/limits";
 import { createUploadUrl } from "@/app/actions/uploads";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 export type Side = "front" | "back";
 /** `side` set: a specific side (replace icon, Add back tile, a half of the drop overlay). Unset: the Upload button, the system works it out. */
@@ -76,7 +76,7 @@ export function UploadPanel({ slotId, accept, isPrint, nextNumber, variant = "bu
       return done;
     } catch (e) {
       setProgress(null);
-      if ((e as Error).name !== "AbortError") toast.error(errorMessage(e));
+      if ((e as Error).name !== "AbortError") toastError(e);
       return null;
     }
     finally { xhr.current = null; setBusy(null); setTarget({}); if (input.current) input.current.value = ""; }

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { isIOS, standalone, subscribeThisDevice } from "@/lib/push-client";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 // icons: notifications_off ios_share
 type State = "checking" | "unsupported" | "ios-install" | "denied" | "off" | "on" | "unconfigured";
@@ -30,7 +30,7 @@ export function PushToggle({ publicKey }: { publicKey: string | null }) {
       const perm = await subscribeThisDevice(publicKey!);
       if (perm !== "granted") { setState(perm === "denied" ? "denied" : "off"); return; }
       setState("on"); toast.success("Notifications are on for this device");
-    } catch (e) { toast.error(errorMessage(e)); }
+    } catch (e) { toastError(e); }
   });
   const copy: Record<State, { title: string; hint: string }> = {
     checking: { title: "Notify this device", hint: "Checking…" },

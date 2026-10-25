@@ -16,7 +16,7 @@ import { AspectIcon } from "@/components/aspect-icon";
 import { ratioOf, ratioLabel } from "@/lib/aspect";
 import { saveFormat, removeFormat } from "@/app/actions/formats";
 import type { Format } from "@/lib/types";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 const FRAMES: { value: Format["frame"]; label: string; hint: string }[] = [
   { value: "phone", label: "Phone", hint: "Shown inside a phone outline with the status bar" },
@@ -84,13 +84,13 @@ function FormatPanel({ format, onClose }: { format: Format | "new" | null; onClo
   const [askRemove, setAskRemove] = useState(false);
   const router = useRouter();
   const changeKind = (k: "digital" | "print") => { setCls(k); setUnit(f && f.class === k ? (inFeet ? "ft" : f.unit) : DEFAULTS[k].unit); };
-  const remove = () => start(async () => { try { const r = await removeFormat(f!.id); toast.success(`${f!.name} removed${r.turnedOff ? ` · turned off in ${r.turnedOff} project${r.turnedOff === 1 ? "" : "s"}` : ""}`); setAskRemove(false); onClose(); router.refresh(); } catch (err) { setAskRemove(false); toast.error(errorMessage(err)); } });
+  const remove = () => start(async () => { try { const r = await removeFormat(f!.id); toast.success(`${f!.name} removed${r.turnedOff ? ` · turned off in ${r.turnedOff} project${r.turnedOff === 1 ? "" : "s"}` : ""}`); setAskRemove(false); onClose(); router.refresh(); } catch (err) { setAskRemove(false); toastError(err); } });
   return (
     <>
     <Dialog open={!!format} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex max-h-[calc(100dvh-1.5rem)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-h-[calc(100dvh-3rem)] sm:max-w-[520px]">
         {format && (
-          <form key={f?.id ?? "new"} className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await saveFormat(fd); toast.success(f ? "Format saved" : "Format added"); onClose(); router.refresh(); } catch (err) { toast.error(errorMessage(err)); } }); }}>
+          <form key={f?.id ?? "new"} className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await saveFormat(fd); toast.success(f ? "Format saved" : "Format added"); onClose(); router.refresh(); } catch (err) { toastError(err); } }); }}>
             {f && <input type="hidden" name="id" value={f.id} />}
             <input type="hidden" name="class" value={cls} />
             <input type="hidden" name="allow_custom_size" value={custom ? "on" : "off"} />

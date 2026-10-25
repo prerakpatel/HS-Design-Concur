@@ -7,13 +7,13 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { Textarea } from "@/components/ui/textarea";
 import { setMaintenance } from "@/app/actions/admin";
 import { DEFAULT_HOLD_MESSAGE } from "@/components/maintenance-veil";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 /** The one-button maintenance hold (Settings › Maintenance). Core Admins are held too, and turn it off from the hold screen. */
 export function MaintenanceCard({ on, message, since, by }: { on: boolean; message: string | null; since: string | null; by: string | null }) {
   const [text, setText] = useState(message ?? "");
   const router = useRouter();
-  const run = (next: boolean) => async () => { try { await setMaintenance(next, text); toast.success(next ? "Hold is on. Everyone now sees the hold screen." : "Hold is off. Everyone is back in."); router.refresh(); } catch (e) { toast.error(errorMessage(e)); } };
+  const run = (next: boolean) => async () => { try { await setMaintenance(next, text); toast.success(next ? "Hold is on. Everyone now sees the hold screen." : "Hold is off. Everyone is back in."); router.refresh(); } catch (e) { toastError(e); } };
   return (
     <section className="max-w-2xl space-y-6 rounded-2xl border border-border p-5 md:p-6">
       <div className="flex items-start gap-4">

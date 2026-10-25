@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { pushSupported, standalone, subscribeThisDevice } from "@/lib/push-client";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 // icons: notifications_active
 const KEY = "dc.pushPrompt";
@@ -48,7 +48,7 @@ export function PushPrompt() {
       else if (perm === "denied") write("denied");
       else write(String(Date.now()));
       setShow(false);
-    } catch (e) { toast.error(errorMessage(e)); }
+    } catch (e) { toastError(e); }
   });
   return (
     <div role="dialog" aria-label="Turn on notifications" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+90px)] z-50 rounded-2xl bg-inverse-surface p-4 text-inverse-on-surface shadow-xl md:inset-x-auto md:bottom-6 md:right-6 md:w-96">

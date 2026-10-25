@@ -212,6 +212,14 @@ Read the result on a morning when something is due; do not run the daily job to 
 - [ ] The channel gets ONE short post for the organization: a line per project with counts, no names, no @mention.
 - [ ] A deleted project is not mentioned anywhere.
 
+## Assigned designer follows the upload; guests can be assigned
+- [ ] A designer uploads to an asset assigned to someone else: the Designer row changes to them, and the project's Activity shows "took over <asset>".
+- [ ] Upload to an asset with no designer: the uploader becomes its designer.
+- [ ] A Core Admin or approver uploads to an asset that has a designer: the designer does NOT change. If it had none, the uploader is assigned.
+- [ ] On an asset page, the Designer picker lists the project's guests (people added by email). Pick one: it saves, and they get an "assigned" notification.
+- [ ] A guest uploads to their asset: they stay the designer; a guest uploading to an unassigned asset becomes its designer.
+- [ ] Someone who is neither in the organization nor on the project's People list cannot be assigned.
+
 ## Delete shows a confirmation
 - [ ] Delete a test event: a "Event deleted" toast appears and there is no "session ended" error.
 

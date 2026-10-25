@@ -28,7 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { SelectField } from "@/components/ui/select-field";
 import { relativeTime } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 // icons: forum add_comment history grid_on zoom_out_map check close arrow_upward more_vert upload sync flip delete replay edit chat_bubble
 export type Side = "front" | "back";
@@ -124,23 +124,23 @@ export function AssetStage({ canRequestChanges = false, versionApproved = false,
     // In review mode every comment is a targeted change; in the thread box it is one only when the toggle is on.
     const change = canRequestChanges && (review ? !versionApproved : (!pin && changeOn));
     try { await addComment(versionId!, body, pin, { draft: review, change, reopen: change && versionApproved }); if (pin == null) { textHtml.current = ""; setTextEmpty(true); setComposerKey((k) => k + 1); setChangeOn(false); setMentioned(null); } stop(); if (!review) toast.success(change ? (versionApproved ? "Reopened with a change" : "Change requested") : pin ? "Comment pinned" : "Comment posted"); }
-    catch (e) { toast.error(errorMessage(e)); }
+    catch (e) { toastError(e); }
   });
   const sendReview = () => start(async () => {
     setSending(true);
     try { const r = await sendCommentBatch(versionId!); setReview(false); stop(); toast.success(reviewChanges ? (r.count === 1 ? "Change sent" : `${r.count} changes sent`) : r.count === 1 ? "Comment sent" : `${r.count} comments sent`); }
-    catch (e) { toast.error(errorMessage(e)); }
+    catch (e) { toastError(e); }
     finally { setSending(false); }
   });
   const leaveReview = () => start(async () => {
     if (unsent > 0 && !confirm(`Discard ${unsent === 1 ? "your unsent comment" : `your ${unsent} unsent comments`}?`)) return;
     try { if (unsent > 0) await discardCommentBatch(versionId!); setReview(false); stop(); }
-    catch (e) { toast.error(errorMessage(e)); }
+    catch (e) { toastError(e); }
   });
-  const reassign = (userId: string) => start(async () => { try { await assignSlot(slotId, userId || null); toast.success(userId ? "Designer changed" : "Unassigned"); } catch (e) { toast.error(errorMessage(e)); } });
+  const reassign = (userId: string) => start(async () => { try { await assignSlot(slotId, userId || null); toast.success(userId ? "Designer changed" : "Unassigned"); } catch (e) { toastError(e); } });
   const flag = (id: string, f: "addressed" | "unaddress" | "reopen") => start(async () => {
     try { await setCommentFlag(id, f); if (f === "addressed") toast.success("Marked as done", { action: { label: "Undo", onClick: () => flag(id, "unaddress") }, duration: 8000 }); }
-    catch (e) { toast.error(errorMessage(e)); }
+    catch (e) { toastError(e); }
   });
   const [confirmDelete, setConfirmDelete] = useState<Side | null>(null);
   // Deleting one side leaves the other; deleting the only side removes the version.
@@ -151,7 +151,7 @@ export function AssetStage({ canRequestChanges = false, versionApproved = false,
       if (r.versionRemoved) { toast.success(`Version ${v.number} deleted`); router.replace(`/events/${eventId}/slots/${slotId}`); }
       else toast.success(`The ${side} was deleted`);
       router.refresh();
-    } catch (e) { toast.error(errorMessage(e)); }
+    } catch (e) { toastError(e); }
   });
 
   const hasGuides = sides.some((s) => { const g = guideGeometry(safe, print, s.specW || s.width, s.specH || s.height); return g.cut || g.safe.top + g.safe.right + g.safe.bottom + g.safe.left > 0; });
@@ -348,7 +348,7 @@ export function AssetStage({ canRequestChanges = false, versionApproved = false,
                             {(c.mine || canModerate) && <>
                               {c.mine && <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm" onSelect={() => { editHtml.current = c.body; setEditing({ id: c.id, text: c.body }); }}><Icon name="edit" />Edit</DropdownMenuItem>}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm text-destructive-text" onSelect={() => start(async () => { if (!confirm("Delete this comment?")) return; try { await deleteComment(c.id); toast.success("Comment deleted"); } catch (err) { toast.error(errorMessage(err)); } })}><Icon name="delete" />Delete</DropdownMenuItem>
+                              <DropdownMenuItem className="h-10 rounded-lg px-3 text-sm text-destructive-text" onSelect={() => start(async () => { if (!confirm("Delete this comment?")) return; try { await deleteComment(c.id); toast.success("Comment deleted"); } catch (err) { toastError(err); } })}><Icon name="delete" />Delete</DropdownMenuItem>
                             </>}
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -357,7 +357,7 @@ export function AssetStage({ canRequestChanges = false, versionApproved = false,
                     {editing?.id === c.id ? (
                       <div className="space-y-2">
                         <CommentEditor value={editing.text} onChange={(h) => { editHtml.current = h; }} members={members} autoFocus compact />
-                        <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending} onClick={() => start(async () => { try { await editComment(c.id, editHtml.current); setEditing(null); toast.success("Saved"); } catch (e) { toast.error(errorMessage(e)); } })}>Save</Button></div>
+                        <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" disabled={pending} onClick={() => start(async () => { try { await editComment(c.id, editHtml.current); setEditing(null); toast.success("Saved"); } catch (e) { toastError(e); } })}>Save</Button></div>
                       </div>
                     ) : <RichBody body={c.body} />}
                     {!done && !c.draft && c.needs_change && canComment && <button className="text-[13px] font-medium text-info hover:underline" onClick={(e) => { e.stopPropagation(); flag(c.id, "addressed"); }} disabled={pending}>Mark as done</button>}

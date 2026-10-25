@@ -1,12 +1,11 @@
 "use client";
 import { DELETE_RESTORE_DAYS } from "@/config/limits";
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 // icons: more_vert delete
 /** The event page ⋮: Delete for the creator or a Core Admin. Soft delete, restorable from Archive for DELETE_RESTORE_DAYS days. */
@@ -26,7 +25,7 @@ export function EventMenu({ title, isDraft, remove }: { title: string; isDraft: 
           <DialogHeader><DialogTitle>Delete “{title}”?</DialogTitle><DialogDescription>It leaves the Events list and frees its event slot. A Core Admin can restore it from Archive for {DELETE_RESTORE_DAYS} days; after that its files are removed for good.</DialogDescription></DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
-            <Button variant="destructive" disabled={pending} onClick={() => start(async () => { try { await remove(); } catch (e) { toast.error(errorMessage(e)); } })}>{pending ? "Deleting…" : "Delete"}</Button>
+            <Button variant="destructive" disabled={pending} onClick={() => start(async () => { try { await remove(); } catch (e) { toastError(e); } })}>{pending ? "Deleting…" : "Delete"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

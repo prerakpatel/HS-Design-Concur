@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 /** "Are you sure?" gate for approve / reopen / delete (PRD §6.2). Runs a server action after confirmation. */
 export function ConfirmButton({ action, title, description, label, confirmLabel, variant = "default", size = "default", withReason, reasonLabel, onDone, className, success }: {
@@ -32,7 +32,7 @@ export function ConfirmButton({ action, title, description, label, confirmLabel,
               catch (e) {
                 // An action that ends in redirect() rejects with NEXT_REDIRECT after it has already succeeded; the page is navigating away.
                 if ((e as { message?: string } | null)?.message === "NEXT_REDIRECT") { setOpen(false); if (success) toast.success(success); return; }
-                toast.error(errorMessage(e));
+                toastError(e);
               }
             })}>{pending ? "Working…" : (confirmLabel ?? label)}</Button>
           </DialogFooter>

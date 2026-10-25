@@ -11,6 +11,7 @@ import { MAX_UPLOAD_BYTES } from "@/config/limits";
 
 const ACCEPTED_MIMES = ["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf"];
 import { serviceOr } from "@/lib/supabase/service";
+import { takesOver } from "@/lib/take-over";
 
 /**
  * Step 2 of an upload: process the temporary file into optimised / preview / thumb renditions and record the
@@ -131,6 +132,13 @@ export async function finalizeUploadFor(ctx: ActiveContext & { guest?: boolean }
   if (firstSide === "front" || inserted) {
     if (!event.brief_locked_at) await supabase.from("events").update({ brief_locked_at: new Date().toISOString() }).eq("id", event.id);
     await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slotId, version_id: versionId, actor_id: user.id, kind: inPlace && keptInReview ? "version.updated" : "version.uploaded", payload: { format: slotName(fmt.name, slot.label), number } });
+    // The designer who uploads becomes the asset's designer (see takesOver). Guests are not allowed to change a slot's
+    // assignee themselves, so this is written with the service key; the rule above is what decides it.
+    const isGuest = "guest" in ctx && !!ctx.guest;
+    if (takesOver({ uploader: user.id, assignee: (slot.assignee_id as string | null) ?? null, privileged: !isGuest && (user.role === "core_admin" || ctx.isApprover) })) {
+      const { error: takeErr } = await serviceOr(supabase).from("slots").update({ assignee_id: user.id, updated_at: new Date().toISOString() }).eq("id", slotId);
+      if (!takeErr) await supabase.from("activity").insert({ org_id: org.id, event_id: event.id, slot_id: slotId, actor_id: user.id, kind: "slot.taken_over", payload: { format: slotName(fmt.name, slot.label as string | null) } });
+    }
     if (inPlace) await recomputeSlotState(supabase, slotId);
     // A new version pushes the oldest out: only the newest VERSIONS_KEPT keep files (approved ones always do).
     // A guest may not change other people's versions, so their prune runs with the service key.

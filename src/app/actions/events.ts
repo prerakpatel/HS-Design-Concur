@@ -1,4 +1,5 @@
 "use server";
+import { loadProjectPeople } from "@/lib/project-people";
 import { todayIso } from "@/lib/time";
 import { capFor, isAssets, slotName, assetEndMax } from "@/lib/project";
 import { redirect } from "next/navigation";
@@ -256,7 +257,9 @@ export async function assignSlot(slotId: string, userId: string | null) {
   if (user.role !== "core_admin" && !isApprover) throw new UserError("Only Core Admins and approvers can change who designs a format");
   if (userId) {
     const { data: member } = await supabase.from("users").select("id,org_memberships!inner(org_id)").eq("id", userId).eq("status", "active").eq("org_memberships.org_id", org.id).maybeSingle();
-    if (!member) throw new UserError("That person is not in this organization");
+    // A guest on this project can be given its formats too (the project's People list, never anyone else's).
+    const guest = !member && (await loadProjectPeople(supabase, event)).some((p) => p.guest && p.userId === userId) && !!(await supabase.from("users").select("id").eq("id", userId).eq("status", "active").maybeSingle()).data;
+    if (!member && !guest) throw new UserError("That person is not in this organization or on this project");
   }
   if ((slot.assignee_id ?? null) === (userId ?? null)) return;
   const { error } = await supabase.from("slots").update({ assignee_id: userId, updated_at: new Date().toISOString() }).eq("id", slotId);
