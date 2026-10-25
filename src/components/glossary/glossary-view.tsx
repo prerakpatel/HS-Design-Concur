@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { saveEntry, deleteEntry, previewImport, commitImport, type ImportPreview } from "@/app/actions/glossary";
 import { indexEntries, searchGlossary, type GlossaryEntry, type Hit } from "@/lib/glossary/search";
 import { termKey } from "@/lib/glossary/sound";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 const VIA_NOTE: Record<Hit["via"], string> = { exact: "", variant: "another way to write it", sound: "sounds like what you typed", starts: "starts like what you typed", close: "close to what you typed", meaning: "mentioned in the meaning" };
 
@@ -143,8 +143,8 @@ function DeleteDialog({ entry, onClose }: { entry: GlossaryEntry; onClose: () =>
     try {
       await deleteEntry(entry.id);
       onClose(); router.refresh();
-      toast.success(`Deleted “${entry.term}”`, { duration: 8000, action: { label: "Undo", onClick: () => { saveEntry({ id: null, term: entry.term, definition: entry.definition ?? "", variants: entry.variants }).then(() => { toast.success(`Restored “${entry.term}”`); router.refresh(); }, (e) => toast.error(errorMessage(e))); } } });
-    } catch (e) { toast.error(errorMessage(e)); }
+      toast.success(`Deleted “${entry.term}”`, { duration: 8000, action: { label: "Undo", onClick: () => { saveEntry({ id: null, term: entry.term, definition: entry.definition ?? "", variants: entry.variants }).then(() => { toast.success(`Restored “${entry.term}”`); router.refresh(); }, (e) => toastError(e)); } } });
+    } catch (e) { toastError(e); }
   });
   return (
     <Dialog open onOpenChange={(o) => !o && !pending && onClose()}>
@@ -169,7 +169,7 @@ function EntryDialog({ entry, initialTerm, index, onClose, onDelete }: { entry: 
   const same = similar.find((h) => h.via === "exact");
   const save = () => start(async () => {
     try { await saveEntry({ id: entry?.id ?? null, term, definition, variants: draft.trim() ? [...variants, draft.trim()] : variants }); toast.success(entry ? "Saved" : `Added “${term.trim()}”`); onClose(); router.refresh(); }
-    catch (e) { toast.error(errorMessage(e)); }
+    catch (e) { toastError(e); }
   });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -210,10 +210,10 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const count = (s: string) => preview?.rows.filter((r) => r.status === s).length ?? 0;
-  const run = () => start(async () => { try { setPreview(await previewImport(text)); } catch (e) { toast.error(errorMessage(e)); } });
+  const run = () => start(async () => { try { setPreview(await previewImport(text)); } catch (e) { toastError(e); } });
   const commit = () => start(async () => {
     try { const r = await commitImport(text, fileName, update); toast.success(`${r.added} word${r.added === 1 ? "" : "s"} added${r.updated ? ` · ${r.updated} updated` : ""}`); onClose(); router.refresh(); }
-    catch (e) { toast.error(errorMessage(e)); }
+    catch (e) { toastError(e); }
   });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { approveVersion, reopenVersion, downloadLink, sendForReview } from "@/app/actions/reviews";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 /**
  * The decision row. An unsent version shows Send for review to whoever may send it (uploader, assignee, Core
@@ -38,12 +38,12 @@ export function ReviewActions({ versionId, stamp, label, eventTitle, decision, c
     const a = document.createElement("a"); a.href = url; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
     toast.success(side === "back" ? "Downloading the back" : "Download started");
   };
-  const run = (fn: () => Promise<unknown>, done: string | ((r: unknown) => string)) => start(async () => { try { const r = await fn(); close(); toast.success(typeof done === "function" ? done(r) : done); } catch (e) { toast.error(errorMessage(e)); } });
+  const run = (fn: () => Promise<unknown>, done: string | ((r: unknown) => string)) => start(async () => { try { const r = await fn(); close(); toast.success(typeof done === "function" ? done(r) : done); } catch (e) { toastError(e); } });
 
   const downloadButtons = (
     <>
-      <Button variant="secondary" disabled={pending} onClick={() => start(async () => { try { await download("front"); } catch (e) { toast.error(errorMessage(e)); } })}>Download{hasBack ? " front" : ""}</Button>
-      {hasBack && <Button variant="secondary" disabled={pending} onClick={() => start(async () => { try { await download("back"); } catch (e) { toast.error(errorMessage(e)); } })}>Download back</Button>}
+      <Button variant="secondary" disabled={pending} onClick={() => start(async () => { try { await download("front"); } catch (e) { toastError(e); } })}>Download{hasBack ? " front" : ""}</Button>
+      {hasBack && <Button variant="secondary" disabled={pending} onClick={() => start(async () => { try { await download("back"); } catch (e) { toastError(e); } })}>Download back</Button>}
       {zip && hasBack && <Button asChild variant="secondary"><a href={zip.format} download>Front and back · ZIP</a></Button>}
       {zip && <Button asChild variant="secondary"><a href={zip.all} download>All approved · ZIP</a></Button>}
     </>

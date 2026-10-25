@@ -13,7 +13,7 @@ import { Icon } from "@/components/material-icon";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Input } from "@/components/ui/input";
 import { updateUser, removeUser, disableUser, enableUser } from "@/app/actions/admin";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 export interface EditableUser { id: string; name: string; email: string; initials: string; avatar?: string | null; role: "member" | "core_admin"; approverOrgIds: string[]; glossarySteward: boolean; function_tags: string[]; orgIds: string[]; groupIds?: string[]; email_pref?: "instant" | "digest" | "off"; slack_user_id?: string | null; gchat_user_id?: string | null; status?: "active" | "disabled"; hideInLists?: boolean }
 export interface OrgOption { id: string; label: string }
@@ -79,7 +79,7 @@ function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser
     <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex max-h-[calc(100dvh-1.5rem)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-h-[calc(100dvh-3rem)] sm:max-w-[520px]">
         {user && (
-          <form key={user.id} className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await updateUser(user.id, fd); toast.success("Saved"); onClose(); router.refresh(); } catch (err) { toast.error(errorMessage(err)); } }); }}>
+          <form key={user.id} className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await updateUser(user.id, fd); toast.success("Saved"); onClose(); router.refresh(); } catch (err) { toastError(err); } }); }}>
             <DialogHeader className="border-b border-border px-6 py-5 text-left">
               <div className="flex items-center gap-3"><UserAvatar initials={user.initials} src={user.avatar} size={40} /><div><DialogTitle className="text-lg">{user.name}</DialogTitle><DialogDescription>{user.email}</DialogDescription></div></div>
             </DialogHeader>
@@ -116,7 +116,7 @@ function UserPanel({ user, orgs, groups, isSelf, onClose }: { user: EditableUser
               {!isSelf ? (
                 <div className="flex items-center gap-1">
                   {user.status === "disabled"
-                    ? <Button type="button" variant="secondary" disabled={pending} onClick={() => start(async () => { try { await enableUser(user.id); toast.success(`${user.name} can use the app again`); onClose(); router.refresh(); } catch (err) { toast.error(errorMessage(err)); } })}>Enable user</Button>
+                    ? <Button type="button" variant="secondary" disabled={pending} onClick={() => start(async () => { try { await enableUser(user.id); toast.success(`${user.name} can use the app again`); onClose(); router.refresh(); } catch (err) { toastError(err); } })}>Enable user</Button>
                     : <ConfirmButton variant="ghost" label="Disable user" title={`Turn off ${user.name}'s access?`} description={`${user.name.split(" ")[0]} will not be able to open the app, and will not appear in any list. Their comments and uploads stay, with their name. Their organizations, role and groups are kept, so you can enable them again at any time and everything comes back. If they are the only approver in an organization, designs there cannot be approved until someone else is.`} confirmLabel="Disable user" action={async () => { await disableUser(user.id); onClose(); }} />}
                   <ConfirmButton variant="ghost" label="Remove" title={`Remove ${user.name}?`} description="They lose access immediately and their organizations are cleared; adding them back later means setting everything up again. Their comments and uploads stay. To switch someone off for a while, use Disable user instead." confirmLabel="Remove" action={async () => { await removeUser(user.id); onClose(); }} />
                 </div>

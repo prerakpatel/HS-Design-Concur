@@ -15,7 +15,7 @@ import { TestButton } from "@/components/settings/test-button";
 import { Field } from "@/components/settings/user-editor";
 import { saveGroup, deleteGroup, testGroupChat } from "@/app/actions/groups";
 import { HEARS_LABEL, type Group, type GroupHears } from "@/lib/groups";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 // icons: group_add chevron_right groups
 export type GroupUser = PickablePerson;
@@ -63,7 +63,7 @@ function GroupPanel({ group, users, onClose }: { group: Group | "new" | null; us
     <Dialog open={!!group} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex max-h-[calc(100dvh-1.5rem)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-h-[calc(100dvh-3rem)] sm:max-w-[560px]">
         {group && (
-          <form key={g?.id ?? "new"} className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await saveGroup(g?.id ?? null, fd); toast.success(g ? "Group saved" : "Group created"); onClose(); router.refresh(); } catch (err) { toast.error(errorMessage(err)); } }); }}>
+          <form key={g?.id ?? "new"} className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { try { await saveGroup(g?.id ?? null, fd); toast.success(g ? "Group saved" : "Group created"); onClose(); router.refresh(); } catch (err) { toastError(err); } }); }}>
             <DialogHeader className="border-b border-border px-6 py-5 text-left"><DialogTitle className="text-lg">{g ? g.name : "New group"}</DialogTitle><DialogDescription>{g ? "Members, chat home and what the group hears about." : "A team with its own channel: designers, social media, core members…"}</DialogDescription></DialogHeader>
             <div className="min-h-0 flex-1 space-y-7 overflow-y-auto px-6 py-6">
               <div className="space-y-2"><Label htmlFor="g-name">Name</Label><Input id="g-name" name="name" required defaultValue={g?.name ?? ""} placeholder="e.g. Core members" /></div>

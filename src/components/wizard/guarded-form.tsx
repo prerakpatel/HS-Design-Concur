@@ -1,7 +1,6 @@
 "use client";
 import { useRef, useTransition } from "react";
-import { toast } from "sonner";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 
 /**
  * A wizard step's form. The server action runs from a submit handler (not the `action` prop), so a refused request
@@ -19,7 +18,7 @@ export function GuardedForm({ action, className, children }: { action: (formData
       const data = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter);
       start(async () => {
         try { await action(data); }
-        catch (err) { toast.error(errorMessage(err)); }
+        catch (err) { toastError(err); }
         finally { busy.current = false; }
       });
     }}>

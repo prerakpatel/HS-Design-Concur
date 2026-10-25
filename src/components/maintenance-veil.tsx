@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Icon } from "@/components/material-icon";
 import { Button } from "@/components/ui/button";
 import { setMaintenance } from "@/app/actions/admin";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 import type { MaintenanceState } from "@/lib/maintenance";
 
 // icons: construction
@@ -54,7 +54,7 @@ export function MaintenanceVeil({ initial }: { initial: MaintenanceState }) {
   const release = async () => {
     setBusy(true);
     try { await setMaintenance(false, ""); setState((st) => ({ ...st, on: false })); wasOn.current = false; toast.success("Hold is off. Everyone is back in."); router.refresh(); }
-    catch (e) { toast.error(errorMessage(e)); }
+    catch (e) { toastError(e); }
     setBusy(false);
   };
   if (!blocked) return null;

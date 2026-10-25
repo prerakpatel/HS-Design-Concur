@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/page-header";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { approveMany } from "@/app/actions/reviews";
-import { errorMessage } from "@/lib/user-error";
+import { toastError } from "@/lib/toast-error";
 import { cn } from "@/lib/utils";
 
 // icons: download
@@ -41,7 +41,7 @@ export function FormatGrid({ eventId, cards, canApprove = false, meta, downloada
       if (r.approved) toast.success(`Approved ${r.approved} format${r.approved === 1 ? "" : "s"}`);
       for (const f of r.failed) toast.error(f);
       stop();
-    } catch (e) { toast.error(errorMessage(e)); }
+    } catch (e) { toastError(e); }
   });
 
   return (
