@@ -114,3 +114,16 @@ of it. On phones a floating bubble would fight the system's copy / paste menu an
 the same row is docked to the top of the composer instead: always reachable while typing, never covering the
 text. Bodies are stored as a sanitised HTML subset (src/lib/rich-text.ts); notifications and chat posts use the
 plain words.
+
+## Design library (public)
+
+`/design-library` shows the whole system on one page: principles, colours (with contrast), type, icons, radius, spacing,
+motion, every component and pattern, the brand marks, and how to reuse it in another app. It needs no sign-in (listed in
+`PUBLIC` in `src/proxy.ts`), reads nothing from the database and uses sample content only. It is kept out of search engines.
+
+- `/design-library/tokens.css`: the tokens as one stylesheet for another Tailwind v4 + shadcn/ui app.
+- `/design-library/design-system.md`: the whole system as one written brief (also the "Copy the whole system" button).
+- `/design-library/tokens.json`: the same values as data (colours, radius, type scale, icon names).
+- Token values come from `src/config/design-tokens.ts`, generated from `globals.css`. After changing a token run
+  `npm run tokens`; `npm test` fails if the generated file is behind.
+- When a shared component is added or restyled, add or update its sample in `src/app/design-library/page.tsx`.
