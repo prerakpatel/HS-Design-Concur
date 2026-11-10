@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { TOKENS } from "@/config/design-tokens";
+import { TOKENS, TOKENS_CSS } from "@/config/design-tokens";
 import { ICON_NAMES } from "@/config/icons";
 import { cn } from "@/lib/utils";
 import { Icon } from "@/components/material-icon";
-import { StateBadge, type BadgeState } from "@/components/state-badge";
+import { StateBadge } from "@/components/state-badge";
 import { UserAvatar } from "@/components/user-avatar";
 import { OrgMark } from "@/components/org-mark";
 import { RoleChips } from "@/components/role-chips";
@@ -23,8 +23,8 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Code, Copy, IconGallery, OverlayDemos, Replay, Swatch, ToastDemo } from "./demos";
-import { RADII, TYPE_SCALE } from "./spec";
+import { Code, Copy, CopyButton, IconGallery, OverlayDemos, Replay, Swatch, ToastDemo } from "./demos";
+import { BUTTONS, COLOURS, HABITS, PRINCIPLES, RADII, STATES, STATUS, TYPE_SCALE, designSystemMarkdown } from "./spec";
 
 // A public page: anyone with the link can read it, no sign-in. It shows the real tokens and the real components with
 // made-up sample content, and never reads the database. Kept out of search engines; share it by link.
@@ -39,50 +39,6 @@ const NAV = [
   ["buttons", "Buttons"], ["badges", "Badges and chips"], ["forms", "Forms"], ["people", "People and orgs"], ["layout", "Page layout"], ["lists", "Lists and states"],
   ["overlays", "Overlays and toasts"], ["brand", "Brand marks"], ["reuse", "Use it in another app"],
 ] as const;
-
-const PRINCIPLES = [
-  { icon: "image", title: "Quiet surfaces", text: "White pages, hairline borders, almost no shadows. The artwork people are reviewing is the loudest thing on screen." },
-  { icon: "check_circle", title: "One primary action", text: "Each screen has a single ink-navy button for the next step. Everything else is outline or ghost." },
-  { icon: "auto_awesome", title: "Coral is an accent", text: "The brand coral marks what needs you: unread dots, counts, the Primary tag. It is never a page or button fill." },
-  { icon: "rule", title: "State is a tinted badge", text: "A soft tint with text in the dark shade of the same hue, so status reads at a glance and stays legible." },
-  { icon: "devices", title: "Phone first", text: "Controls are 40 to 48 px tall, dialogs become bottom drawers, and media runs edge to edge on small screens." },
-  { icon: "edit_note", title: "Plain words", text: "Short sentences, no jargon, sentence case. Empty states say what will appear there and why." },
-];
-
-type Sw = { token: string; cls: string; use: string; bordered?: boolean };
-const COLOURS: { title: string; note: string; items: Sw[] }[] = [
-  { title: "Brand and action", note: "Navy does the work, coral draws the eye.", items: [
-    { token: "primary", cls: "bg-primary", use: "Primary buttons, focus ring, links" },
-    { token: "brand", cls: "bg-brand", use: "Accent: unread dots, counts, Primary tag" },
-    { token: "brand-hover", cls: "bg-brand-hover", use: "Coral on hover or press" },
-    { token: "brand-soft", cls: "bg-brand-soft", use: "Avatars, the Needs you badge" },
-    { token: "brand-soft-foreground", cls: "text-brand-soft-foreground", use: "Text on brand-soft" },
-    { token: "inverse-surface", cls: "bg-inverse-surface", use: "Toasts and floating prompts" },
-  ] },
-  { title: "Surfaces", note: "Layered greys that separate areas without lines where possible.", items: [
-    { token: "background", cls: "bg-background", use: "The page", bordered: true },
-    { token: "card", cls: "bg-card", use: "Inputs, pills, raised panels", bordered: true },
-    { token: "subtle", cls: "bg-subtle", use: "Row hover, code, quiet panels", bordered: true },
-    { token: "muted", cls: "bg-muted", use: "Icon discs, secondary buttons, skeletons", bordered: true },
-    { token: "muted-strong", cls: "bg-muted-strong", use: "Progress tracks, placeholder bars" },
-    { token: "sidebar", cls: "bg-sidebar", use: "Desktop sidebar and bars", bordered: true },
-  ] },
-  { title: "Text and lines", note: "Three text strengths and one hairline.", items: [
-    { token: "foreground", cls: "text-foreground", use: "Headings and body text" },
-    { token: "sidebar-foreground", cls: "text-sidebar-foreground", use: "Navigation and secondary labels" },
-    { token: "muted-foreground", cls: "text-muted-foreground", use: "Meta lines, helper text, placeholders" },
-    { token: "border", cls: "border-border", use: "Every hairline and divider" },
-    { token: "input", cls: "border-input", use: "Field outlines" },
-    { token: "ring", cls: "ring-ring", use: "Keyboard focus ring (at 50%)" },
-  ] },
-];
-
-const STATUS: { name: string; solid: string; soft: string; text: string; means: string }[] = [
-  { name: "Info", solid: "info", soft: "info-soft", text: "info-text", means: "In review, neutral notices" },
-  { name: "Success", solid: "success", soft: "success-soft", text: "success-text", means: "Approved, done, progress" },
-  { name: "Warning", solid: "warning", soft: "warning-soft", text: "warning-text", means: "Draft, not sent yet, take care" },
-  { name: "Destructive", solid: "destructive", soft: "destructive-soft", text: "destructive-text", means: "Changes requested, delete, errors" },
-];
 
 /** WCAG contrast ratio of two hex colours. */
 function contrast(a: string, b: string) {
@@ -104,26 +60,6 @@ const PAIRS: { label: string; fg: string; bg: string }[] = [
   { label: "Toast", fg: "inverse-on-surface", bg: "inverse-surface" },
   ...STATUS.map((s) => ({ label: `${s.name} badge`, fg: s.text, bg: s.soft })),
 ];
-
-const STATES: { state: BadgeState; when: string }[] = [
-  { state: "requested", when: "Asked for, nothing uploaded yet" },
-  { state: "unsent", when: "Uploaded but not sent for review" },
-  { state: "in_review", when: "Waiting on an approver" },
-  { state: "changes_requested", when: "Sent back with comments" },
-  { state: "approved", when: "Signed off" },
-  { state: "needs_you", when: "The viewer has to act" },
-  { state: "draft", when: "An event still being set up" },
-  { state: "na", when: "Not needed for this event" },
-];
-
-const BUTTONS = [
-  { variant: "default", name: "Primary", use: "The one next step on a screen" },
-  { variant: "outline", name: "Outline", use: "Everyday actions beside the primary" },
-  { variant: "secondary", name: "Secondary", use: "A quiet filled alternative" },
-  { variant: "ghost", name: "Ghost", use: "Cancel, and actions inside toolbars" },
-  { variant: "destructive", name: "Destructive", use: "Delete and other one-way actions" },
-  { variant: "link", name: "Link", use: "Inline navigation in a sentence" },
-] as const;
 
 function Section({ id, title, intro, children }: { id: string; title: string; intro: string; children: React.ReactNode }) {
   return (
@@ -148,6 +84,8 @@ function Block({ title, note, code, plain, children }: { title: string; note?: s
 
 const Spec = ({ children }: { children: React.ReactNode }) => <span className="font-mono text-xs text-muted-foreground">{children}</span>;
 
+const BRIEF = designSystemMarkdown();
+
 export default function DesignLibraryPage() {
   return (
     <TooltipProvider delayDuration={200}>
@@ -160,7 +98,8 @@ export default function DesignLibraryPage() {
           <h1 className="mt-6 text-[32px] font-semibold leading-10 tracking-[-0.02em] sm:text-[40px] sm:leading-[48px]">Design library</h1>
           <p className="mt-3 max-w-2xl text-base leading-6 text-muted-foreground">The colours, type, icons, components and patterns the app is built from. Everything on this page is the real thing, drawn from the same code and tokens as the app, so it can be copied into the next one.</p>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Button asChild><a href="#reuse">Use it in another app</a></Button>
+            <CopyButton variant="default" value={BRIEF} label="the whole design system">Copy the whole system</CopyButton>
+            <Button asChild variant="outline"><a href="#reuse">Use it in another app</a></Button>
             <Button asChild variant="outline"><a href="/design-library/tokens.css" download="design-concur-tokens.css"><Icon name="download" className="!text-[18px]" />tokens.css</a></Button>
             <Button asChild variant="outline"><a href="/design-library/tokens.json" download="design-concur-tokens.json"><Icon name="download" className="!text-[18px]" />tokens.json</a></Button>
           </div>
@@ -466,10 +405,18 @@ export default function DesignLibraryPage() {
             </Section>
 
             <Section id="reuse" title="Use it in another app" intro="The look lives in one stylesheet of tokens plus a set of standard open-source parts. A new app that starts from the same parts and pastes in the tokens will match this one.">
+              <Block title="The quick way: copy everything" note="One copy gives the whole system as a written brief: principles, every colour and size, the component rules and the stylesheet. Paste it into the new project's notes, or give it to the AI assistant building the app and ask it to match.">
+                <div className="flex flex-wrap gap-2">
+                  <CopyButton variant="default" value={BRIEF} label="the whole design system">Copy the whole system</CopyButton>
+                  <Button asChild variant="outline"><a href="/design-library/design-system.md" download="design-concur-design-system.md"><Icon name="download" className="!text-[18px]" />Download as a file</a></Button>
+                  <Button asChild variant="outline"><a href="/design-library/design-system.md" target="_blank" rel="noreferrer">View it<Icon name="arrow_outward" className="!text-[18px]" /></a></Button>
+                </div>
+              </Block>
               <Block title="1. Start from the same parts" note="Next.js with Tailwind CSS v4 and shadcn/ui (Radix). The components on this page are shadcn/ui components restyled by the tokens." code={`npx create-next-app@latest my-app --typescript --tailwind --app\ncd my-app\nnpx shadcn@latest init\nnpx shadcn@latest add button input label textarea select switch dialog drawer sheet dropdown-menu popover tooltip sonner skeleton separator`} plain><span /></Block>
               <Block title="2. Paste in the tokens" note="Replace the contents of the new app's globals.css with tokens.css. That one file carries every colour, the corner radius, the font and the icon class." plain>
                 <div className="flex flex-wrap gap-2">
-                  <Button asChild><a href="/design-library/tokens.css" download="design-concur-tokens.css"><Icon name="download" className="!text-[18px]" />Download tokens.css</a></Button>
+                  <CopyButton variant="default" value={TOKENS_CSS} label="tokens.css">Copy tokens.css</CopyButton>
+                  <Button asChild variant="outline"><a href="/design-library/tokens.css" download="design-concur-tokens.css"><Icon name="download" className="!text-[18px]" />Download</a></Button>
                   <Button asChild variant="outline"><a href="/design-library/tokens.css" target="_blank" rel="noreferrer">View it<Icon name="arrow_outward" className="!text-[18px]" /></a></Button>
                   <Button asChild variant="outline"><a href="/design-library/tokens.json" target="_blank" rel="noreferrer">tokens.json, for other tools<Icon name="arrow_outward" className="!text-[18px]" /></a></Button>
                 </div>
@@ -477,14 +424,7 @@ export default function DesignLibraryPage() {
               <Block title="3. Load the fonts" note="Google Sans Flex for text and Material Symbols Rounded for icons, both from Google Fonts. Put these in the head of the root layout." code={`<link rel="preconnect" href="https://fonts.googleapis.com" />\n<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,300..800&display=swap" />\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" />`} plain><span /></Block>
               <Block title="4. Add the icon component" note="Icons are text set in the icon font, so the component is tiny." code={`export function Icon({ name, size = 20, fill = false, className }: { name: string; size?: 20 | 24; fill?: boolean; className?: string }) {\n  return <span aria-hidden className={"msr " + (className ?? "")} data-size={size} data-fill={fill ? "1" : "0"}>{name}</span>;\n}`} plain><span /></Block>
               <Block title="5. Follow the same habits" note="The tokens give the colours; these habits give the feel.">
-                <ul className="list-disc space-y-1.5 pl-5 text-sm leading-6">
-                  <li>Use the named colours (<Spec>bg-brand-soft</Spec>, <Spec>text-muted-foreground</Spec>), never a hex value in a component.</li>
-                  <li>One primary button per screen; outline or ghost for the rest.</li>
-                  <li>Coral only as an accent. Status only through tinted badges.</li>
-                  <li>Rows with hairlines instead of boxed cards. Dashed outline for empty states.</li>
-                  <li>Controls at 40 px or taller; dialogs become bottom drawers on phones.</li>
-                  <li>Give this page&apos;s link to whoever, or whichever AI assistant, is building the next app, and ask them to match it.</li>
-                </ul>
+                <ul className="list-disc space-y-1.5 pl-5 text-sm leading-6">{HABITS.map((h) => <li key={h}>{h}</li>)}</ul>
               </Block>
             </Section>
 

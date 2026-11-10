@@ -22,6 +22,16 @@ export function Copy({ value, label, className, children }: { value: string; lab
   return <button type="button" onClick={() => copy(value, label)} className={cn("text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}>{children}</button>;
 }
 
+/** A button that copies a long piece of text (the whole system, the stylesheet) and confirms with a tick. */
+export function CopyButton({ value, label, children, variant = "outline" }: { value: string; label: string; children: React.ReactNode; variant?: "default" | "outline" }) {
+  const [done, setDone] = useState(false);
+  return (
+    <Button type="button" variant={variant} onClick={async () => { await copy(value, label); setDone(true); setTimeout(() => setDone(false), 2000); }}>
+      <Icon name={done ? "check" : "content_copy"} className="!text-[18px]" />{done ? "Copied" : children}
+    </Button>
+  );
+}
+
 /** A colour swatch. Pressing it copies the Tailwind class. */
 export function Swatch({ token, value, cls, use, bordered }: { token: string; value: string; cls: string; use: string; bordered?: boolean }) {
   return (

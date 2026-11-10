@@ -122,6 +122,7 @@ motion, every component and pattern, the brand marks, and how to reuse it in ano
 `PUBLIC` in `src/proxy.ts`), reads nothing from the database and uses sample content only. It is kept out of search engines.
 
 - `/design-library/tokens.css`: the tokens as one stylesheet for another Tailwind v4 + shadcn/ui app.
+- `/design-library/design-system.md`: the whole system as one written brief (also the "Copy the whole system" button).
 - `/design-library/tokens.json`: the same values as data (colours, radius, type scale, icon names).
 - Token values come from `src/config/design-tokens.ts`, generated from `globals.css`. After changing a token run
   `npm run tokens`; `npm test` fails if the generated file is behind.
