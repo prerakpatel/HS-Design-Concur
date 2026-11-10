@@ -12,6 +12,7 @@ the `Icon` component (`src/components/material-icon.tsx`).
 
 - Tokens live in `src/app/globals.css` (PRD §12.1). Use the semantic Tailwind colours
   (`bg-brand-soft`, `text-info-text`, `bg-subtle`) — never raw hex in components.
+- After changing a token run `npm run tokens`; the public design library (`/design-library`, see `docs/design.md`) is built from them.
 - State badges go through `StateBadge` (`src/components/state-badge.tsx`).
 - Server-only data access uses `createClient()` from `src/lib/supabase/server.ts`; pages that need a
   signed-in, active user call `requireActiveUser()` from `src/lib/auth.ts`.
