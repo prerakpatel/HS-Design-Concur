@@ -8,8 +8,8 @@ import { sendEmail, appUrl, emailConfigured } from "@/lib/email";
 import { notificationText, notificationHref, openLink, chatDate } from "@/lib/labels";
 import { slackActionsEnabled, sendSlackBlocks } from "@/lib/slack-dm";
 import { reminderBlocks, waitingBlocks, dueBlocks, MAX_REMINDER_ITEMS } from "@/lib/slack-blocks";
-import { splitWaiting, waitingProjects, type WaitingSlot, type WaitingProject } from "@/lib/assets-waiting";
-import { dueProjects, type DueSlot, type DueProject } from "@/lib/due-reminder";
+import { splitWaiting, type WaitingSlot } from "@/lib/assets-waiting";
+import { type DueSlot } from "@/lib/due-reminder";
 import { notify, subjectFor, approverIds, type NotificationKind } from "@/lib/notify";
 import { runRetention } from "@/lib/retention";
 import { pruneAllSlots, sweepTmpUploads } from "@/lib/uploads/prune";
@@ -24,9 +24,9 @@ export const maxDuration = 60;
 
 /**
  * Daily job (Vercel Cron, 13:00 UTC ≈ morning in New York). Runs, in order:
- * 1. Due-date reminders: assets due today or in 3 days → one personal message per designer (in-app, push, Slack) and one
- *    short list of projects in the chat (no names).
+ * 1. Due-date reminders: assets due today or in 3 days → one personal message per designer (in-app, push, Slack).
  *    Then designs waiting ≥ 1 day for a decision → the approvers, once a day until approved or changes requested.
+ *    No channel (Google Chat / Slack) reminders are posted from this job.
  * 2. Retention (PRD §8): archive + purge a week after the event date, hard-delete after the restore window,
  *    draft warning / sweep, yearly device-preset reminder. See src/lib/retention.ts.
  * 3. Daily digest email for users whose email_pref is "digest", then instant emails for job-created kinds.
@@ -86,14 +86,14 @@ export async function GET(req: Request) {
       const r = rows[0];
       const { data: dup } = await db.from("notifications").select("id").eq("kind", "review.waiting").contains("payload", { versionId: r.versionId, day: today }).limit(1);
       if (dup?.length) continue;
-      await notify(db, approvers, "review.waiting", { eventId: r.eventId, slotId: r.slotId, versionId: r.versionId, title: r.title, format: r.format, number: r.number, by: r.by, since: r.since, days: r.days, day: today }, r.uploadedBy, { orgId });
+      await notify(db, approvers, "review.waiting", { eventId: r.eventId, slotId: r.slotId, versionId: r.versionId, title: r.title, format: r.format, number: r.number, by: r.by, since: r.since, days: r.days, day: today }, r.uploadedBy, { orgId, chat: false });
     } else {
       // `scope` keeps the organisation-wide reminder apart from a project-specific one (both carry the same orgId).
       const scope = privateEvent ? { orgId, eventId: privateEvent, scope: "project" } : { orgId, scope: "org" };
       const { data: dup } = await db.from("notifications").select("id").eq("kind", "reviews.waiting").contains("payload", { ...scope, day: today }).limit(1);
       if (dup?.length) continue;
       const items = rows.slice(0, 15).map((r) => ({ title: r.title, format: r.format, number: r.number, days: r.days }));
-      await notify(db, approvers, "reviews.waiting", { ...scope, day: today, count: rows.length, items, title: items.slice(0, 3).map((i) => `${i.title} · ${i.format}`).join(" · ") + (rows.length > 3 ? ` · +${rows.length - 3} more` : "") }, undefined, { orgId });
+      await notify(db, approvers, "reviews.waiting", { ...scope, day: today, count: rows.length, items, title: items.slice(0, 3).map((i) => `${i.title} · ${i.format}`).join(" · ") + (rows.length > 3 ? ` · +${rows.length - 3} more` : "") }, undefined, { orgId, chat: false });
     }
     report.waiting = ((report.waiting as number) ?? 0) + rows.length;
   }
@@ -135,7 +135,7 @@ export async function GET(req: Request) {
   const waitingSlots: WaitingSlot[] = ((waitRaw ?? []) as unknown as { id: string; event_id: string; label: string | null; assignee_id: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } }[])
     .filter((w) => w.events.status === "active" && !w.events.deleted_at)
     .map((w) => ({ slotId: w.id, eventId: w.event_id, orgId: w.events.org_id, title: w.events.title, format: slotName(w.formats.name, w.label), assignee: w.assignee_id, url: appUrl(openLink(`/events/${w.event_id}/slots/${w.id}`, slugOf.get(w.events.org_id))) }));
-  const { byPerson: waitingOf, unassigned: waitingFree } = splitWaiting(waitingSlots, active);
+  const { byPerson: waitingOf } = splitWaiting(waitingSlots, active);
   const waitingInMessage = new Set<string>();
   const waitingItems = (list: WaitingSlot[]) => list.slice(0, MAX_REMINDER_ITEMS).map((w) => ({ title: w.title, format: w.format, url: w.url }));
   report.waitingNudges = 0;
@@ -162,9 +162,6 @@ export async function GET(req: Request) {
     }
   }
   report.openComments = 0;
-  // Chat gets no names: one post per organization saying which assets still have open comments.
-  const assetsByOrg = new Map<string, Map<string, { eventId: string; slotId: string; title: string; format: string; open: number; url: string }>>();
-  const seenComment = new Set<string>();
   for (const [person, orgs] of owed) {
     const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "comments.pending").contains("payload", { day: today }).limit(1);
     if (dup?.length) continue;
@@ -181,11 +178,6 @@ export async function GET(req: Request) {
       const blocks = [...reminderBlocks(items, all.length - items.length, appUrl("/inbox")), ...(dueOf.has(person) ? dueBlocks(dueItems(dueOf.get(person)!), dueOf.get(person)!.length - Math.min(dueOf.get(person)!.length, MAX_REMINDER_ITEMS), appUrl("/inbox"), true) : []), ...(mine.length ? waitingBlocks(waitingItems(mine), mine.length - Math.min(mine.length, MAX_REMINDER_ITEMS), appUrl("/inbox"), true) : [])];
       const sent = await sendSlackBlocks(slackId, `${all.length} change${all.length === 1 ? " is" : "s are"} waiting on you in Design & Concur`, blocks);
       if ("error" in sent) console.error("[slack reminder]", sent.error); else { report.slackReminders = (report.slackReminders as number) + 1; waitingInMessage.add(person); }
-    }
-    for (const [org, list] of orgs) for (const c of list) {
-      if (seenComment.has(c.id)) continue; seenComment.add(c.id);
-      const sl = c.versions.slots; const m = assetsByOrg.get(org) ?? new Map();
-      m.set(sl.id, { eventId: sl.event_id, slotId: sl.id, title: sl.events.title, format: slotName(sl.formats.name, sl.label), open: (m.get(sl.id)?.open ?? 0) + 1, url: appUrl(openLink(`/events/${sl.event_id}/slots/${sl.id}`, slugOf.get(org))) }); assetsByOrg.set(org, m);
     }
     report.openComments = (report.openComments as number) + all.length;
   }
@@ -204,47 +196,8 @@ export async function GET(req: Request) {
     }
     report.reminders = (report.reminders as number) + dueList.length; report.waitingNudges = (report.waitingNudges as number) + (list.length ? 1 : 0);
   }
-  // The chat hears which projects have assets due (a short list, no names, no @mention): one post per organization, or
-  // in its own chat for a project that has one.
-  const privateDue = await privateProjects(dueSlots.map((d) => d.eventId));
-  const dueGroups = new Map<string, DueSlot[]>();
-  for (const d of dueSlots) { const k = privateDue.has(d.eventId) ? `${d.orgId}|${d.eventId}` : d.orgId; dueGroups.set(k, [...(dueGroups.get(k) ?? []), d]); }
-  for (const [k, list] of dueGroups) {
-    const projects = dueProjects(list, (d) => appUrl(openLink(`/events/${d.eventId}`, slugOf.get(d.orgId))));
-    await notify(db, [], "slots.due", { projects: projects.slice(0, 15) as DueProject[], total: projects.length, day: today, orgId: list[0].orgId, ...(k.includes("|") ? { eventId: list[0].eventId } : {}) }, undefined, { orgId: list[0].orgId, mention: [] });
-    report.duePosts = ((report.duePosts as number) ?? 0) + 1;
-  }
-  // The whole-channel ping goes out on alternate days; the post itself is daily.
-  const pingToday = Math.floor(new Date(`${today}T00:00:00Z`).getTime() / DAY_MS) % 2 === 0;
-  // As above: a project with its own chat or guests gets its own post there; the rest one post per organization.
-  const privateOpen = await privateProjects([...assetsByOrg.values()].flatMap((m) => [...m.values()].map((a) => a.eventId)).concat(waitingFree.map((w) => w.eventId)));
-  // Unassigned waiting assets, per chat: key "<org>" or "<org>|<event>" (a project with its own chat or guests), on ping days only.
-  const waitingPosts = new Map<string, { orgId: string; eventId?: string; projects: WaitingProject[]; total: number }>();
-  if (pingToday) {
-    const groups = new Map<string, WaitingSlot[]>();
-    for (const w of waitingFree) { const k = privateOpen.has(w.eventId) ? `${w.orgId}|${w.eventId}` : w.orgId; groups.set(k, [...(groups.get(k) ?? []), w]); }
-    for (const [k, list] of groups) {
-      const projects = waitingProjects(list, (w) => appUrl(openLink(`/events/${w.eventId}`, slugOf.get(w.orgId))));
-      waitingPosts.set(k, { orgId: list[0].orgId, ...(k.includes("|") ? { eventId: list[0].eventId } : {}), projects: projects.slice(0, 15), total: projects.length });
-    }
-  }
-  for (const [orgId, byAsset] of assetsByOrg) {
-    const all = [...byAsset.values()];
-    const posts = [all.filter((a) => !privateOpen.has(a.eventId)), ...[...new Set(all.map((a) => a.eventId))].filter((id) => privateOpen.has(id)).map((id) => all.filter((a) => a.eventId === id))];
-    for (const group of posts) {
-      if (!group.length) continue;
-      const assets = group.sort((x, y) => y.open - x.open).slice(0, 15);
-      const own = privateOpen.has(group[0].eventId);
-      const key = own ? `${orgId}|${group[0].eventId}` : orgId;
-      const bundle = waitingPosts.get(key); waitingPosts.delete(key);
-      await notify(db, [], "comments.pending", { assets, total: group.length, day: today, orgId, pingAll: pingToday, ...(bundle ? { waiting: bundle.projects, waitingTotal: bundle.total } : {}), ...(assets.length === 1 || own ? { eventId: assets[0].eventId } : {}), ...(assets.length === 1 ? { slotId: assets[0].slotId } : {}) }, undefined, { orgId, mention: [] });
-    }
-  }
-  // Anything left has no other reminder to ride along with: a short post of its own.
-  for (const post of waitingPosts.values()) {
-    await notify(db, [], "assets.waiting", { waiting: post.projects, total: post.total, day: today, orgId: post.orgId, ...(post.eventId ? { eventId: post.eventId } : {}) }, undefined, { orgId: post.orgId, mention: [] });
-    report.waitingPosts = ((report.waitingPosts as number) ?? 0) + 1;
-  }
+  // Channel reminders (due soon, open changes, waiting uploads, designs awaiting review) are paused: the daily job only
+  // reaches people personally. A comment that names someone still posts to the channel from the comment flow, not here.
 
   // 2. Retention (+ tell the creator and the chat that an event was archived)
   const retention = await runRetention(db, { tz, today });

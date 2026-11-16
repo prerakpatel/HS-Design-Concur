@@ -85,6 +85,10 @@ Everyone chooses on their **Inbox** page: *as things happen* (default), *once a 
 
 The daily job also creates these notifications (emailed to people on *as things happen*, included in the daily digest for others): due-date reminders, "your draft is deleted in 7 days", "your draft was deleted", and the 1 November phone-preset reminder for Designers and Core Admins.
 
+> **Channel reminders are paused.** The daily job no longer posts to Google Chat or Slack channels (due soon, open
+> changes, waiting uploads, designs awaiting review). It only reaches people personally (in-app, push, email, Slack DM).
+> Comments that @mention someone still post to the channel as they happen. The channel bullets below describe the paused behaviour.
+
 ### Assets due today or in 3 days
 
 - **People:** each person gets one in-app / push item a day listing what is due, and (with Slack linked) one personal Slack message with a bulleted list and links. If they are also getting the "open changes" message, the list is added to it under a divider, headed "⏰ Due soon". If they also have assets waiting for an upload, both lists are in the same message.

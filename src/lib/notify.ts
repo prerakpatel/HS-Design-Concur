@@ -74,6 +74,8 @@ export interface NotifyOpts {
   orgId?: string | string[] | "all";
   /** People to @-mention in chat instead of every recipient (e.g. only the designer on an approval). */
   mention?: Iterable<string | null | undefined>;
+  /** false: in-app, push and email only, no post to any channel (the org is still recorded and its email switch honoured). */
+  chat?: boolean;
 }
 
 /**
@@ -84,7 +86,7 @@ export interface NotifyOpts {
  */
 export async function notify(supabase: SupabaseClient, userIds: Iterable<string | null | undefined>, kind: NotificationKind, payload: Record<string, unknown>, exclude?: string, opts?: NotifyOpts) {
   const ids = [...new Set(userIds)].filter((id): id is string => !!id && id !== exclude);
-  const toChat = !!opts?.orgId && kind in CHAT;
+  const toChat = opts?.chat !== false && !!opts?.orgId && kind in CHAT;
   if (ids.length === 0 && !toChat) return;
   if (ids.length) {
     const org_id = await notificationOrg(supabase, payload, opts?.orgId);
@@ -94,7 +96,7 @@ export async function notify(supabase: SupabaseClient, userIds: Iterable<string 
     if (error) console.error("[notify] could not save notifications:", error.message);
   }
   const mentions = toChat ? [...new Set(opts?.mention ? [...opts.mention] : CHAT[kind] === "mention" ? ids : [])].filter((id): id is string => !!id && id !== exclude) : [];
-  after(() => deliver(supabase, ids, kind, payload, opts?.orgId, mentions).catch((e) => console.error("[notify] delivery failed:", (e as Error).message)));
+  after(() => deliver(supabase, ids, kind, payload, opts?.orgId, mentions, toChat).catch((e) => console.error("[notify] delivery failed:", (e as Error).message)));
 }
 
 /** The organisation a notification belongs to: the one it was sent for, else the one that owns its project. Null for org-less moments. */
@@ -115,7 +117,7 @@ async function openHref(supabase: SupabaseClient, payload: Record<string, unknow
   return openLink(notificationHref(payload), data?.slug as string | undefined);
 }
 
-async function deliver(caller: SupabaseClient, ids: string[], kind: NotificationKind, payload: Record<string, unknown>, orgId: NotifyOpts["orgId"], mentions: string[]) {
+async function deliver(caller: SupabaseClient, ids: string[], kind: NotificationKind, payload: Record<string, unknown>, orgId: NotifyOpts["orgId"], mentions: string[], toChat: boolean) {
   // Who and where to tell is looked up with the service key when it is set: a guest who comments may not read the
   // organization's channels, groups or people, yet they still need telling.
   const supabase = serviceOr(caller);
@@ -143,7 +145,7 @@ async function deliver(caller: SupabaseClient, ids: string[], kind: Notification
     for (const r of results) if (r.status === "fulfilled" && "error" in r.value) console.error("[email]", r.value.error);
   }
 
-  if (orgId && kind in CHAT) {
+  if (orgId && toChat) {
     // Where does this post go? Groups route by the people concerned (PRD §10):
     //  - milestones (published, all approved, archived, bulk approvals) reach every group and the org channel;
     //  - a design post reaches groups set to "everything", groups set to "its own designs" that include someone
