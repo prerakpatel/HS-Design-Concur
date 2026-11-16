@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireViewer } from "@/lib/auth";
 import { after } from "next/server";
 import { markAllRead } from "@/app/actions/inbox";
-import { updateEmailPref } from "@/app/actions/prefs";
+import { updateEmailPref, updateReminderPrefs } from "@/app/actions/prefs";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/material-icon";
@@ -27,6 +27,10 @@ export default async function InboxPage() {
       <PageHeader title="Inbox" subtitle={unread ? `${unread} unread` : "All caught up"} actions={unread ? <form action={markAllRead}><Button variant="secondary" type="submit">Mark all read</Button></form> : null} />
       <div className="mb-8 space-y-3">
       <PushToggle publicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} />
+      {member && <form action={updateReminderPrefs} className="flex flex-col gap-3 rounded-2xl bg-subtle p-5 md:flex-row md:items-center md:gap-4">
+        <div className="min-w-0 flex-1"><p className="text-sm font-medium">Personal reminders</p><p className="text-sm text-muted-foreground">A message every 2 days while you have open items: assets due or waiting, changes to mark done, designs to review.{user.reminders_snooze_until && user.reminders_snooze_until >= new Date().toISOString().slice(0, 10) ? ` Snoozed until ${user.reminders_snooze_until}.` : ""}</p></div>
+        <div className="flex gap-2"><SelectField name="reminders" defaultValue={user.reminders_enabled === false ? "off" : user.reminders_snooze_until && user.reminders_snooze_until >= new Date().toISOString().slice(0, 10) ? "snooze-7" : "on"} className="w-52"><option value="on">every 2 days</option><option value="snooze-7">snooze for a week</option><option value="snooze-30">snooze for a month</option><option value="off">off</option></SelectField><Button type="submit" variant="secondary" size="lg">Save</Button></div>
+      </form>}
       {/* Email is on hold until a sender domain exists; the row appears by itself once RESEND_API_KEY and EMAIL_FROM are set. */}
       {member && emailConfigured() && (
       <form action={updateEmailPref} className="flex flex-col gap-3 rounded-2xl bg-subtle p-5 md:flex-row md:items-center md:gap-4">

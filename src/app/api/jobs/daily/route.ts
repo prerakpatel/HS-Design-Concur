@@ -19,6 +19,7 @@ import { postRelease } from "@/lib/changelog";
 import { RELEASES } from "@/config/changelog";
 import { privateProjects } from "@/lib/project-people";
 import { getActiveUser } from "@/lib/auth";
+import { PERSONAL_REMINDERS_ENABLED, REMINDER_EVERY_DAYS } from "@/config/notifications";
 
 export const maxDuration = 60;
 
@@ -26,6 +27,7 @@ export const maxDuration = 60;
  * Daily job (Vercel Cron, 13:00 UTC ≈ morning in New York). Runs, in order:
  * 1. Due-date reminders: assets due today or in 3 days → one personal message per designer (in-app, push, Slack).
  *    Then designs waiting ≥ 1 day for a decision → the approvers, once a day until approved or changes requested.
+ *    Personal reminders are paused (PERSONAL_REMINDERS_ENABLED) and, when on, go out every 2 days at most.
  *    No channel (Google Chat / Slack) reminders are posted from this job.
  * 2. Retention (PRD §8): archive + purge a week after the event date, hard-delete after the restore window,
  *    draft warning / sweep, yearly device-preset reminder. See src/lib/retention.ts.
@@ -41,7 +43,13 @@ export async function GET(req: Request) {
   const tz = APP_TIMEZONE;
   const today = todayIso(tz);
   const in3 = daysFromNowIso(REMINDER_LEAD_DAYS, tz);
-  const report: Record<string, unknown> = { reminders: 0, waiting: 0, digests: 0 };
+  const report: Record<string, unknown> = { reminders: 0, waiting: 0, digests: 0, remindersPaused: !PERSONAL_REMINDERS_ENABLED };
+  // Personal reminders: paused by one switch (src/config/notifications.ts), at most one per kind every REMINDER_EVERY_DAYS
+  // days, never for someone who switched them off or snoozed them. 2 hours of slack so a late cron run does not skip a round.
+  const remindersOn = PERSONAL_REMINDERS_ENABLED;
+  const sinceLast = new Date(Date.now() - (REMINDER_EVERY_DAYS * 24 - 2) * HOUR_MS).toISOString();
+  const { data: quiet } = remindersOn ? await db.from("users").select("id").or(`reminders_enabled.eq.false,reminders_snooze_until.gte.${today}`) : { data: [] as { id: string }[] };
+  const quietIds = new Set((quiet ?? []).map((u) => u.id as string));
 
   // 0. Assets-only requests ending in 3 days: tell the requester and the designers to download their finals.
   const { data: ending } = await db.from("events").select("id,org_id,title,created_by,slots(assignee_id)").eq("kind", "assets").eq("status", "active").is("deleted_at", null).eq("event_date", in3);
@@ -56,7 +64,7 @@ export async function GET(req: Request) {
   // message, one in-app item), and the organization's chat gets one short list of projects, never names.
   const { data: dueRaw } = await db.from("slots").select("id,due_on,assignee_id,event_id,label,formats(name),events(title,status,org_id,deleted_at)").eq("requested", true).neq("state", "approved").in("due_on", [today, in3]);
   type DueRow = { id: string; due_on: string; assignee_id: string | null; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } };
-  const dueRows = ((dueRaw ?? []) as unknown as DueRow[]).filter((d) => d.events.status === "active" && !d.events.deleted_at);
+  const dueRows = ((dueRaw ?? []) as unknown as DueRow[]).filter((d) => remindersOn && d.events.status === "active" && !d.events.deleted_at);
 
   const { data: orgRows } = await db.from("organisations").select("id,slug");
   const slugOf = new Map((orgRows ?? []).map((o) => [o.id as string, o.slug as string]));
@@ -69,7 +77,7 @@ export async function GET(req: Request) {
   // its own chat, so its titles never reach the organization's channels. Key: "<org>" or "<org>|<event>".
   const privateWaiting = await privateProjects((waiting ?? []).map((v) => (v.slots as unknown as { event_id: string }).event_id));
   const waitingByOrg = new Map<string, Waiting[]>();
-  for (const v of waiting ?? []) {
+  for (const v of remindersOn ? waiting ?? [] : []) {
     const slot = v.slots as unknown as { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } };
     if (slot.events.status !== "active" || slot.events.deleted_at) continue;
     const up = v.uploader as unknown as { name: string | null; email: string } | null;
@@ -79,18 +87,18 @@ export async function GET(req: Request) {
   }
   for (const [key, rows] of waitingByOrg) {
     const [orgId, privateEvent] = key.split("|");
-    const approvers = await approverIds(db, orgId);
+    const approvers = (await approverIds(db, orgId)).filter((id) => !quietIds.has(id));
     if (approvers.length === 0) continue;
     rows.sort((a, b) => b.days - a.days);
     if (rows.length === 1) {
       const r = rows[0];
-      const { data: dup } = await db.from("notifications").select("id").eq("kind", "review.waiting").contains("payload", { versionId: r.versionId, day: today }).limit(1);
+      const { data: dup } = await db.from("notifications").select("id").in("user_id", approvers).eq("kind", "review.waiting").contains("payload", { versionId: r.versionId }).gte("created_at", sinceLast).limit(1);
       if (dup?.length) continue;
       await notify(db, approvers, "review.waiting", { eventId: r.eventId, slotId: r.slotId, versionId: r.versionId, title: r.title, format: r.format, number: r.number, by: r.by, since: r.since, days: r.days, day: today }, r.uploadedBy, { orgId, chat: false });
     } else {
       // `scope` keeps the organisation-wide reminder apart from a project-specific one (both carry the same orgId).
       const scope = privateEvent ? { orgId, eventId: privateEvent, scope: "project" } : { orgId, scope: "org" };
-      const { data: dup } = await db.from("notifications").select("id").eq("kind", "reviews.waiting").contains("payload", { ...scope, day: today }).limit(1);
+      const { data: dup } = await db.from("notifications").select("id").in("user_id", approvers).eq("kind", "reviews.waiting").contains("payload", scope).gte("created_at", sinceLast).limit(1);
       if (dup?.length) continue;
       const items = rows.slice(0, 15).map((r) => ({ title: r.title, format: r.format, number: r.number, days: r.days }));
       await notify(db, approvers, "reviews.waiting", { ...scope, day: today, count: rows.length, items, title: items.slice(0, 3).map((i) => `${i.title} · ${i.format}`).join(" · ") + (rows.length > 3 ? ` · +${rows.length - 3} more` : "") }, undefined, { orgId, chat: false });
@@ -118,13 +126,13 @@ export async function GET(req: Request) {
   // assets have open change requests.
   type OpenComment = { id: string; author_id: string; body: string; mentions: string[] | null; assignee_id: string | null; versions: { number: number; slots: { id: string; event_id: string; label: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } } } };
   const { data: openRaw } = await db.from("comments").select("id,author_id,body,mentions,assignee_id,versions!inner(number,slots!inner(id,event_id,label,formats(name),events!inner(title,status,org_id,deleted_at)))").eq("is_draft", false).eq("needs_change", true).is("addressed_at", null).is("confirmed_at", null).lte("created_at", new Date(Date.now() - REVIEW_WAIT_HOURS * HOUR_MS).toISOString()).limit(2000);
-  const openComments = ((openRaw ?? []) as unknown as OpenComment[]).filter((c) => ((c.mentions?.length ?? 0) > 0 || c.assignee_id) && c.versions.slots.events.status === "active" && !c.versions.slots.events.deleted_at);
+  const openComments = ((openRaw ?? []) as unknown as OpenComment[]).filter((c) => ((c.mentions?.length ?? 0) > 0 || c.assignee_id) && remindersOn && c.versions.slots.events.status === "active" && !c.versions.slots.events.deleted_at);
   const groupIds = [...new Set(openComments.flatMap((c) => groupMentionIds(c.body)))];
   const { data: gm } = groupIds.length ? await db.from("group_members").select("group_id,user_id").in("group_id", groupIds) : { data: [] as { group_id: string; user_id: string }[] };
   const groupMembers = new Map<string, string[]>();
   for (const m of gm ?? []) groupMembers.set(m.group_id, [...(groupMembers.get(m.group_id) ?? []), m.user_id]);
   const { data: activeUsers } = await db.from("users").select("id,slack_user_id").eq("status", "active");
-  const active = new Set((activeUsers ?? []).map((u) => u.id as string));
+  const active = new Set((activeUsers ?? []).map((u) => u.id as string).filter((id) => !quietIds.has(id)));
   const slackIdOf = new Map((activeUsers ?? []).filter((u) => u.slack_user_id).map((u) => [u.id as string, u.slack_user_id as string]));
   const slackButtons = slackActionsEnabled();
   report.slackReminders = 0;
@@ -133,7 +141,7 @@ export async function GET(req: Request) {
   // project, in the organization's chat on alternate days (under a divider when another reminder goes there too).
   const { data: waitRaw } = await db.from("slots").select("id,event_id,label,assignee_id,formats(name),events!inner(title,status,org_id,deleted_at)").eq("requested", true).eq("state", "requested").lte("updated_at", new Date(Date.now() - DAY_MS).toISOString());
   const waitingSlots: WaitingSlot[] = ((waitRaw ?? []) as unknown as { id: string; event_id: string; label: string | null; assignee_id: string | null; formats: { name: string }; events: { title: string; status: string; org_id: string; deleted_at: string | null } }[])
-    .filter((w) => w.events.status === "active" && !w.events.deleted_at)
+    .filter((w) => remindersOn && w.events.status === "active" && !w.events.deleted_at)
     .map((w) => ({ slotId: w.id, eventId: w.event_id, orgId: w.events.org_id, title: w.events.title, format: slotName(w.formats.name, w.label), assignee: w.assignee_id, url: appUrl(openLink(`/events/${w.event_id}/slots/${w.id}`, slugOf.get(w.events.org_id))) }));
   const { byPerson: waitingOf } = splitWaiting(waitingSlots, active);
   const waitingInMessage = new Set<string>();
@@ -145,8 +153,8 @@ export async function GET(req: Request) {
   const dueWhen = (d: DueSlot) => (d.when === "today" ? "due today" : `due ${chatDate(d.due)}`);
   const dueItems = (list: DueSlot[]) => [...list].sort((a, b) => a.due.localeCompare(b.due)).slice(0, MAX_REMINDER_ITEMS).map((d) => ({ title: d.title, format: d.format, url: d.url, when: dueWhen(d) }));
   // One in-app / push item per person per day for each of the two kinds; someone already told today is skipped entirely.
-  for (const person of [...dueOf.keys()]) { const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "slots.due").contains("payload", { day: today }).limit(1); if (dup?.length) dueOf.delete(person); }
-  for (const [person] of [...waitingOf]) { const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "assets.waiting").contains("payload", { day: today }).limit(1); if (dup?.length) waitingOf.delete(person); }
+  for (const person of [...dueOf.keys()]) { const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "slots.due").gte("created_at", sinceLast).limit(1); if (dup?.length) dueOf.delete(person); }
+  for (const [person] of [...waitingOf]) { const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "assets.waiting").gte("created_at", sinceLast).limit(1); if (dup?.length) waitingOf.delete(person); }
   // person → org → open comments they were named in (never because a group they are in was named)
   const owed = new Map<string, Map<string, OpenComment[]>>();
   for (const c of openComments) {
@@ -163,7 +171,7 @@ export async function GET(req: Request) {
   }
   report.openComments = 0;
   for (const [person, orgs] of owed) {
-    const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "comments.pending").contains("payload", { day: today }).limit(1);
+    const { data: dup } = await db.from("notifications").select("id").eq("user_id", person).eq("kind", "comments.pending").gte("created_at", sinceLast).limit(1);
     if (dup?.length) continue;
     const all = [...orgs.values()].flat();
     const first = all[0].versions.slots;

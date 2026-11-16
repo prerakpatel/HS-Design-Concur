@@ -89,6 +89,14 @@ The daily job also creates these notifications (emailed to people on *as things 
 > changes, waiting uploads, designs awaiting review). It only reaches people personally (in-app, push, email, Slack DM).
 > Comments that @mention someone still post to the channel as they happen. The channel bullets below describe the paused behaviour.
 
+### Personal reminders and notification settings
+
+- **Paused.** `PERSONAL_REMINDERS_ENABLED` in `src/config/notifications.ts` is `false`: the daily job sends no personal reminders. Set it to `true` to bring them back.
+- **Cadence.** When on, each person gets each kind of reminder (due soon, waiting uploads, open changes, designs awaiting review) at most once every 2 days (`REMINDER_EVERY_DAYS`).
+- **Per person** (Inbox → Personal reminders): every 2 days, snooze for a week or a month, or off.
+- **Per organisation** (Settings → Organizations, Core Admin): channel posts about project updates and about comments can each be switched off, next to the Google Chat and Slack switches.
+- Needs migration `20261017010000_notification_settings.sql` applied first.
+
 ### Assets due today or in 3 days
 
 - **People:** each person gets one in-app / push item a day listing what is due, and (with Slack linked) one personal Slack message with a bulleted list and links. If they are also getting the "open changes" message, the list is added to it under a divider, headed "⏰ Due soon". If they also have assets waiting for an upload, both lists are in the same message.

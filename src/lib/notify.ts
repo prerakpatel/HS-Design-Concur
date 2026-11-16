@@ -7,6 +7,7 @@ import { postChat, chat, mention, everyone, platformOf, chatSafePayload, type Ch
 import { signedUrl } from "@/lib/storage";
 import { copyFile, r2Enabled, R2 } from "@/lib/files";
 import { sendPush } from "@/lib/push";
+import { COMMENT_CHAT_KINDS } from "@/config/notifications";
 import { notificationText, notificationHref, openLink, chatLines } from "@/lib/labels";
 import { htmlToChat, mentionIds } from "@/lib/rich-text";
 import { loadGroups } from "@/lib/groups";
@@ -108,7 +109,7 @@ async function notificationOrg(supabase: SupabaseClient, payload: Record<string,
   return (data?.org_id as string | undefined) ?? null;
 }
 
-interface OrgRow { id: string; email_enabled: boolean | null; chat_enabled: boolean; chat_webhook_url: string | null; slack_enabled: boolean; slack_webhook_url: string | null }
+interface OrgRow { id: string; chat_updates: boolean | null; chat_comments: boolean | null; email_enabled: boolean | null; chat_enabled: boolean; chat_webhook_url: string | null; slack_enabled: boolean; slack_webhook_url: string | null }
 
 /** An on-site link that first switches to the notification's organisation, so a deep link never lands in the wrong one. */
 async function openHref(supabase: SupabaseClient, payload: Record<string, unknown>, orgId: NotifyOpts["orgId"]) {
@@ -123,7 +124,7 @@ async function deliver(caller: SupabaseClient, ids: string[], kind: Notification
   const supabase = serviceOr(caller);
   let orgs: OrgRow[] = [];
   if (orgId) {
-    let q = supabase.from("organisations").select("id,email_enabled,chat_enabled,chat_webhook_url,slack_enabled,slack_webhook_url");
+    let q = supabase.from("organisations").select("id,chat_updates,chat_comments,email_enabled,chat_enabled,chat_webhook_url,slack_enabled,slack_webhook_url");
     if (orgId !== "all") q = q.in("id", Array.isArray(orgId) ? orgId : [orgId]);
     orgs = ((await q).data as OrgRow[] | null) ?? [];
   }
@@ -150,7 +151,11 @@ async function deliver(caller: SupabaseClient, ids: string[], kind: Notification
     //  - milestones (published, all approved, archived, bulk approvals) reach every group and the org channel;
     //  - a design post reaches groups set to "everything", groups set to "its own designs" that include someone
     //    concerned, any group @mentioned in the comment, and the org channel when someone concerned is in no group.
-    const groups = await loadGroups(supabase, orgId === "all" ? "all" : Array.isArray(orgId) ? orgId : [orgId]);
+    // An organisation can switch off channel posts about project updates, or about comments.
+    const topic = COMMENT_CHAT_KINDS.has(kind) ? "chat_comments" : "chat_updates";
+    const chatOrgs = orgs.filter((o) => o[topic] ?? true);
+    if (orgId !== "all" && chatOrgs.length === 0) return;
+    const groups = await loadGroups(supabase, orgId === "all" ? "all" : chatOrgs.map((o) => o.id));
     const milestone = MILESTONES.has(kind);
     const audience = new Set([...ids, ...mentions]);
     const grouped = new Set(groups.flatMap((g) => g.members));
@@ -158,7 +163,7 @@ async function deliver(caller: SupabaseClient, ids: string[], kind: Notification
     const someoneUngrouped = groups.length === 0 || audience.size === 0 || [...audience].some((id) => !grouped.has(id));
     const hookList: string[] = [];
     if (routing?.target) hookList.push(routing.target);
-    else if (milestone || someoneUngrouped || kind === "event.archived") hookList.push(...orgs.flatMap((o) => [o.chat_enabled && o.chat_webhook_url, o.slack_enabled && o.slack_webhook_url]).filter((h): h is string => !!h));
+    else if (milestone || someoneUngrouped || kind === "event.archived") hookList.push(...chatOrgs.flatMap((o) => [o.chat_enabled && o.chat_webhook_url, o.slack_enabled && o.slack_webhook_url]).filter((h): h is string => !!h));
     for (const g of routing?.target ? [] : groups) {
       const touches = g.members.some((m) => audience.has(m));
       if (explicit.has(g.id) || g.hears === "all" || milestone || (g.hears === "own" && touches)) hookList.push(...[g.chat_webhook_url, g.slack_webhook_url].filter((h): h is string => !!h));
